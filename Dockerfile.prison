@@ -1,0 +1,24 @@
+FROM node:24-bookworm-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    ca-certificates \
+    less \
+    procps \
+    jq \
+    ripgrep \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g @openai/codex
+
+RUN npm install -g @anthropic-ai/claude-code
+
+RUN printf '#!/bin/sh\nexec codex --dangerously-bypass-approvals-and-sandbox "$@"\n' > /usr/local/bin/kodx \
+    && chmod +x /usr/local/bin/kodx
+
+RUN mkdir -p /home/node/.codex && chown -R node:node /home/node/.codex
+
+WORKDIR /workspace
+
+CMD ["tail", "-f", "/dev/null"]

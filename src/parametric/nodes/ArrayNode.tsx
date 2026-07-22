@@ -1,0 +1,57 @@
+import { Position, type NodeProps } from '@xyflow/react'
+import { Label } from '@/components/ui/label'
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '@/components/ui/select'
+import { GeometryNodeActions } from '@/parametric/components/GeometryNodeActions'
+import { NumericInput } from '@/parametric/components/NumericInput'
+import { TypedHandle } from '@/parametric/components/TypedHandle'
+import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
+import { useArrayNode, useNumericField } from '@/parametric/hooks/useGraphNode'
+import type { Axis } from '@/parametric/model/GraphNode'
+
+export function ArrayNode({ id }: NodeProps<ParametricFlowNode>) {
+	const binding = useArrayNode(id)
+	const count = useNumericField(id, 'count', 'Count')
+	const offset = useNumericField(id, 'offset', 'Offset')
+	if (!binding) return null
+
+	return (
+		<div className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md">
+			<TypedHandle id="geometry" type="target" position={Position.Left} valueType="geometry" />
+			<div className="mb-2 flex items-center justify-between gap-2">
+				<div className="text-sm font-semibold text-foreground">Array</div>
+				<GeometryNodeActions nodeId={id} nodeLabel="Array" />
+			</div>
+			<div className="flex flex-col gap-2 text-xs">
+				<div className="nodrag relative flex items-center justify-between gap-2 text-muted-foreground">
+					<TypedHandle id="count" type="target" position={Position.Left} valueType="number" style={{ top: '50%' }} />
+					<span>Count</span>
+					<NumericInput field={count} min={1} step={1} />
+				</div>
+				<div className="nodrag flex items-center justify-between gap-2 text-muted-foreground">
+					<Label htmlFor={`${id}-axis`} className="text-xs text-muted-foreground">Axis</Label>
+					<Select value={binding.axis} onValueChange={(next) => binding.setAxis(next as Axis)}>
+						<SelectTrigger id={`${id}-axis`} className="h-7 w-16 px-2 text-xs">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="x">X</SelectItem>
+							<SelectItem value="y">Y</SelectItem>
+							<SelectItem value="z">Z</SelectItem>
+						</SelectContent>
+					</Select>
+				</div>
+				<div className="nodrag flex items-center justify-between gap-2 text-muted-foreground">
+					<span>Offset</span>
+					<NumericInput field={offset} />
+				</div>
+			</div>
+			<TypedHandle id="geometry" type="source" position={Position.Right} valueType="geometry" />
+		</div>
+	)
+}

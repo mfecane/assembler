@@ -1,0 +1,55 @@
+import { Position, type NodeProps } from '@xyflow/react'
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '@/components/ui/select'
+import { GeometryNodeActions } from '@/parametric/components/GeometryNodeActions'
+import { TypedHandle } from '@/parametric/components/TypedHandle'
+import { Vec3Field } from '@/parametric/components/Vec3Field'
+import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
+import { usePrimitiveNode, useVectorNumericFields } from '@/parametric/hooks/useGraphNode'
+import type { PrimitiveKind } from '@/parametric/model/GraphNode'
+
+const primitiveOptions: ReadonlyArray<{ value: PrimitiveKind; label: string }> = [
+	{ value: 'box', label: 'Box' },
+	{ value: 'sphere', label: 'Sphere' },
+	{ value: 'cylinder', label: 'Cylinder' },
+	{ value: 'cone', label: 'Cone' },
+]
+
+export function PrimitiveNode({ id }: NodeProps<ParametricFlowNode>) {
+	const binding = usePrimitiveNode(id)
+	const size = useVectorNumericFields(id, 'size', 'Size')
+	if (!binding) return null
+
+	return (
+		<div className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md">
+			<div className="mb-2 flex items-center justify-between gap-2">
+				<div className="text-sm font-semibold text-foreground">Primitive</div>
+				<GeometryNodeActions nodeId={id} nodeLabel="Primitive" />
+			</div>
+			<div className="flex flex-col gap-2">
+				<Select
+					value={binding.primitive}
+					onValueChange={(next) => binding.setPrimitive(next as PrimitiveKind)}
+				>
+					<SelectTrigger className="nodrag h-8 text-xs">
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+					{primitiveOptions.map((option) => (
+						<SelectItem key={option.value} value={option.value}>
+							{option.label}
+						</SelectItem>
+					))}
+					</SelectContent>
+				</Select>
+				<Vec3Field label="Size" fields={size} />
+			</div>
+			<TypedHandle id="geometry" type="source" position={Position.Right} valueType="geometry" />
+		</div>
+	)
+}

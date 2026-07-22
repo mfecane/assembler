@@ -1,0 +1,114 @@
+services:
+    # A prison for coding agents claude and codex
+    prison:
+        build:
+            context: .
+            dockerfile: Dockerfile.prison
+        working_dir: /workspace
+        volumes:
+            - .:/workspace
+            - node_modules:/workspace/node_modules
+            - prison_home:/home/node/.codex
+        tty: true
+        stdin_open: true
+        cap_add:
+            - SYS_ADMIN
+        security_opt:
+            - seccomp=unconfined
+            - apparmor=unconfined
+
+    db:
+        image: postgres:18-alpine
+        environment:
+            POSTGRES_PASSWORD: postgres
+        volumes:
+            - ./supabase/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+        tmpfs:
+            - /var/lib/postgresql
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U postgres']
+            interval: 2s
+            timeout: 2s
+            retries: 30
+
+    auth:
+        image: supabase/gotrue:v2.189.0
+        depends_on:
+            db:
+                condition: service_healthy
+        environment:
+            API_EXTERNAL_URL: http://localhost:5175/auth/v1
+            GOTRUE_SITE_URL: http://localhost:5175/assembler/
+            GOTRUE_API_HOST: 0.0.0.0
+            GOTRUE_DB_DRIVER: postgres
+            GOTRUE_DB_DATABASE_URL: postgres://postgres:postgres@db:5432/postgres
+            DB_NAMESPACE: auth
+            GOTRUE_JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-long
+            GOTRUE_JWT_AUD: authenticated
+            GOTRUE_JWT_ADMIN_ROLES: service_role
+            GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+        healthcheck:
+            test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:8081/health']
+            interval: 2s
+            timeout: 2s
+            retries: 30
+
+    schema:
+        image: postgres:18-alpine
+        depends_on:
+            auth:
+                condition: service_healthy
+        environment:
+            PGPASSWORD: postgres
+        volumes:
+            - ./supabase/schema.sql:/schema.sql:ro
+        command: ['psql', '-v', 'ON_ERROR_STOP=1', '-h', 'db', '-U', 'postgres', '-d', 'postgres', '-f', '/schema.sql']
+
+    rest:
+        image: postgrest/postgrest:v14.12
+        depends_on:
+            schema:
+                condition: service_completed_successfully
+        environment:
+            PGRST_DB_URI: postgres://postgres:postgres@db:5432/postgres
+            PGRST_DB_ANON_ROLE: anon
+            PGRST_JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-long
+
+    frontend:
+        build: .
+        depends_on:
+            rest:
+                condition: service_started
+        environment:
+            VITE_SUPABASE_URL: http://localhost:5175
+            VITE_SUPABASE_PUBLISHABLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicmVmIjoibG9jYWwiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc2NzIyNTYwMCwiZXhwIjoyMDgyNzU4NDAwfQ.Hdd9ykBGvp8KEU2O2mptQwz0FH2toG5j5mDLGNNH94E
+            VITE_LOCAL_DEV_EMAIL: developer@assembler.local
+            VITE_LOCAL_DEV_PASSWORD: assembler-local
+        ports:
+            - '5175:5175'
+        volumes:
+            - .:/workspace
+            - node_modules:/workspace/node_modules
+        healthcheck:
+            test:
+                - CMD
+                - node
+                - -e
+                - Promise.all(['/auth/v1/health','/rest/v1/'].map(p=>fetch('http://localhost:5175'+p).then(r=>{if(!r.ok)throw Error(r.status)}))).catch(()=>process.exit(1))
+            interval: 2s
+            timeout: 2s
+            retries: 30
+
+    seed:
+        build: .
+        depends_on:
+            frontend:
+                condition: service_healthy
+        environment:
+            SUPABASE_INTERNAL_URL: http://frontend:5175
+            SUPABASE_SECRET_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicmVmIjoibG9jYWwiLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNzY3MjI1NjAwLCJleHAiOjIwODI3NTg0MDB9.0Ayk5L-PNoPjxzkPMIYviNZ8FZhkoWspkvuvN63XNwI
+        command: node scripts/seed-local-supabase.mjs
+
+volumes:
+    node_modules:
+    prison_home:
