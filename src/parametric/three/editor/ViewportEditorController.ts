@@ -1,7 +1,6 @@
 import type { TransformControlsMode } from 'three/examples/jsm/controls/TransformControls.js'
 import type { GraphController } from '@/parametric/controller/GraphController'
 import type { EvaluatedAssetSource } from '@/parametric/evaluation/EvaluationTypes'
-import { TransformGraphNode } from '@/parametric/model/GraphNode'
 import type { ViewportReactBridge } from '@/parametric/three/editor/ViewportReactBridge'
 import {
 	EditorCommandFactory,
@@ -35,7 +34,7 @@ export class ViewportEditorController {
 		if (!node) return
 		this.bridge.update({
 			previewNodeId: nodeId,
-			transformNodeId: node instanceof TransformGraphNode ? nodeId : null,
+			transformNodeId: this.graphController.getNodeTransform(nodeId) ? nodeId : null,
 			selectedMeshInstanceId: null,
 			contextMenu: null,
 		})
@@ -107,8 +106,8 @@ export class ViewportEditorController {
 	): void {
 		const graphSnapshot = this.graphController.getSnapshot()
 		const graphId = graphSnapshot.activeGraphId
-		const node = graphSnapshot.model.getNode(nodeId)
-		const normalizedAfter = node instanceof TransformGraphNode && node.getUniformScale()
+		const transform = this.graphController.getNodeTransform(nodeId, graphId)
+		const normalizedAfter = transform?.getUniformScale()
 			? {
 				...after,
 				scale: (() => {
@@ -146,7 +145,7 @@ export class ViewportEditorController {
 			? Boolean(graphSnapshot.model.getNode(bridgeSnapshot.previewNodeId))
 			: true
 		const transformExists = bridgeSnapshot.transformNodeId
-			? graphSnapshot.model.getNode(bridgeSnapshot.transformNodeId) instanceof TransformGraphNode
+			? Boolean(this.graphController.getNodeTransform(bridgeSnapshot.transformNodeId))
 			: true
 		if (!previewExists || !transformExists) {
 			this.bridge.update({

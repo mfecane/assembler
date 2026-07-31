@@ -35,7 +35,7 @@ interface EvaluationFrame {
 	graph: GraphDefinition
 	inputs: Map<string, GraphValue>
 	nodesById: Map<string, GraphNode>
-	incomingByTargetPort: Map<string, GraphEdge>
+	incomingByTargetPort: Map<string, GraphEdge[]>
 	cache: Map<string, EvaluatedNodeOutputs>
 	evaluating: Set<string>
 }
@@ -108,10 +108,11 @@ export class GraphEvaluator {
 		inputs: Map<string, GraphValue>
 	): EvaluationFrame {
 		const nodesById = new Map(graph.model.getNodes().map((node) => [node.id, node]))
-		const incomingByTargetPort = new Map<string, GraphEdge>()
+		const incomingByTargetPort = new Map<string, GraphEdge[]>()
 		for (const edge of graph.model.getEdges()) {
 			if (edge.targetPort) {
-				incomingByTargetPort.set(this.portKey(edge.targetNodeId, edge.targetPort), edge)
+				const key = this.portKey(edge.targetNodeId, edge.targetPort)
+				incomingByTargetPort.set(key, [...(incomingByTargetPort.get(key) ?? []), edge])
 			}
 		}
 		return {
@@ -148,6 +149,7 @@ export class GraphEvaluator {
 			})
 		}
 
+		outputs = this.nodeRegistry.applyCapabilities(node, outputs)
 		frame.evaluating.delete(nodeId)
 		frame.cache.set(nodeId, outputs)
 		return outputs
@@ -187,9 +189,32 @@ export class GraphEvaluator {
 		node: GraphNode,
 		portId: string
 	): GraphValue | undefined {
-		const edge = frame.incomingByTargetPort.get(this.portKey(node.id, portId))
-		if (edge?.sourcePort) {
-			return this.evaluateNodeOutputs(frame, edge.sourceNodeId).get(edge.sourcePort)
+		const edges = frame.incomingByTargetPort.get(this.portKey(node.id, portId)) ?? []
+		if (edges.length > 0) {
+			const port = this.nodeRegistry.getInputPorts(node, {
+				containingGraphId: frame.graph.id,
+				getGraphInterface: (graphId) => frame.document.getGraphInterface(graphId),
+			}).find((candidate) => candidate.id === portId)
+			if (!port) {
+				throw new Error(
+					`Cannot resolve graph "${frame.graph.id}" node "${node.id}" (${node.type}) port "${portId}": `
+					+ `the port is not defined; incoming edges: ${edges.map((edge) => edge.id).join(', ')}`
+				)
+			}
+			const values = edges.flatMap((edge) => {
+				if (!edge.sourcePort) return []
+				const value = this.evaluateNodeOutputs(frame, edge.sourceNodeId).get(edge.sourcePort)
+				return value ? [value] : []
+			})
+			if (this.nodeRegistry.isAggregateInput(port.valueType)) {
+				return this.nodeRegistry.aggregateInputs(
+					port.valueType,
+					values,
+					`Cannot aggregate graph "${frame.graph.id}" node "${node.id}" (${node.type}) port `
+					+ `"${portId}" from edges [${edges.map((edge) => edge.id).join(', ')}]`
+				)
+			}
+			return values[0]
 		}
 
 		const fallback = this.nodeRegistry.getInputDefault(node, portId)

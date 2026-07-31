@@ -18,7 +18,6 @@ import {
 	SelectorGraphNode,
 	SumGraphNode,
 	type TransformOrigin,
-	TransformGraphNode,
 } from '@/parametric/model/GraphNode'
 import { Vector3Value, type Vector3Snapshot } from '@/parametric/model/Vector3Value'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
@@ -330,7 +329,7 @@ export function useArrayNode(nodeId: string): ArrayNodeBinding | undefined {
 }
 
 export interface GroupNodeBinding {
-	inputPorts: Array<{ id: string; connected: boolean }>
+	connected: boolean
 }
 
 export function useGroupNode(nodeId: string): GroupNodeBinding | undefined {
@@ -338,15 +337,10 @@ export function useGroupNode(nodeId: string): GroupNodeBinding | undefined {
 	const node = model.getNode(nodeId)
 	if (!(node instanceof GroupGraphNode)) return undefined
 
-	const connectedPortIds = new Set(
-		model
-			.getEdges()
-			.filter((edge) => edge.targetNodeId === nodeId && edge.targetPort)
-			.map((edge) => edge.targetPort as string)
-	)
-
 	return {
-		inputPorts: node.getInputPortIds().map((id) => ({ id, connected: connectedPortIds.has(id) })),
+		connected: model.getEdges().some(
+			(edge) => edge.targetNodeId === nodeId && edge.targetPort === 'geometry'
+		),
 	}
 }
 
@@ -383,7 +377,7 @@ export function useSumNode(nodeId: string): SumNodeBinding | undefined {
 	}
 }
 
-export interface TransformNodeBinding {
+export interface NodeTransformBinding {
 	translation: Vector3Snapshot
 	rotation: Vector3Snapshot
 	scale: Vector3Snapshot
@@ -398,67 +392,61 @@ export interface TransformNodeBinding {
 	setUniformScale: (value: boolean) => void
 }
 
-export function useTransformNode(nodeId: string): TransformNodeBinding | undefined {
+export function useNodeTransform(nodeId: string): NodeTransformBinding | undefined {
 	const controller = useGraphController()
-	const { model } = useGraphSnapshot()
-	const node = model.getNode(nodeId)
+	useGraphSnapshot()
+	const transform = controller.getNodeTransform(nodeId)
 	const setTranslation = useCallback(
-		(value: Vector3Snapshot) => controller.updateNode<TransformGraphNode>(
+		(value: Vector3Snapshot) => controller.updateNodeTransform(
 			nodeId,
-			'transform',
-			(node) => node.setTranslation(Vector3Value.from(value))
+			(state) => state.setTranslation(Vector3Value.from(value))
 		),
 		[controller, nodeId]
 	)
 	const setRotation = useCallback(
-		(value: Vector3Snapshot) => controller.updateNode<TransformGraphNode>(
+		(value: Vector3Snapshot) => controller.updateNodeTransform(
 			nodeId,
-			'transform',
-			(node) => node.setRotation(Vector3Value.from(value))
+			(state) => state.setRotation(Vector3Value.from(value))
 		),
 		[controller, nodeId]
 	)
 	const setScale = useCallback(
-		(value: Vector3Snapshot) => controller.updateNode<TransformGraphNode>(
+		(value: Vector3Snapshot) => controller.updateNodeTransform(
 			nodeId,
-			'transform',
-			(node) => node.setScale(Vector3Value.from(value))
+			(state) => state.setScale(Vector3Value.from(value))
 		),
 		[controller, nodeId]
 	)
 	const setOrigin = useCallback(
-		(value: TransformOrigin) => controller.updateNode<TransformGraphNode>(
+		(value: TransformOrigin) => controller.updateNodeTransform(
 			nodeId,
-			'transform',
-			(node) => node.setOrigin(value)
+			(state) => state.setOrigin(value)
 		),
 		[controller, nodeId]
 	)
 	const setCopy = useCallback(
-		(value: boolean) => controller.updateNode<TransformGraphNode>(
+		(value: boolean) => controller.updateNodeTransform(
 			nodeId,
-			'transform',
-			(node) => node.setCopy(value)
+			(state) => state.setCopy(value)
 		),
 		[controller, nodeId]
 	)
 	const setUniformScale = useCallback(
-		(value: boolean) => controller.updateNode<TransformGraphNode>(
+		(value: boolean) => controller.updateNodeTransform(
 			nodeId,
-			'transform',
-			(node) => node.setUniformScale(value)
+			(state) => state.setUniformScale(value)
 		),
 		[controller, nodeId]
 	)
 
-	if (!(node instanceof TransformGraphNode)) return undefined
+	if (!transform) return undefined
 	return {
-		translation: node.getTranslation().toSnapshot(),
-		rotation: node.getRotation().toSnapshot(),
-		scale: node.getScale().toSnapshot(),
-		origin: node.getOrigin(),
-		copy: node.getCopy(),
-		uniformScale: node.getUniformScale(),
+		translation: transform.getTranslation().toSnapshot(),
+		rotation: transform.getRotation().toSnapshot(),
+		scale: transform.getScale().toSnapshot(),
+		origin: transform.getOrigin(),
+		copy: transform.getCopy(),
+		uniformScale: transform.getUniformScale(),
 		setTranslation,
 		setRotation,
 		setScale,

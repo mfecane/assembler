@@ -1,6 +1,5 @@
 import type { GraphController } from '@/parametric/controller/GraphController'
 import type { GraphEvaluator } from '@/parametric/evaluation/GraphEvaluator'
-import { TransformGraphNode } from '@/parametric/model/GraphNode'
 import { ViewportEditorController } from '@/parametric/three/editor/ViewportEditorController'
 import { ViewportReactBridge } from '@/parametric/three/editor/ViewportReactBridge'
 import { ViewportScene } from '@/parametric/three/editor/ViewportScene'
@@ -78,15 +77,16 @@ export class ViewportEditor {
 				bridgeSnapshot.previewNodeId
 			)
 			: graphOutputMeshes
-		const transformNode = bridgeSnapshot.transformNodeId
-			? graphSnapshot.model.getNode(bridgeSnapshot.transformNodeId)
-			: null
+		const transform = bridgeSnapshot.transformNodeId
+			? this.graphController.getNodeTransform(bridgeSnapshot.transformNodeId)
+			: undefined
 
 		this.scene.sync(
 			evaluatedMeshes,
 			bridgeSnapshot.previewNodeId ? graphOutputMeshes : [],
 			bridgeSnapshot.selectedMeshInstanceId,
-			transformNode instanceof TransformGraphNode ? transformNode : null,
+			transform ? bridgeSnapshot.transformNodeId : null,
+			transform ?? null,
 			bridgeSnapshot.transformMode
 		)
 	}

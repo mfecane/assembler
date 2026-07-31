@@ -22,6 +22,7 @@ import {
 } from '@/parametric/model/GraphSerialization'
 import type { MeshCatalog, MeshDescriptor } from '@/parametric/model/MeshCatalog'
 import type { CreatableNodeDefinition, NodeRegistry } from '@/parametric/model/NodeDefinition'
+import type { TransformState } from '@/parametric/model/TransformState'
 
 export interface GraphControllerSnapshot {
 	revision: number
@@ -299,6 +300,30 @@ export class GraphController {
 		if (!node || node.type !== expectedType) return
 		update(node as TNode)
 		this.publish()
+	}
+
+	public updateNodeTransformInGraph(
+		graphId: string,
+		nodeId: string,
+		update: (transform: TransformState) => void
+	): void {
+		const node = this.document.getGraph(graphId)?.model.getNode(nodeId)
+		if (!node) return
+		const transform = this.nodeRegistry.getCapabilityState<TransformState>(node, 'transform')
+		if (!transform) return
+		update(transform)
+		this.publish()
+	}
+
+	public updateNodeTransform(nodeId: string, update: (transform: TransformState) => void): void {
+		this.updateNodeTransformInGraph(this.activeGraphId, nodeId, update)
+	}
+
+	public getNodeTransform(nodeId: string, graphId = this.activeGraphId): TransformState | undefined {
+		const node = this.document.getGraph(graphId)?.model.getNode(nodeId)
+		return node
+			? this.nodeRegistry.getCapabilityState<TransformState>(node, 'transform')
+			: undefined
 	}
 
 	public setEntryInputValue(inputId: string, value: GraphInputValue): void {

@@ -1,5 +1,4 @@
 import type { GraphController } from '@/parametric/controller/GraphController'
-import { TransformGraphNode } from '@/parametric/model/GraphNode'
 import { Vector3Value, type Vector3Snapshot } from '@/parametric/model/Vector3Value'
 
 export interface EditorCommand {
@@ -87,14 +86,13 @@ export class SetTransformNodeCommand implements EditorCommand {
 	}
 
 	private apply(values: TransformNodeValues): void {
-		this.graphController.updateNodeInGraph<TransformGraphNode>(
+		this.graphController.updateNodeTransformInGraph(
 			this.graphId,
 			this.nodeId,
-			'transform',
-			(node) => {
-				node.setTranslation(Vector3Value.from(values.translation))
-				node.setRotation(Vector3Value.from(values.rotation))
-				node.setScale(Vector3Value.from(values.scale))
+			(transform) => {
+				transform.setTranslation(Vector3Value.from(values.translation))
+				transform.setRotation(Vector3Value.from(values.rotation))
+				transform.setScale(Vector3Value.from(values.scale))
 			}
 		)
 	}

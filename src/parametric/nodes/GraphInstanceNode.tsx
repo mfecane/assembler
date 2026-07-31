@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { NodeDeleteButton } from '@/parametric/components/NodeDeleteButton'
 import { GeometryPreviewButton } from '@/parametric/components/GeometryPreviewButton'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
+import { TransformSection } from '@/parametric/components/TransformSection'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 import { useGraphController } from '@/parametric/controller/GraphEditorContext'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
@@ -19,6 +20,7 @@ export function GraphInstanceNode({ id }: NodeProps<ParametricFlowNode>) {
 
 	return (
 		<div
+			data-id={`graph-instance-node-${id}`}
 			className="min-w-52 rounded-md border border-primary/50 bg-surface px-3 py-2 shadow-md"
 			onDoubleClick={() => controller.openGraph(graph.id)}
 		>
@@ -64,6 +66,7 @@ export function GraphInstanceNode({ id }: NodeProps<ParametricFlowNode>) {
 					</div>
 				))}
 			</div>
+			<TransformSection nodeId={id} />
 			<TypedHandle
 				id={graph.output.id}
 				type="source"

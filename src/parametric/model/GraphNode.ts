@@ -1,6 +1,7 @@
 import { Vector3Value } from '@/parametric/model/Vector3Value'
 import { DynamicInputPorts } from '@/parametric/model/DynamicInputPorts'
 import { normalizePresetColor } from '@/parametric/model/ColorPalette'
+import { TransformState } from '@/parametric/model/TransformState'
 
 export interface GraphPoint {
 	x: number
@@ -10,7 +11,6 @@ export interface GraphPoint {
 export type GraphNodeType = string
 export type PrimitiveKind = 'box' | 'sphere' | 'cylinder' | 'cone'
 export type Axis = 'x' | 'y' | 'z'
-export type OriginAxis = 'min' | 'middle' | 'max'
 export type GraphValueType = string
 
 export interface GraphInputPort {
@@ -33,11 +33,7 @@ export interface MeshSelection {
 	meshId: string
 }
 
-export interface TransformOrigin {
-	x: OriginAxis
-	y: OriginAxis
-	z: OriginAxis
-}
+export type { OriginAxis, TransformOrigin } from '@/parametric/model/TransformState'
 
 export abstract class GraphNode {
 	public abstract readonly type: GraphNodeType
@@ -64,7 +60,8 @@ export class PrimitiveGraphNode extends GraphNode {
 		id: string,
 		position: GraphPoint,
 		private primitive: PrimitiveKind,
-		private size: Vector3Value
+		private size: Vector3Value,
+		public readonly transform: TransformState = TransformState.identity()
 	) {
 		super(id, position)
 	}
@@ -201,7 +198,8 @@ export class MeshSelectorGraphNode extends GraphNode {
 	public constructor(
 		id: string,
 		position: GraphPoint,
-		private selections: MeshSelection[]
+		private selections: MeshSelection[],
+		public readonly transform: TransformState = TransformState.identity()
 	) {
 		super(id, position)
 	}
@@ -226,7 +224,8 @@ export class MeshAssetGraphNode extends GraphNode {
 	public constructor(
 		id: string,
 		position: GraphPoint,
-		private meshId: string
+		private meshId: string,
+		public readonly transform: TransformState = TransformState.identity()
 	) {
 		super(id, position)
 	}
@@ -246,67 +245,10 @@ export class TransformGraphNode extends GraphNode {
 	public constructor(
 		id: string,
 		position: GraphPoint,
-		private translation: Vector3Value,
-		private rotation: Vector3Value,
-		private scale: Vector3Value,
-		private origin: TransformOrigin,
-		private copy: boolean,
-		private uniformScale: boolean
+		public readonly transform: TransformState = TransformState.identity()
 	) {
 		super(id, position)
 	}
-
-	public getTranslation(): Vector3Value {
-		return this.translation
-	}
-
-	public setTranslation(translation: Vector3Value): void {
-		this.translation = translation
-	}
-
-	public getRotation(): Vector3Value {
-		return this.rotation
-	}
-
-	public setRotation(rotation: Vector3Value): void {
-		this.rotation = rotation
-	}
-
-	public getScale(): Vector3Value {
-		return this.scale
-	}
-
-	public setScale(scale: Vector3Value): void {
-		this.scale = scale
-	}
-
-	public getOrigin(): TransformOrigin {
-		return { ...this.origin }
-	}
-
-	public setOrigin(origin: TransformOrigin): void {
-		this.origin = { ...origin }
-	}
-
-	public getCopy(): boolean {
-		return this.copy
-	}
-
-	public setCopy(copy: boolean): void {
-		this.copy = copy
-	}
-
-	public getUniformScale(): boolean {
-		return this.uniformScale
-	}
-
-	public setUniformScale(uniformScale: boolean): void {
-		this.uniformScale = uniformScale
-		if (uniformScale) {
-			this.scale = new Vector3Value(this.scale.x, this.scale.x, this.scale.x)
-		}
-	}
-
 }
 
 export class MaterialGraphNode extends GraphNode {
@@ -315,7 +257,8 @@ export class MaterialGraphNode extends GraphNode {
 	public constructor(
 		id: string,
 		position: GraphPoint,
-		private color: string
+		private color: string,
+		public readonly transform: TransformState = TransformState.identity()
 	) {
 		super(id, position)
 		this.color = normalizePresetColor(color)
@@ -338,7 +281,8 @@ export class ArrayGraphNode extends GraphNode {
 		position: GraphPoint,
 		private count: number,
 		private axis: Axis,
-		private offset: number
+		private offset: number,
+		public readonly transform: TransformState = TransformState.identity()
 	) {
 		super(id, position)
 	}
@@ -400,7 +344,8 @@ export class GraphInstanceGraphNode extends GraphNode {
 	public constructor(
 		id: string,
 		position: GraphPoint,
-		private readonly graphId: string
+		private readonly graphId: string,
+		public readonly transform: TransformState = TransformState.identity()
 	) {
 		super(id, position)
 	}
@@ -412,19 +357,13 @@ export class GraphInstanceGraphNode extends GraphNode {
 
 export class GroupGraphNode extends GraphNode {
 	public readonly type = 'group'
-	private readonly inputPorts: DynamicInputPorts
 
-	public constructor(id: string, position: GraphPoint, inputPorts: string[] = ['input-1']) {
+	public constructor(
+		id: string,
+		position: GraphPoint,
+		public readonly transform: TransformState = TransformState.identity()
+	) {
 		super(id, position)
-		this.inputPorts = new DynamicInputPorts(inputPorts)
-	}
-
-	public getInputPortIds(): string[] {
-		return this.inputPorts.getIds()
-	}
-
-	public syncInputPorts(connectedPortIds: ReadonlySet<string>): void {
-		this.inputPorts.sync(connectedPortIds)
 	}
 }
 

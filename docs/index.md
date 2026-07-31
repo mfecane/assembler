@@ -13,6 +13,7 @@
 - [Assembly navigation UI](./spec/ui.md)
 - [3D editor architecture and interactions](./spec/editor.md)
 - [3D node preview and transform movement](./todo/move.md)
+- [Composable geometry nodes](./implementation/merge-nodes.md)
 
 ## Persistence and data
 

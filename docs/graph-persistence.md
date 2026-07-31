@@ -29,6 +29,17 @@ Every graph definition contains:
 The entry graph has exactly the same structure as every child graph. Its only special behavior
 is that `entryGraphId` selects it as the document result.
 
+## Node transforms
+
+Every node persists a top-level `capabilities` object alongside type-specific `data`. Ordinary
+geometry-producing nodes contain `capabilities.transform`, which stores translation, rotation, scale,
+origin, clone mode, and uniform-scale mode. Scalar and graph boundary nodes persist an empty
+capabilities object.
+
+The transform is applied after the node's own evaluation. Embedded transform capability adds local
+controls only; it does not add any target ports. The standalone Transform node is the only node that
+exposes a geometry input specifically for an additional transform stage.
+
 ## Graph instances
 
 A `graphInstance` node stores one `graphId`. That ID must resolve to a definition in the same
@@ -81,7 +92,7 @@ Application validation enforces rules that JSON Schema cannot express:
 5. Boundary nodes match their containing graph interface.
 6. Edge endpoints and ports exist in their containing graph.
 7. Connected ports have identical value types.
-8. At most one edge targets an input port.
+8. Geometry input ports may have several incoming edges; other input ports have at most one.
 9. Entry values match their input declarations.
 10. Configuration controls target compatible entry inputs only.
 
@@ -98,7 +109,7 @@ are runtime data and are not serialized.
 
 `src/parametric/defaultGraph.json` is the canonical new-project and local-seed fixture. It
 preserves the full MaxShelf shelving example—including its mesh selectors, transforms, arrays,
-groups, material, configurable inputs, and connections—rather than a reduced smoke-test graph.
+material, configurable inputs, and connections—rather than a reduced smoke-test graph.
 Schema changes must update this fixture in place while retaining as much of that graph as the
 new shape permits. `scripts/seed-local-supabase.mjs` reads this exact file instead of carrying a
 second embedded copy.
@@ -107,7 +118,11 @@ The fixture uses two graph definitions:
 
 - `main` exposes bay count, shelves per bay, shelf style, back-panel style, and finish. Every
   input has a configuration-panel control. It instantiates one wing, copies and rotates that
-  result into the second side, and combines both sides with the corner infill.
+  result into the second side, and combines both sides with the corner infill through aggregate
+  geometry inputs.
 - `wing` contains one complete straight shelving wing. Its five public inputs replace the
   former embedded number, selector, and color value nodes while preserving the original wing's
-  mesh, transform, array, grouping, and material topology.
+  mesh, transform, array, aggregation, and material topology.
+
+The fixture currently contains 27 nodes and 27 edges, down from 37 of each before transforms and
+geometry aggregation were composed into ordinary nodes.

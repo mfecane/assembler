@@ -14,7 +14,7 @@ import {
 } from 'three/examples/jsm/controls/TransformControls.js'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import type { EvaluatedMesh } from '@/parametric/evaluation/GraphEvaluator'
-import { TransformGraphNode } from '@/parametric/model/GraphNode'
+import type { TransformState } from '@/parametric/model/TransformState'
 import { createSceneSetup } from '@/parametric/three/SceneSetup'
 import { syncMeshes } from '@/parametric/three/syncMeshes'
 import type { ViewportEditorController } from '@/parametric/three/editor/ViewportEditorController'
@@ -82,13 +82,14 @@ export class ViewportScene {
 		evaluatedMeshes: EvaluatedMesh[],
 		ghostMeshes: EvaluatedMesh[],
 		selectedMeshInstanceId: string | null,
-		transformNode: TransformGraphNode | null,
+		transformNodeId: string | null,
+		transform: TransformState | null,
 		transformMode: TransformControlsMode
 	): void {
 		syncMeshes(this.scene, this.meshesById, evaluatedMeshes)
 		syncMeshes(this.scene, this.ghostMeshesById, ghostMeshes, { ghost: true })
 		this.syncSelection(selectedMeshInstanceId)
-		this.syncTransform(transformNode, transformMode)
+		this.syncTransform(transformNodeId, transform, transformMode)
 	}
 
 	public dispose(): void {
@@ -140,20 +141,21 @@ export class ViewportScene {
 	}
 
 	private syncTransform(
-		node: TransformGraphNode | null,
+		nodeId: string | null,
+		transform: TransformState | null,
 		mode: TransformControlsMode
 	): void {
 		this.transformControls.setMode(mode)
-		if (!node) {
+		if (!nodeId || !transform) {
 			this.attachedTransformNodeId = null
 			this.transformControls.detach()
 			return
 		}
 
 		this.syncingTransform = true
-		const translation = node.getTranslation()
-		const rotation = node.getRotation()
-		const scale = node.getScale()
+		const translation = transform.getTranslation()
+		const rotation = transform.getRotation()
+		const scale = transform.getScale()
 		this.transformTarget.position.set(translation.x, translation.y, translation.z)
 		this.transformTarget.rotation.set(
 			MathUtils.degToRad(rotation.x),
@@ -165,8 +167,8 @@ export class ViewportScene {
 		this.transformTarget.updateMatrixWorld(true)
 		this.syncingTransform = false
 
-		if (this.attachedTransformNodeId !== node.id) {
-			this.attachedTransformNodeId = node.id
+		if (this.attachedTransformNodeId !== nodeId) {
+			this.attachedTransformNodeId = nodeId
 			this.transformControls.attach(this.transformTarget)
 		}
 	}

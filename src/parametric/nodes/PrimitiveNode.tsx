@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/select'
 import { GeometryNodeActions } from '@/parametric/components/GeometryNodeActions'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
+import { TransformSection } from '@/parametric/components/TransformSection'
 import { Vec3Field } from '@/parametric/components/Vec3Field'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 import { usePrimitiveNode, useVectorNumericFields } from '@/parametric/hooks/useGraphNode'
@@ -26,7 +27,10 @@ export function PrimitiveNode({ id }: NodeProps<ParametricFlowNode>) {
 	if (!binding) return null
 
 	return (
-		<div className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md">
+		<div
+			data-id={`primitive-node-${id}`}
+			className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
+		>
 			<div className="mb-2 flex items-center justify-between gap-2">
 				<div className="text-sm font-semibold text-foreground">Primitive</div>
 				<GeometryNodeActions nodeId={id} nodeLabel="Primitive" />
@@ -49,6 +53,7 @@ export function PrimitiveNode({ id }: NodeProps<ParametricFlowNode>) {
 				</Select>
 				<Vec3Field label="Size" fields={size} />
 			</div>
+			<TransformSection nodeId={id} />
 			<TypedHandle id="geometry" type="source" position={Position.Right} valueType="geometry" />
 		</div>
 	)

@@ -10,6 +10,7 @@ import {
 import { GeometryNodeActions } from '@/parametric/components/GeometryNodeActions'
 import { NumericInput } from '@/parametric/components/NumericInput'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
+import { TransformSection } from '@/parametric/components/TransformSection'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 import { useArrayNode, useNumericField } from '@/parametric/hooks/useGraphNode'
 import type { Axis } from '@/parametric/model/GraphNode'
@@ -21,7 +22,10 @@ export function ArrayNode({ id }: NodeProps<ParametricFlowNode>) {
 	if (!binding) return null
 
 	return (
-		<div className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md">
+		<div
+			data-id={`array-node-${id}`}
+			className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
+		>
 			<TypedHandle id="geometry" type="target" position={Position.Left} valueType="geometry" />
 			<div className="mb-2 flex items-center justify-between gap-2">
 				<div className="text-sm font-semibold text-foreground">Array</div>
@@ -51,6 +55,7 @@ export function ArrayNode({ id }: NodeProps<ParametricFlowNode>) {
 					<NumericInput field={offset} />
 				</div>
 			</div>
+			<TransformSection nodeId={id} />
 			<TypedHandle id="geometry" type="source" position={Position.Right} valueType="geometry" />
 		</div>
 	)

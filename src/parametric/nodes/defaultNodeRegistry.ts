@@ -1,4 +1,4 @@
-import { Euler, Matrix4, Quaternion, Vector3 } from 'three'
+import { Matrix4, Vector3 } from 'three'
 import type {
 	EvaluatedInstance,
 	GeometryValue,
@@ -10,6 +10,7 @@ import {
 	NodeRegistry,
 	type NumericFieldDefinition,
 } from '@/parametric/model/NodeDefinition'
+import { transformCapability } from '@/parametric/model/TransformCapability'
 import {
 	ArrayGraphNode,
 	type Axis,
@@ -29,7 +30,6 @@ import {
 	SelectorGraphNode,
 	SumGraphNode,
 	TransformGraphNode,
-	type TransformOrigin,
 } from '@/parametric/model/GraphNode'
 import { defaultMaterialColor } from '@/parametric/model/ColorPalette'
 import { Vector3Value, type Vector3Snapshot } from '@/parametric/model/Vector3Value'
@@ -63,15 +63,6 @@ interface MeshAssetData {
 	meshId: string
 }
 
-interface TransformData {
-	translation: Vector3Snapshot
-	rotation: Vector3Snapshot
-	scale: Vector3Snapshot
-	origin: TransformOrigin
-	copy?: boolean
-	uniformScale?: boolean
-}
-
 interface MaterialData {
 	color: string
 }
@@ -80,10 +71,6 @@ interface ArrayData {
 	count: number
 	axis: Axis
 	offset: number
-}
-
-interface GroupData {
-	inputPorts: string[]
 }
 
 interface SumData {
@@ -131,40 +118,6 @@ function colorValue(value: string): ColorValue {
 	return { valueType: 'color', value }
 }
 
-function createTransformMatrix(node: TransformGraphNode, size: Vector3Snapshot): Matrix4 {
-	const rotation = node.getRotation().toSnapshot()
-	const translation = node.getTranslation().toSnapshot()
-	const scale = node.getScale().toSnapshot()
-	const origin = node.getOrigin()
-	const pivot = new Vector3(
-		getOriginOffset(origin.x, size.x),
-		getOriginOffset(origin.y, size.y),
-		getOriginOffset(origin.z, size.z)
-	)
-	const transform = new Matrix4().compose(
-		new Vector3(),
-		new Quaternion().setFromEuler(new Euler(
-			(rotation.x * Math.PI) / 180,
-			(rotation.y * Math.PI) / 180,
-			(rotation.z * Math.PI) / 180,
-			'XYZ'
-		)),
-		new Vector3(scale.x, scale.y, scale.z)
-	)
-
-	return new Matrix4()
-		.makeTranslation(translation.x, translation.y, translation.z)
-		.multiply(new Matrix4().makeTranslation(pivot.x, pivot.y, pivot.z))
-		.multiply(transform)
-		.multiply(new Matrix4().makeTranslation(-pivot.x, -pivot.y, -pivot.z))
-}
-
-function getOriginOffset(origin: 'min' | 'middle' | 'max', size: number): number {
-	if (origin === 'min') return -size / 2
-	if (origin === 'max') return size / 2
-	return 0
-}
-
 export function createDefaultNodeRegistry(): NodeRegistry {
 	const registry = new NodeRegistry()
 
@@ -172,6 +125,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		type: 'primitive',
 		label: 'Primitive',
 		creatable: true,
+		capabilities: [transformCapability<PrimitiveGraphNode>()],
 		create: (id, position) =>
 			new PrimitiveGraphNode(id, position, 'box', new Vector3Value(1, 1, 1)),
 		ports: { outputs: geometryOutput },
@@ -258,6 +212,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		type: 'meshSelector',
 		label: 'Mesh Selector',
 		creatable: true,
+		capabilities: [transformCapability<MeshSelectorGraphNode>()],
 		create: (id, position, { meshCatalog }) => {
 			const meshes = meshCatalog.getMeshes().filter((mesh) => mesh.selectable)
 			return new MeshSelectorGraphNode(
@@ -295,6 +250,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		type: 'meshAsset',
 		label: 'Mesh Asset',
 		creatable: true,
+		capabilities: [transformCapability<MeshAssetGraphNode>()],
 		create: (id, position, { meshCatalog }) => {
 			const meshId = meshCatalog.getMeshes().find((mesh) => mesh.selectable)?.id ?? ''
 			return new MeshAssetGraphNode(id, position, meshId)
@@ -323,78 +279,15 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		type: 'transform',
 		label: 'Transform',
 		creatable: true,
-		create: (id, position) => new TransformGraphNode(
-			id,
-			position,
-			new Vector3Value(0, 0, 0),
-			new Vector3Value(0, 0, 0),
-			new Vector3Value(1, 1, 1),
-			{ x: 'middle', y: 'middle', z: 'middle' },
-			false,
-			true
-		),
+		capabilities: [transformCapability<TransformGraphNode>()],
+		create: (id, position) => new TransformGraphNode(id, position),
 		ports: { inputs: geometryInput, outputs: geometryOutput },
-		numericFields: {
-			...vectorNumericFields(
-				'translation',
-				(node) => node.getTranslation(),
-				(node, value) => node.setTranslation(value)
-			),
-			...vectorNumericFields(
-				'rotation',
-				(node) => node.getRotation(),
-				(node, value) => node.setRotation(value)
-			),
-			...vectorNumericFields(
-				'scale',
-				(node) => node.getScale(),
-				(node, value) => node.setScale(value)
-			),
-		},
-		serialize: (node) => ({
-			translation: node.getTranslation().toSnapshot(),
-			rotation: node.getRotation().toSnapshot(),
-			scale: node.getScale().toSnapshot(),
-			origin: node.getOrigin(),
-			copy: node.getCopy(),
-			uniformScale: node.getUniformScale(),
-		}),
-		deserialize: (id, position, data) => {
-			const value = data as TransformData
-			return new TransformGraphNode(
-				id,
-				position,
-				Vector3Value.from(value.translation),
-				Vector3Value.from(value.rotation),
-				Vector3Value.from(value.scale),
-				value.origin,
-				value.copy ?? false,
-				value.uniformScale ?? (
-					value.scale.x === value.scale.y && value.scale.y === value.scale.z
-				)
-			)
-		},
+		serialize: () => ({}),
+		deserialize: (id, position) => new TransformGraphNode(id, position),
 		evaluate: (node, context) => {
 			const input = context.resolveInput(node, 'geometry')
 			if (input?.valueType !== 'geometry' || !Array.isArray(input.value)) return new Map()
-			const instances = input.value as EvaluatedInstance[]
-			const transformed = instances.map((instance) => ({
-				...instance,
-				instanceId: `${node.id}/transformed/${instance.instanceId}`,
-				matrix: createTransformMatrix(node, instance.size).multiply(instance.matrix),
-			}))
-			const output = node.getCopy()
-				? [
-					...instances.map((instance) => ({
-						...instance,
-						instanceId: `${node.id}/original/${instance.instanceId}`,
-					})),
-					...transformed,
-				]
-				: transformed
-			return new Map([
-				['geometry', geometry(output)],
-			])
+			return new Map([['geometry', input as GeometryValue]])
 		},
 	})
 
@@ -402,6 +295,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		type: 'material',
 		label: 'Material',
 		creatable: true,
+		capabilities: [transformCapability<MaterialGraphNode>()],
 		create: (id, position) => new MaterialGraphNode(id, position, defaultMaterialColor),
 		ports: {
 			inputs: [
@@ -439,6 +333,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		type: 'array',
 		label: 'Array',
 		creatable: true,
+		capabilities: [transformCapability<ArrayGraphNode>()],
 		create: (id, position) => new ArrayGraphNode(id, position, 2, 'x', 1),
 		ports: {
 			inputs: [
@@ -502,25 +397,16 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		type: 'group',
 		label: 'Group',
 		creatable: true,
+		capabilities: [transformCapability<GroupGraphNode>()],
 		create: (id, position) => new GroupGraphNode(id, position),
-		ports: {
-			inputs: (node) => node.getInputPortIds().map((id) => ({ id, valueType: 'geometry' })),
-			outputs: geometryOutput,
-		},
-		syncInputPorts: (node, connectedPortIds) => node.syncInputPorts(connectedPortIds),
-		serialize: (node) => ({ inputPorts: node.getInputPortIds() }),
-		deserialize: (id, position, data) =>
-			new GroupGraphNode(id, position, (data as GroupData).inputPorts),
+		ports: { inputs: geometryInput, outputs: geometryOutput },
+		serialize: () => ({}),
+		deserialize: (id, position) => new GroupGraphNode(id, position),
 		evaluate: (node, context) => {
-			const instances = node.getInputPortIds().flatMap((portId) => {
-				const input = context.resolveInput(node, portId)
-				if (input?.valueType !== 'geometry' || !Array.isArray(input.value)) return []
-				return (input.value as EvaluatedInstance[]).map((instance) => ({
-					...instance,
-					instanceId: `${node.id}/${portId}/${instance.instanceId}`,
-				}))
-			})
-			return new Map([['geometry', geometry(instances)]])
+			const input = context.resolveInput(node, 'geometry')
+			return input?.valueType === 'geometry' && Array.isArray(input.value)
+				? new Map([['geometry', input as GeometryValue]])
+				: new Map()
 		},
 	})
 
@@ -599,6 +485,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		type: 'graphInstance',
 		label: 'Assembly Instance',
 		creatable: false,
+		capabilities: [transformCapability<GraphInstanceGraphNode>()],
 		ports: {
 			inputs: (node, context) =>
 				context?.getGraphInterface(node.getGraphId())?.inputs.map((input) => ({

@@ -9,9 +9,29 @@ Ports are written as `port-id: value-type`. Built-in value types are:
 - `enum` — one string selected from a source node's options.
 - `color` — a preset color string.
 
-Connections require exact value-type equality. An input accepts at most one incoming edge. Group and Sum maintain dynamic `input-N` ports: connected ports are retained and one empty port is kept available.
+Connections require exact value-type equality. Geometry inputs accept several incoming edges and
+concatenate their evaluated instance arrays in serialized edge order. Number, enum, and color inputs
+accept one edge and replace the previous connection. Sum maintains dynamic numeric `input-N` ports:
+connected ports are retained and one empty port is kept available.
 
-All nodes persist the common fields `id`, `type`, `position: { x, y }`, and type-specific `data`.
+All nodes persist the common fields `id`, `type`, `position: { x, y }`, a `capabilities` object, and
+type-specific `data`. Ordinary geometry-producing nodes store transform state at
+`capabilities.transform`; other nodes store an empty capabilities object.
+
+## Geometry transform capability
+
+Primitive, Mesh Asset, Mesh Selector, Material, Array, Group, Transform, and Graph Instance nodes
+share the same output-transform capability:
+
+- translation, rotation, and scale vectors (`{ x, y, z }`);
+- origin, with each axis set to `min`, `middle`, or `max`;
+- `copy`, which emits both original and transformed geometry;
+- `uniformScale`.
+
+The transform is applied after the node-specific operation. Its controls appear in a collapsible
+Transform section and use the same state as the Three.js transform controls. Embedded capability adds
+no graph input ports and its values cannot be connected to edges. Only the standalone Transform node
+has a geometry input specifically for applying an additional transform stage.
 
 ## Geometry sources
 
@@ -23,7 +43,7 @@ Creates built-in geometry.
 - Outputs: `geometry: geometry`.
 - Data: `primitive` (`box`, `sphere`, `cylinder`, or `cone`); `size` (`{ x, y, z }`).
 - Default: box with size `{ x: 1, y: 1, z: 1 }`.
-- Evaluation: emits one identity-transformed instance with mesh ID `primitive:<primitive>`.
+- Evaluation: emits one instance with mesh ID `primitive:<primitive>`, then applies its output transform.
 
 ### Mesh Asset (`meshAsset`)
 
@@ -33,7 +53,8 @@ Emits one registered catalog mesh.
 - Outputs: `geometry: geometry`.
 - Data: `meshId` string.
 - Default: the first selectable mesh in the injected catalog, or an empty ID.
-- Evaluation: emits one instance using catalog bounds. An unknown asset ID produces no output.
+- Evaluation: emits one instance using catalog bounds, then applies its output transform. An unknown
+  asset ID produces no output.
 
 ### Mesh Selector (`meshSelector`)
 
@@ -43,7 +64,8 @@ Maps an enum value to a registered mesh.
 - Outputs: `geometry: geometry`.
 - Data: `selections`, an array of `{ enumValue, meshId }` mappings.
 - Default: one mapping per selectable mesh, using the mesh label as the enum value.
-- Evaluation: looks up the incoming enum value and emits the matching mesh. A missing input, mapping, or catalog asset produces no output.
+- Evaluation: looks up the incoming enum value, emits the matching mesh, and applies its output
+  transform. A missing input, mapping, or catalog asset produces no output.
 
 ## Constant value sources
 
@@ -86,49 +108,45 @@ Supported persisted colors are `#eaceac`, `#f4f4f5`, `#27272a`, `#dc5a5a`, `#e89
 
 Applies translation, rotation, scale, and a selectable pivot to every incoming instance.
 
-- Inputs: `geometry: geometry`.
+- Inputs: aggregate `geometry: geometry`.
 - Outputs: `geometry: geometry`.
-- Data:
-  - `translation`, `rotation`, and `scale` vectors (`{ x, y, z }`).
-  - `origin`, with `x`, `y`, and `z` each set to `min`, `middle`, or `max`.
-  - `copy` boolean.
-  - `uniformScale` boolean.
+- Data: empty object; transform values use the common `capabilities.transform` property.
 - Default: zero translation and rotation, unit scale, middle origin, `copy: false`, and `uniformScale: true`.
 - Units: rotation values are degrees. Translation uses scene units.
 - Evaluation: transforms all instances. When `copy` is true, both original and transformed instances are emitted.
-- Compatibility: missing `copy` defaults to false. Missing `uniformScale` is inferred by checking whether all persisted scale components are equal.
 
 ### Material (`material`)
 
 Assigns a standard material color to every incoming instance.
 
-- Inputs: `geometry: geometry`; `color: color`.
+- Inputs: aggregate `geometry: geometry`; single `color: color`.
 - Outputs: `geometry: geometry`.
 - Data: `color` preset hex value.
 - Default: Sand (`#eaceac`).
 - Fallback: when `color` is unconnected, the stored color is used.
-- Evaluation: preserves geometry and transforms while replacing each instance's material.
+- Evaluation: replaces each instance's material, then applies the node's output transform.
 
 ### Array (`array`)
 
 Repeats incoming geometry along one axis.
 
-- Inputs: `geometry: geometry`; `count: number`.
+- Inputs: aggregate `geometry: geometry`; single `count: number`.
 - Outputs: `geometry: geometry`.
 - Data: `count` integer of at least 1; `axis` (`x`, `y`, or `z`); `offset` number.
 - Default: count `2`, x-axis, offset `1`.
 - Fallback: when `count` is unconnected, the stored count is used.
-- Evaluation: floors the effective count, clamps it to at least one, and emits copies at `index × offset` along the selected axis. The first copy remains at the input position.
+- Evaluation: floors the effective count, clamps it to at least one, emits copies at `index × offset`
+  along the selected axis, then applies the node's output transform. The first copy remains at the
+  input position.
 
 ### Group (`group`)
 
 Combines any number of geometry values.
 
-- Inputs: dynamic `input-N: geometry` ports.
+- Inputs: one aggregate `geometry: geometry` port.
 - Outputs: `geometry: geometry`.
-- Data: `inputPorts`, a unique non-empty array of `input-N` IDs.
-- Default: `["input-1"]`.
-- Evaluation: concatenates all valid connected geometry inputs. Empty or invalid inputs contribute nothing.
+- Data: empty object.
+- Evaluation: passes through the aggregated geometry, then applies its output transform.
 
 Groups may be nested and may feed Transform, Material, Array, another Group, or Output.
 
@@ -162,7 +180,7 @@ Exposes one public input of the containing graph.
 
 Defines the geometry result of its containing graph.
 
-- Input: the containing graph output ID with value type `geometry`.
+- Input: the containing graph output ID with aggregate value type `geometry`.
 - Outputs: none.
 - Data: empty object.
 - Creation/deletion: not available through the node menu.
@@ -175,9 +193,12 @@ viewport; child graph results are returned through graph instances.
 Creates one independently evaluated instance of another graph definition in the same document.
 
 - Data: `graphId`, referencing a document-local graph definition.
-- Inputs: derived from the referenced definition's public inputs.
+- Inputs: derived from the referenced definition's public inputs. Geometry inputs are aggregate;
+  scalar inputs remain single-connection.
 - Output: derived from the referenced definition's geometry output.
 - Creation: choose a graph from the node menu.
 - Navigation: activate the instance to open its shared definition.
 
 Instances may be nested. Recursive definition dependencies are rejected.
+The referenced result is scoped to the instance and then the instance node's output transform is
+applied.

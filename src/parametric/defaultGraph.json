@@ -66,7 +66,8 @@
           },
           "data": {
             "inputId": "bayCount"
-          }
+          },
+          "capabilities": {}
         },
         {
           "id": "main-shelf-count-input",
@@ -77,7 +78,8 @@
           },
           "data": {
             "inputId": "shelfCount"
-          }
+          },
+          "capabilities": {}
         },
         {
           "id": "main-shelf-style-input",
@@ -88,7 +90,8 @@
           },
           "data": {
             "inputId": "shelfStyle"
-          }
+          },
+          "capabilities": {}
         },
         {
           "id": "main-back-panel-style-input",
@@ -99,7 +102,8 @@
           },
           "data": {
             "inputId": "backPanelStyle"
-          }
+          },
+          "capabilities": {}
         },
         {
           "id": "main-finish-input",
@@ -110,7 +114,8 @@
           },
           "data": {
             "inputId": "finish"
-          }
+          },
+          "capabilities": {}
         },
         {
           "id": "wing-instance",
@@ -121,6 +126,32 @@
           },
           "data": {
             "graphId": "wing"
+          },
+          "capabilities": {
+            "transform": {
+              "translation": {
+                "x": 2.6,
+                "y": 0,
+                "z": 2.6
+              },
+              "rotation": {
+                "x": 0,
+                "y": -90,
+                "z": 0
+              },
+              "scale": {
+                "x": -1,
+                "y": 1,
+                "z": 1
+              },
+              "origin": {
+                "x": "middle",
+                "y": "middle",
+                "z": "middle"
+              },
+              "copy": true,
+              "uniformScale": false
+            }
           }
         },
         {
@@ -130,54 +161,8 @@
             "y": 187.94032904254072
           },
           "type": "graphOutput",
-          "data": {}
-        },
-        {
-          "id": "transform-4",
-          "position": {
-            "x": 1000.433697895789,
-            "y": 336.75263558770405
-          },
-          "type": "transform",
-          "data": {
-            "translation": {
-              "x": 2.6,
-              "y": 0,
-              "z": 2.6
-            },
-            "rotation": {
-              "x": 0,
-              "y": -90,
-              "z": 0
-            },
-            "scale": {
-              "x": -1,
-              "y": 1,
-              "z": 1
-            },
-            "origin": {
-              "x": "middle",
-              "y": "middle",
-              "z": "middle"
-            },
-            "copy": true,
-            "uniformScale": false
-          }
-        },
-        {
-          "id": "group-3",
-          "position": {
-            "x": 1533.2201554585392,
-            "y": 164.64601197266342
-          },
-          "type": "group",
-          "data": {
-            "inputPorts": [
-              "input-1",
-              "input-2",
-              "input-3"
-            ]
-          }
+          "data": {},
+          "capabilities": {}
         },
         {
           "id": "meshAsset-4",
@@ -188,38 +173,32 @@
           "type": "meshAsset",
           "data": {
             "meshId": "asset:backplate-corner"
-          }
-        },
-        {
-          "id": "transform-5",
-          "position": {
-            "x": 412.84989542268386,
-            "y": 937.4697041998077
           },
-          "type": "transform",
-          "data": {
-            "translation": {
-              "x": 0,
-              "y": 0.5,
-              "z": 0
-            },
-            "rotation": {
-              "x": 0,
-              "y": 0,
-              "z": 0
-            },
-            "scale": {
-              "x": 1,
-              "y": 1,
-              "z": 1
-            },
-            "origin": {
-              "x": "middle",
-              "y": "middle",
-              "z": "middle"
-            },
-            "copy": false,
-            "uniformScale": true
+          "capabilities": {
+            "transform": {
+              "translation": {
+                "x": 0,
+                "y": 0.5,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              },
+              "origin": {
+                "x": "middle",
+                "y": "middle",
+                "z": "middle"
+              },
+              "copy": false,
+              "uniformScale": true
+            }
           }
         },
         {
@@ -231,22 +210,32 @@
           "type": "meshAsset",
           "data": {
             "meshId": "asset:base-corner"
-          }
-        },
-        {
-          "id": "group-4",
-          "position": {
-            "x": 838.8498954226839,
-            "y": 1219.4697041998077
           },
-          "type": "group",
-          "data": {
-            "inputPorts": [
-              "input-1",
-              "input-2",
-              "input-3",
-              "input-4"
-            ]
+          "capabilities": {
+            "transform": {
+              "translation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              },
+              "origin": {
+                "x": "middle",
+                "y": "middle",
+                "z": "middle"
+              },
+              "copy": false,
+              "uniformScale": true
+            }
           }
         },
         {
@@ -258,38 +247,32 @@
           "type": "meshAsset",
           "data": {
             "meshId": "asset:shelf-corner"
-          }
-        },
-        {
-          "id": "transform-6",
-          "position": {
-            "x": 20.849895422683858,
-            "y": 1527.4697041998077
           },
-          "type": "transform",
-          "data": {
-            "translation": {
-              "x": 0,
-              "y": 1.5,
-              "z": 0
-            },
-            "rotation": {
-              "x": 0,
-              "y": 0,
-              "z": 0
-            },
-            "scale": {
-              "x": 1,
-              "y": 1,
-              "z": 1
-            },
-            "origin": {
-              "x": "middle",
-              "y": "middle",
-              "z": "middle"
-            },
-            "copy": false,
-            "uniformScale": true
+          "capabilities": {
+            "transform": {
+              "translation": {
+                "x": 0,
+                "y": 1.5,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              },
+              "origin": {
+                "x": "middle",
+                "y": "middle",
+                "z": "middle"
+              },
+              "copy": false,
+              "uniformScale": true
+            }
           }
         },
         {
@@ -303,6 +286,32 @@
             "count": 2,
             "axis": "y",
             "offset": 1
+          },
+          "capabilities": {
+            "transform": {
+              "translation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              },
+              "origin": {
+                "x": "middle",
+                "y": "middle",
+                "z": "middle"
+              },
+              "copy": false,
+              "uniformScale": true
+            }
           }
         },
         {
@@ -312,29 +321,32 @@
             "y": 1084.7160115728545
           },
           "type": "transform",
-          "data": {
-            "translation": {
-              "x": 2.6,
-              "y": 0,
-              "z": 0
-            },
-            "rotation": {
-              "x": 0,
-              "y": 0,
-              "z": 0
-            },
-            "scale": {
-              "x": 1,
-              "y": 1,
-              "z": 1
-            },
-            "origin": {
-              "x": "middle",
-              "y": "middle",
-              "z": "middle"
-            },
-            "copy": false,
-            "uniformScale": true
+          "data": {},
+          "capabilities": {
+            "transform": {
+              "translation": {
+                "x": 2.6,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              },
+              "origin": {
+                "x": "middle",
+                "y": "middle",
+                "z": "middle"
+              },
+              "copy": false,
+              "uniformScale": true
+            }
           }
         }
       ],
@@ -382,78 +394,43 @@
           "targetPort": "count"
         },
         {
-          "id": "wing-instance:geometry->transform-4:geometry",
-          "sourceNodeId": "wing-instance",
-          "targetNodeId": "transform-4",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
-        },
-        {
-          "id": "transform-4:geometry->group-3:input-1",
-          "sourceNodeId": "transform-4",
-          "targetNodeId": "group-3",
-          "sourcePort": "geometry",
-          "targetPort": "input-1"
-        },
-        {
-          "id": "transform-7:geometry->group-3:input-2",
-          "sourceNodeId": "transform-7",
-          "targetNodeId": "group-3",
-          "sourcePort": "geometry",
-          "targetPort": "input-2"
-        },
-        {
-          "id": "group-3:geometry->output:geometry",
-          "sourceNodeId": "group-3",
-          "targetNodeId": "output",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
-        },
-        {
-          "id": "meshAsset-4:geometry->transform-5:geometry",
-          "sourceNodeId": "meshAsset-4",
-          "targetNodeId": "transform-5",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
-        },
-        {
-          "id": "transform-5:geometry->group-4:input-1",
-          "sourceNodeId": "transform-5",
-          "targetNodeId": "group-4",
-          "sourcePort": "geometry",
-          "targetPort": "input-1"
-        },
-        {
-          "id": "meshAsset-5:geometry->group-4:input-2",
-          "sourceNodeId": "meshAsset-5",
-          "targetNodeId": "group-4",
-          "sourcePort": "geometry",
-          "targetPort": "input-2"
-        },
-        {
-          "id": "meshAsset-6:geometry->transform-6:geometry",
+          "id": "meshAsset-6:geometry->array-4:geometry",
           "sourceNodeId": "meshAsset-6",
-          "targetNodeId": "transform-6",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
-        },
-        {
-          "id": "transform-6:geometry->array-4:geometry",
-          "sourceNodeId": "transform-6",
           "targetNodeId": "array-4",
           "sourcePort": "geometry",
           "targetPort": "geometry"
         },
         {
-          "id": "array-4:geometry->group-4:input-3",
-          "sourceNodeId": "array-4",
-          "targetNodeId": "group-4",
+          "id": "transform-7:geometry->output:geometry",
+          "sourceNodeId": "transform-7",
+          "targetNodeId": "output",
           "sourcePort": "geometry",
-          "targetPort": "input-3"
+          "targetPort": "geometry"
         },
         {
-          "id": "group-4:geometry->transform-7:geometry",
-          "sourceNodeId": "group-4",
+          "id": "wing-instance:geometry->output:geometry",
+          "sourceNodeId": "wing-instance",
+          "targetNodeId": "output",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "meshAsset-5:geometry->transform-7:geometry",
+          "sourceNodeId": "meshAsset-5",
+          "targetNodeId": "transform-7",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "array-4:geometry->transform-7:geometry",
+          "sourceNodeId": "array-4",
+          "targetNodeId": "transform-7",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "meshAsset-4:geometry->transform-7:geometry",
+          "sourceNodeId": "meshAsset-4",
           "targetNodeId": "transform-7",
           "sourcePort": "geometry",
           "targetPort": "geometry"
@@ -518,7 +495,8 @@
           },
           "data": {
             "inputId": "bayCount"
-          }
+          },
+          "capabilities": {}
         },
         {
           "id": "wing-shelf-count-input",
@@ -529,7 +507,8 @@
           },
           "data": {
             "inputId": "shelfCount"
-          }
+          },
+          "capabilities": {}
         },
         {
           "id": "wing-shelf-style-input",
@@ -540,7 +519,8 @@
           },
           "data": {
             "inputId": "shelfStyle"
-          }
+          },
+          "capabilities": {}
         },
         {
           "id": "wing-back-panel-style-input",
@@ -551,7 +531,8 @@
           },
           "data": {
             "inputId": "backPanelStyle"
-          }
+          },
+          "capabilities": {}
         },
         {
           "id": "wing-finish-input",
@@ -562,7 +543,8 @@
           },
           "data": {
             "inputId": "finish"
-          }
+          },
+          "capabilities": {}
         },
         {
           "id": "meshAsset-2",
@@ -573,22 +555,32 @@
           "type": "meshAsset",
           "data": {
             "meshId": "asset:base"
-          }
-        },
-        {
-          "id": "group-1",
-          "position": {
-            "x": 224.28373811952002,
-            "y": -93.66959014096255
           },
-          "type": "group",
-          "data": {
-            "inputPorts": [
-              "input-1",
-              "input-2",
-              "input-3",
-              "input-5"
-            ]
+          "capabilities": {
+            "transform": {
+              "translation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              },
+              "origin": {
+                "x": "middle",
+                "y": "middle",
+                "z": "middle"
+              },
+              "copy": false,
+              "uniformScale": true
+            }
           }
         },
         {
@@ -600,70 +592,32 @@
           "type": "meshAsset",
           "data": {
             "meshId": "asset:post"
-          }
-        },
-        {
-          "id": "transform-1",
-          "position": {
-            "x": -414.53491839832805,
-            "y": 398.7046122805707
           },
-          "type": "transform",
-          "data": {
-            "translation": {
-              "x": 0.55,
-              "y": 0,
-              "z": 0
-            },
-            "rotation": {
-              "x": 0,
-              "y": 0,
-              "z": 0
-            },
-            "scale": {
-              "x": 1,
-              "y": 1,
-              "z": 1
-            },
-            "origin": {
-              "x": "middle",
-              "y": "middle",
-              "z": "middle"
-            },
-            "copy": false,
-            "uniformScale": true
-          }
-        },
-        {
-          "id": "transform-2",
-          "position": {
-            "x": -410.21712015030926,
-            "y": -270.5342973831455
-          },
-          "type": "transform",
-          "data": {
-            "translation": {
-              "x": 0,
-              "y": 0.5,
-              "z": 0
-            },
-            "rotation": {
-              "x": 0,
-              "y": 0,
-              "z": 0
-            },
-            "scale": {
-              "x": 1,
-              "y": 1,
-              "z": 1
-            },
-            "origin": {
-              "x": "middle",
-              "y": "middle",
-              "z": "middle"
-            },
-            "copy": false,
-            "uniformScale": false
+          "capabilities": {
+            "transform": {
+              "translation": {
+                "x": 0.55,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              },
+              "origin": {
+                "x": "middle",
+                "y": "middle",
+                "z": "middle"
+              },
+              "copy": false,
+              "uniformScale": true
+            }
           }
         },
         {
@@ -677,6 +631,32 @@
             "count": 3,
             "axis": "x",
             "offset": -1.1
+          },
+          "capabilities": {
+            "transform": {
+              "translation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              },
+              "origin": {
+                "x": "middle",
+                "y": "middle",
+                "z": "middle"
+              },
+              "copy": false,
+              "uniformScale": true
+            }
           }
         },
         {
@@ -690,21 +670,32 @@
             "count": 4,
             "axis": "x",
             "offset": -1.1
-          }
-        },
-        {
-          "id": "group-2",
-          "position": {
-            "x": 791.872543739938,
-            "y": 155.75762892485912
           },
-          "type": "group",
-          "data": {
-            "inputPorts": [
-              "input-1",
-              "input-2",
-              "input-3"
-            ]
+          "capabilities": {
+            "transform": {
+              "translation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              },
+              "origin": {
+                "x": "middle",
+                "y": "middle",
+                "z": "middle"
+              },
+              "copy": false,
+              "uniformScale": true
+            }
           }
         },
         {
@@ -761,38 +752,32 @@
                 "meshId": "asset:shelf-simple"
               }
             ]
-          }
-        },
-        {
-          "id": "transform-3",
-          "position": {
-            "x": -713.416246038669,
-            "y": -849.6262483932707
           },
-          "type": "transform",
-          "data": {
-            "translation": {
-              "x": 0,
-              "y": 1.5,
-              "z": 0
-            },
-            "rotation": {
-              "x": 0,
-              "y": 0,
-              "z": 0
-            },
-            "scale": {
-              "x": 1,
-              "y": 1,
-              "z": 1
-            },
-            "origin": {
-              "x": "middle",
-              "y": "middle",
-              "z": "middle"
-            },
-            "copy": false,
-            "uniformScale": true
+          "capabilities": {
+            "transform": {
+              "translation": {
+                "x": 0,
+                "y": 1.5,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              },
+              "origin": {
+                "x": "middle",
+                "y": "middle",
+                "z": "middle"
+              },
+              "copy": false,
+              "uniformScale": true
+            }
           }
         },
         {
@@ -806,6 +791,32 @@
             "count": 8,
             "axis": "y",
             "offset": 1
+          },
+          "capabilities": {
+            "transform": {
+              "translation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              },
+              "origin": {
+                "x": "middle",
+                "y": "middle",
+                "z": "middle"
+              },
+              "copy": false,
+              "uniformScale": true
+            }
           }
         },
         {
@@ -821,7 +832,8 @@
               "input-1",
               "input-2"
             ]
-          }
+          },
+          "capabilities": {}
         },
         {
           "id": "meshSelector-2",
@@ -877,6 +889,32 @@
                 "meshId": "asset:backplate-plain"
               }
             ]
+          },
+          "capabilities": {
+            "transform": {
+              "translation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              },
+              "origin": {
+                "x": "middle",
+                "y": "middle",
+                "z": "middle"
+              },
+              "copy": false,
+              "uniformScale": true
+            }
           }
         },
         {
@@ -888,6 +926,32 @@
           "type": "material",
           "data": {
             "color": "#eaceac"
+          },
+          "capabilities": {
+            "transform": {
+              "translation": {
+                "x": 0,
+                "y": 0.5,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              },
+              "origin": {
+                "x": "middle",
+                "y": "middle",
+                "z": "middle"
+              },
+              "copy": false,
+              "uniformScale": false
+            }
           }
         },
         {
@@ -897,59 +961,11 @@
             "x": 1040,
             "y": 155.75762892485912
           },
-          "data": {}
+          "data": {},
+          "capabilities": {}
         }
       ],
       "edges": [
-        {
-          "id": "meshAsset-2:geometry->group-1:input-2",
-          "sourceNodeId": "meshAsset-2",
-          "targetNodeId": "group-1",
-          "sourcePort": "geometry",
-          "targetPort": "input-2"
-        },
-        {
-          "id": "meshAsset-3:geometry->transform-1:geometry",
-          "sourceNodeId": "meshAsset-3",
-          "targetNodeId": "transform-1",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
-        },
-        {
-          "id": "transform-2:geometry->group-1:input-1",
-          "sourceNodeId": "transform-2",
-          "targetNodeId": "group-1",
-          "sourcePort": "geometry",
-          "targetPort": "input-1"
-        },
-        {
-          "id": "group-1:geometry->array-1:geometry",
-          "sourceNodeId": "group-1",
-          "targetNodeId": "array-1",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
-        },
-        {
-          "id": "transform-1:geometry->array-2:geometry",
-          "sourceNodeId": "transform-1",
-          "targetNodeId": "array-2",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
-        },
-        {
-          "id": "array-2:geometry->group-2:input-1",
-          "sourceNodeId": "array-2",
-          "targetNodeId": "group-2",
-          "sourcePort": "geometry",
-          "targetPort": "input-1"
-        },
-        {
-          "id": "array-1:geometry->group-2:input-2",
-          "sourceNodeId": "array-1",
-          "targetNodeId": "group-2",
-          "sourcePort": "geometry",
-          "targetPort": "input-2"
-        },
         {
           "id": "wing-shelf-style-input:shelfStyle->meshSelector-1:enum",
           "sourceNodeId": "wing-shelf-style-input",
@@ -958,32 +974,11 @@
           "targetPort": "enum"
         },
         {
-          "id": "meshSelector-1:geometry->transform-3:geometry",
-          "sourceNodeId": "meshSelector-1",
-          "targetNodeId": "transform-3",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
-        },
-        {
           "id": "wing-bay-count-input:bayCount->array-1:count",
           "sourceNodeId": "wing-bay-count-input",
           "targetNodeId": "array-1",
           "sourcePort": "bayCount",
           "targetPort": "count"
-        },
-        {
-          "id": "transform-3:geometry->array-3:geometry",
-          "sourceNodeId": "transform-3",
-          "targetNodeId": "array-3",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
-        },
-        {
-          "id": "array-3:geometry->group-1:input-3",
-          "sourceNodeId": "array-3",
-          "targetNodeId": "group-1",
-          "sourcePort": "geometry",
-          "targetPort": "input-3"
         },
         {
           "id": "sum-1:number->array-2:count",
@@ -1021,13 +1016,6 @@
           "targetPort": "geometry"
         },
         {
-          "id": "material-1:geometry->transform-2:geometry",
-          "sourceNodeId": "material-1",
-          "targetNodeId": "transform-2",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
-        },
-        {
           "id": "wing-finish-input:finish->material-1:color",
           "sourceNodeId": "wing-finish-input",
           "targetNodeId": "material-1",
@@ -1035,8 +1023,50 @@
           "targetPort": "color"
         },
         {
-          "id": "group-2:geometry->wing-output:geometry",
-          "sourceNodeId": "group-2",
+          "id": "meshAsset-3:geometry->array-2:geometry",
+          "sourceNodeId": "meshAsset-3",
+          "targetNodeId": "array-2",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "meshSelector-1:geometry->array-3:geometry",
+          "sourceNodeId": "meshSelector-1",
+          "targetNodeId": "array-3",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "meshAsset-2:geometry->array-1:geometry",
+          "sourceNodeId": "meshAsset-2",
+          "targetNodeId": "array-1",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "array-3:geometry->array-1:geometry",
+          "sourceNodeId": "array-3",
+          "targetNodeId": "array-1",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "material-1:geometry->array-1:geometry",
+          "sourceNodeId": "material-1",
+          "targetNodeId": "array-1",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "array-2:geometry->wing-output:geometry",
+          "sourceNodeId": "array-2",
+          "targetNodeId": "wing-output",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "array-1:geometry->wing-output:geometry",
+          "sourceNodeId": "array-1",
           "targetNodeId": "wing-output",
           "sourcePort": "geometry",
           "targetPort": "geometry"

@@ -38,6 +38,7 @@ export interface GraphDocumentNode {
 	id: string
 	position: GraphPoint
 	type: string
+	capabilities: Record<string, unknown>
 	data: unknown
 }
 
@@ -65,6 +66,7 @@ export function serializeGraph(
 				id: node.id,
 				position: node.getPosition(),
 				type: node.type,
+				capabilities: registry.serializeCapabilities(node),
 				data: registry.serialize(node),
 			})),
 			edges: graph.model.getEdges().flatMap((edge) =>
@@ -104,7 +106,14 @@ export function deserializeGraph(value: unknown, registry: NodeRegistry): GraphD
 	const getGraphInterface = (graphId: string) => interfaces.get(graphId)
 	const definitions: GraphDefinition[] = value.graphs.map((graph) => {
 		const nodes = graph.nodes.map((node) =>
-			registry.deserialize(node.type, node.id, node.position, node.data)
+			registry.deserialize(
+				node.type,
+				node.id,
+				node.position,
+				node.data,
+				node.capabilities,
+				`Graph "${graph.id}" node "${node.id}" (${node.type})`
+			)
 		)
 		assertBoundaryNodes(graph, nodes)
 		const edges = graph.edges.map(

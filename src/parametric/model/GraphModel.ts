@@ -91,10 +91,16 @@ export class GraphModel {
 		if (!normalizedEdge || !this.canConnect(normalizedEdge)) return
 		const targetNode = this.nodes.get(normalizedEdge.targetNodeId)
 
-		for (const existing of this.edges.values()) {
-			const targetsSamePort =
-				existing.targetNodeId === normalizedEdge.targetNodeId && existing.targetPort === normalizedEdge.targetPort
-			if (targetsSamePort) this.edges.delete(existing.id)
+		const targetPort = targetNode
+			? this.nodeRegistry.getInputPorts(targetNode, this.portContext)
+				.find((port) => port.id === normalizedEdge.targetPort)
+			: undefined
+		if (!targetPort || !this.nodeRegistry.isAggregateInput(targetPort.valueType)) {
+			for (const existing of this.edges.values()) {
+				const targetsSamePort = existing.targetNodeId === normalizedEdge.targetNodeId
+					&& existing.targetPort === normalizedEdge.targetPort
+				if (targetsSamePort) this.edges.delete(existing.id)
+			}
 		}
 		this.edges.set(normalizedEdge.id, normalizedEdge)
 		if (!this.isRestoring && targetNode) this.syncDynamicInputs(targetNode.id)

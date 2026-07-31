@@ -47,6 +47,45 @@
         "y": { "type": "number" }
       }
     },
+    "vector3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "z"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" }
+      }
+    },
+    "transform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["translation", "rotation", "scale", "origin", "copy", "uniformScale"],
+      "properties": {
+        "translation": { "$ref": "#/$defs/vector3" },
+        "rotation": { "$ref": "#/$defs/vector3" },
+        "scale": { "$ref": "#/$defs/vector3" },
+        "origin": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y", "z"],
+          "properties": {
+            "x": { "enum": ["min", "middle", "max"] },
+            "y": { "enum": ["min", "middle", "max"] },
+            "z": { "enum": ["min", "middle", "max"] }
+          }
+        },
+        "copy": { "type": "boolean" },
+        "uniformScale": { "type": "boolean" }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "transform": { "$ref": "#/$defs/transform" }
+      }
+    },
     "inputDefinition": {
       "oneOf": [
         {
@@ -141,10 +180,11 @@
     "node": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "type", "position", "data"],
+      "required": ["id", "type", "position", "capabilities", "data"],
       "properties": {
         "id": { "$ref": "#/$defs/id" },
         "position": { "$ref": "#/$defs/point" },
+        "capabilities": { "$ref": "#/$defs/capabilities" },
         "type": {
           "enum": [
             "primitive",
@@ -166,6 +206,34 @@
         "data": { "type": "object" }
       },
       "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "primitive",
+                  "meshSelector",
+                  "meshAsset",
+                  "transform",
+                  "material",
+                  "array",
+                  "group",
+                  "graphInstance"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "capabilities": { "required": ["transform"] }
+            }
+          },
+          "else": {
+            "properties": {
+              "capabilities": { "maxProperties": 0 }
+            }
+          }
+        },
         {
           "if": { "properties": { "type": { "const": "graphInput" } } },
           "then": {

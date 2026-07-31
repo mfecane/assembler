@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/select'
 import { GeometryNodeActions } from '@/parametric/components/GeometryNodeActions'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
+import { TransformSection } from '@/parametric/components/TransformSection'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 import { useMeshSelectorNode } from '@/parametric/hooks/useGraphNode'
 
@@ -28,7 +29,10 @@ export function MeshSelectorNode({ id }: NodeProps<ParametricFlowNode>) {
 	}
 
 	return (
-		<div className="min-w-60 rounded-md border border-border bg-surface px-3 py-2 shadow-md">
+		<div
+			data-id={`mesh-selector-node-${id}`}
+			className="min-w-60 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
+		>
 			<TypedHandle id="enum" type="target" position={Position.Left} valueType="enum" />
 			<div className="mb-2 flex items-center justify-between gap-2">
 				<div className="text-sm font-semibold text-foreground">Mesh Selector</div>
@@ -70,6 +74,7 @@ export function MeshSelectorNode({ id }: NodeProps<ParametricFlowNode>) {
 					</div>
 				)}
 			</div>
+			<TransformSection nodeId={id} />
 			<TypedHandle id="geometry" type="source" position={Position.Right} valueType="geometry" />
 		</div>
 	)

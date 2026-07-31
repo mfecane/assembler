@@ -2,6 +2,7 @@ import { Position, type NodeProps } from '@xyflow/react'
 import { GeometryNodeActions } from '@/parametric/components/GeometryNodeActions'
 import { PresetColorSelect } from '@/parametric/components/PresetColorSelect'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
+import { TransformSection } from '@/parametric/components/TransformSection'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 import { useMaterialNode } from '@/parametric/hooks/useGraphNode'
 
@@ -10,7 +11,10 @@ export function MaterialNode({ id }: NodeProps<ParametricFlowNode>) {
 	if (!binding) return null
 
 	return (
-		<div className="min-w-44 rounded-md border border-border bg-surface px-3 py-2 shadow-md">
+		<div
+			data-id={`material-node-${id}`}
+			className="min-w-44 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
+		>
 			<TypedHandle
 				id="geometry"
 				type="target"
@@ -36,6 +40,7 @@ export function MaterialNode({ id }: NodeProps<ParametricFlowNode>) {
 					disabled={binding.colorConnected}
 				/>
 			</div>
+			<TransformSection nodeId={id} />
 			<TypedHandle id="geometry" type="source" position={Position.Right} valueType="geometry" />
 		</div>
 	)

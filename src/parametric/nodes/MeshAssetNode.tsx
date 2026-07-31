@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/select'
 import { GeometryNodeActions } from '@/parametric/components/GeometryNodeActions'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
+import { TransformSection } from '@/parametric/components/TransformSection'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 import { useMeshAssetNode } from '@/parametric/hooks/useGraphNode'
 
@@ -16,7 +17,10 @@ export function MeshAssetNode({ id }: NodeProps<ParametricFlowNode>) {
 	if (!binding) return null
 
 	return (
-		<div className="min-w-52 rounded-md border border-border bg-surface px-3 py-2 shadow-md">
+		<div
+			data-id={`mesh-asset-node-${id}`}
+			className="min-w-52 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
+		>
 			<div className="mb-2 flex items-center justify-between gap-2">
 				<div className="text-sm font-semibold text-foreground">Mesh Asset</div>
 				<GeometryNodeActions nodeId={id} nodeLabel="Mesh Asset" />
@@ -34,6 +38,7 @@ export function MeshAssetNode({ id }: NodeProps<ParametricFlowNode>) {
 					))}
 				</SelectContent>
 			</Select>
+			<TransformSection nodeId={id} />
 			<TypedHandle id="geometry" type="source" position={Position.Right} valueType="geometry" />
 		</div>
 	)
