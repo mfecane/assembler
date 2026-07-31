@@ -24,7 +24,7 @@ export function ArrayNode({ id }: NodeProps<ParametricFlowNode>) {
 	return (
 		<div data-id={`array-node-${id}`} className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md">
 			<TypedHandle id="geometry" type="target" position={Position.Left} valueType="geometry" />
-			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} nodeLabel="Array" />} />
+			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} />} />
 			<div className="flex flex-col gap-2 text-xs">
 				<div className="nodrag relative flex items-center justify-between gap-2 text-muted-foreground">
 					<TypedHandle id="count" type="target" position={Position.Left} valueType="number" style={{ top: '50%' }} />

@@ -42,9 +42,6 @@ export function ConfiguratorPanel() {
 			>
 				<SlidersHorizontal className="text-muted-foreground" />
 				<span className="flex-1 text-left text-sm font-semibold">Configuration</span>
-				<span className="text-xs font-normal text-muted-foreground">
-					{values.length}
-				</span>
 				<ChevronDown
 					className={`text-muted-foreground transition-transform ${
 						expanded ? 'rotate-180' : ''

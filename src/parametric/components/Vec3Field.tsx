@@ -9,7 +9,7 @@ interface Vec3FieldProps {
 
 export function Vec3Field({ label, fields, step = 0.1 }: Vec3FieldProps) {
 	return (
-		<div className="nodrag flex flex-col gap-1 text-xs">
+		<div data-id={`vector-field-${label.toLowerCase()}`} className="flex flex-col gap-1 text-xs">
 			<span className="text-muted-foreground">{label}</span>
 			<div className="flex gap-1">
 				{(['x', 'y', 'z'] as const).map((axis) => (

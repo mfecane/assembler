@@ -21,7 +21,7 @@ export function MeshAssetNode({ id }: NodeProps<ParametricFlowNode>) {
 			data-id={`mesh-asset-node-${id}`}
 			className="min-w-52 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
 		>
-			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} nodeLabel="Mesh Asset" />} />
+			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} />} />
 			<Select value={binding.meshId} onValueChange={binding.setMeshId}>
 				<SelectTrigger
 					className="nodrag h-8 px-2 text-xs"

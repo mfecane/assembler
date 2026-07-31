@@ -1,7 +1,6 @@
 import { Position, type NodeProps } from '@xyflow/react'
 import { ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { NodeDeleteButton } from '@/parametric/components/NodeDeleteButton'
 import { GeometryPreviewButton } from '@/parametric/components/GeometryPreviewButton'
 import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
@@ -24,26 +23,25 @@ export function GraphInstanceNode({ id }: NodeProps<ParametricFlowNode>) {
 			className="min-w-52 rounded-md border border-primary/50 bg-surface px-3 py-2 shadow-md"
 		>
 			<NodeHeader
-				nodeId={id}
-				actions={(
-					<div className="flex items-center">
-					{graph.output.valueType === 'geometry' && (
-						<GeometryPreviewButton nodeId={id} />
+					nodeId={id}
+					actions={(
+						<div className="flex items-center">
+							{graph.output.valueType === 'geometry' && (
+								<GeometryPreviewButton nodeId={id} />
+							)}
+							<Button
+								type="button"
+								variant="ghost"
+								size="icon"
+								className="nodrag nopan h-6 w-6 text-muted-foreground"
+								title={`Open ${graph.label}`}
+								aria-label={`Open ${graph.label}`}
+								onClick={() => controller.openGraph(graph.id)}
+							>
+								<ExternalLink />
+							</Button>
+						</div>
 					)}
-					<Button
-						type="button"
-						variant="ghost"
-						size="icon"
-						className="nodrag nopan h-6 w-6 text-muted-foreground"
-						title={`Open ${graph.label}`}
-						aria-label={`Open ${graph.label}`}
-						onClick={() => controller.openGraph(graph.id)}
-					>
-						<ExternalLink />
-					</Button>
-					<NodeDeleteButton nodeId={id} nodeLabel={graph.label} />
-					</div>
-				)}
 			/>
 			<div className="flex flex-col gap-1.5">
 				{graph.inputs.length === 0 ? (

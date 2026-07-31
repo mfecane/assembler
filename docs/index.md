@@ -33,6 +33,11 @@ behavior; only files under **Planned work** are pending.
 - [Application shell](./implementation/application-shell.md) — routing, authenticated user menu,
   and shared component conventions.
 
+## Reviews
+
+- [Node graph model review](./reviews/node-graph-model-review.md) — architecture review of the
+  node/registry/controller/hook layers against the goal of adding hundreds of node types cheaply.
+
 ## Operations
 
 - [Local development](./guides/local-development.md) — startup, local login, reset, and diagnostics.

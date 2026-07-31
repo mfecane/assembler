@@ -2,8 +2,7 @@
   "entryGraphId": "main",
   "entryInputValues": {
     "number-1": 5,
-    "number-2": 4,
-    "include-last-support": true
+	"number-2": 4
   },
   "graphs": [
     {
@@ -21,12 +20,6 @@
           "label": "Number",
           "valueType": "number",
           "defaultValue": 1
-        },
-        {
-          "id": "include-last-support",
-          "label": "Include last post and base",
-          "valueType": "boolean",
-          "defaultValue": true
         }
       ],
       "output": {
@@ -39,30 +32,100 @@
           "id": "output",
           "name": "Configured shelving",
           "position": {
-            "x": 1794.0083163143997,
-            "y": 187.94032904254072
+			"x": 1900,
+			"y": 260
           },
           "type": "graphOutput",
           "data": {}
         },
         {
           "id": "graphInstance-1",
-          "name": "Section",
+		  "name": "Wing A",
           "position": {
-            "x": 1331.8016185152185,
-            "y": 164.79864046489234
+			"x": 920,
+			"y": 80
           },
           "type": "graphInstance",
           "data": {
             "graphId": "graph-1"
           }
         },
+		{
+		  "id": "graphInstance-2",
+		  "name": "Wing B",
+		  "position": {
+			"x": 920,
+			"y": 360
+		  },
+		  "type": "graphInstance",
+		  "data": {
+			"graphId": "graph-1"
+		  }
+		},
+		{
+		  "id": "graphInstance-3",
+		  "name": "Corner",
+		  "position": {
+			"x": 920,
+			"y": 680
+		  },
+		  "type": "graphInstance",
+		  "data": {
+			"graphId": "graph-2"
+		  }
+		},
+		{
+		  "id": "transform-main-wing-a",
+		  "name": "Attach wing A",
+		  "position": {
+			"x": 1230,
+			"y": 80
+		  },
+		  "type": "transform",
+		  "data": {
+			"translation": { "x": 1.26, "y": 0, "z": 0 },
+			"rotation": { "x": 0, "y": 0, "z": 0 },
+			"scale": { "x": 1, "y": 1, "z": 1 },
+			"origin": { "x": "middle", "y": "middle", "z": "middle" },
+			"copy": false,
+			"uniformScale": true
+		  }
+		},
+		{
+		  "id": "transform-main-wing-b",
+		  "name": "Attach wing B",
+		  "position": {
+			"x": 1230,
+			"y": 360
+		  },
+		  "type": "transform",
+		  "data": {
+			"translation": { "x": 0, "y": 0, "z": 1.26 },
+			"rotation": { "x": 0, "y": -90, "z": 0 },
+			"scale": { "x": 1, "y": 1, "z": -1 },
+			"origin": { "x": "middle", "y": "middle", "z": "middle" },
+			"copy": false,
+			"uniformScale": false
+		  }
+		},
+		{
+		  "id": "group-main-corner-run",
+		  "name": "Corner run",
+		  "position": {
+			"x": 1580,
+			"y": 260
+		  },
+		  "type": "group",
+		  "data": {
+			"inputPorts": ["input-1", "input-2", "input-3", "input-4"]
+		  }
+		},
         {
           "id": "graphInput-1",
-          "name": "Number",
+		  "name": "Sections count",
           "position": {
-            "x": 922.6191081263679,
-            "y": 135.73518296029178
+			"x": 480,
+			"y": 100
           },
           "type": "graphInput",
           "data": {
@@ -71,33 +134,21 @@
         },
         {
           "id": "graphInput-2",
-          "name": "Number",
+		  "name": "Shelves count",
           "position": {
-            "x": 920.7350155178768,
-            "y": 375.24111337815094
+			"x": 480,
+			"y": 360
           },
           "type": "graphInput",
           "data": {
             "inputId": "number-2"
           }
-        },
-        {
-          "id": "graphInput-3",
-          "name": "Include last post and base",
-          "position": {
-            "x": 920,
-            "y": 555
-          },
-          "type": "graphInput",
-          "data": {
-            "inputId": "include-last-support"
-          }
         }
       ],
       "edges": [
         {
-          "id": "graphInstance-1:geometry->output:geometry",
-          "sourceNodeId": "graphInstance-1",
+		  "id": "group-main-corner-run:geometry->output:geometry",
+		  "sourceNodeId": "group-main-corner-run",
           "targetNodeId": "output",
           "sourcePort": "geometry",
           "targetPort": "geometry"
@@ -116,18 +167,67 @@
           "sourcePort": "number-2",
           "targetPort": "number-2"
         },
-        {
-          "id": "graphInput-3:include-last-support->graphInstance-1:include-last-support",
-          "sourceNodeId": "graphInput-3",
-          "targetNodeId": "graphInstance-1",
-          "sourcePort": "include-last-support",
-          "targetPort": "include-last-support"
+		{
+		  "id": "graphInput-1:number-1->graphInstance-2:number-1",
+		  "sourceNodeId": "graphInput-1",
+		  "targetNodeId": "graphInstance-2",
+		  "sourcePort": "number-1",
+		  "targetPort": "number-1"
+		},
+		{
+		  "id": "graphInput-2:number-2->graphInstance-2:number-2",
+		  "sourceNodeId": "graphInput-2",
+		  "targetNodeId": "graphInstance-2",
+		  "sourcePort": "number-2",
+		  "targetPort": "number-2"
+        },
+		{
+		  "id": "graphInput-2:number-2->graphInstance-3:number-2",
+		  "sourceNodeId": "graphInput-2",
+		  "targetNodeId": "graphInstance-3",
+		  "sourcePort": "number-2",
+		  "targetPort": "number-2"
+		},
+		{
+		  "id": "graphInstance-1:geometry->transform-main-wing-a:geometry",
+		  "sourceNodeId": "graphInstance-1",
+		  "targetNodeId": "transform-main-wing-a",
+		  "sourcePort": "geometry",
+		  "targetPort": "geometry"
+		},
+		{
+		  "id": "graphInstance-2:geometry->transform-main-wing-b:geometry",
+		  "sourceNodeId": "graphInstance-2",
+		  "targetNodeId": "transform-main-wing-b",
+		  "sourcePort": "geometry",
+		  "targetPort": "geometry"
+		},
+		{
+		  "id": "transform-main-wing-a:geometry->group-main-corner-run:input-1",
+		  "sourceNodeId": "transform-main-wing-a",
+		  "targetNodeId": "group-main-corner-run",
+		  "sourcePort": "geometry",
+		  "targetPort": "input-1"
+		},
+		{
+		  "id": "transform-main-wing-b:geometry->group-main-corner-run:input-2",
+		  "sourceNodeId": "transform-main-wing-b",
+		  "targetNodeId": "group-main-corner-run",
+		  "sourcePort": "geometry",
+		  "targetPort": "input-2"
+		},
+		{
+		  "id": "graphInstance-3:geometry->group-main-corner-run:input-3",
+		  "sourceNodeId": "graphInstance-3",
+		  "targetNodeId": "group-main-corner-run",
+		  "sourcePort": "geometry",
+		  "targetPort": "input-3"
         }
       ]
     },
     {
       "id": "graph-1",
-      "label": "Section",
+	  "label": "Wing",
       "inputs": [
         {
           "id": "number-1",
@@ -141,11 +241,11 @@
           "valueType": "number",
           "defaultValue": 2
         },
-        {
-          "id": "include-last-support",
-          "label": "Include last post and base",
-          "valueType": "boolean",
-          "defaultValue": true
+		{
+		  "id": "include-last-support",
+		  "label": "Include last post and base",
+		  "valueType": "boolean",
+		  "defaultValue": false
         }
       ],
       "output": {
@@ -711,6 +811,225 @@
           "targetPort": "geometry"
         }
       ]
+	},
+	{
+	  "id": "graph-2",
+	  "label": "Corner",
+	  "inputs": [
+		{
+		  "id": "number-2",
+		  "label": "Shelves count",
+		  "valueType": "number",
+		  "defaultValue": 2
+		}
+	  ],
+	  "output": {
+		"id": "geometry",
+		"label": "Corner geometry",
+		"valueType": "geometry"
+	  },
+	  "nodes": [
+		{
+		  "id": "corner-output",
+		  "name": "Corner geometry",
+		  "position": { "x": 1050, "y": 240 },
+		  "type": "graphOutput",
+		  "data": {}
+		},
+		{
+		  "id": "corner-group",
+		  "name": "Corner assembly",
+		  "position": { "x": 730, "y": 240 },
+		  "type": "group",
+		  "data": {
+			"inputPorts": ["input-1", "input-2", "input-3", "input-4"]
+		  }
+		},
+		{
+		  "id": "corner-back-panel",
+		  "name": "Corner back panel",
+		  "position": { "x": -780, "y": -220 },
+		  "type": "meshAsset",
+		  "data": { "meshId": "asset:maxshelf:backpanel:1000x300-plain" }
+		},
+		{
+		  "id": "corner-back-panel-position",
+		  "name": "Position corner back panel",
+		  "position": { "x": -500, "y": -220 },
+		  "type": "transform",
+		  "data": {
+			"translation": { "x": 0, "y": 0.5, "z": 0 },
+			"rotation": { "x": 0, "y": 0, "z": 0 },
+			"scale": { "x": 1, "y": 1, "z": 1 },
+			"origin": { "x": "middle", "y": "middle", "z": "middle" },
+			"copy": false,
+			"uniformScale": true
+		  }
+		},
+		{
+		  "id": "corner-back-panel-pair",
+		  "name": "Perpendicular back panels",
+		  "position": { "x": -190, "y": -220 },
+		  "type": "transform",
+		  "data": {
+			"translation": { "x": 0, "y": 0, "z": 0 },
+			"rotation": { "x": 0, "y": -90, "z": 0 },
+			"scale": { "x": 1, "y": 1, "z": 1 },
+			"origin": { "x": "middle", "y": "middle", "z": "middle" },
+			"copy": true,
+			"uniformScale": true
+		  }
+		},
+		{
+		  "id": "corner-base",
+		  "name": "Corner base",
+		  "position": { "x": -500, "y": 80 },
+		  "type": "meshAsset",
+		  "data": { "meshId": "asset:maxshelf:base-leg:470" }
+		},
+		{
+		  "id": "corner-base-pair",
+		  "name": "Perpendicular bases",
+		  "position": { "x": -190, "y": 80 },
+		  "type": "transform",
+		  "data": {
+			"translation": { "x": 0, "y": 0, "z": 0 },
+			"rotation": { "x": 0, "y": -90, "z": 0 },
+			"scale": { "x": 1, "y": 1, "z": 1 },
+			"origin": { "x": "middle", "y": "middle", "z": "middle" },
+			"copy": true,
+			"uniformScale": true
+		  }
+		},
+		{
+		  "id": "corner-shelf",
+		  "name": "Corner shelf",
+		  "position": { "x": -780, "y": 400 },
+		  "type": "meshAsset",
+		  "data": { "meshId": "asset:maxshelf:shelf:1000x370" }
+		},
+		{
+		  "id": "corner-shelf-position",
+		  "name": "Position corner shelf",
+		  "position": { "x": -500, "y": 400 },
+		  "type": "transform",
+		  "data": {
+			"translation": { "x": 0.26, "y": 0.64, "z": 0.43 },
+			"rotation": { "x": 0, "y": 0, "z": 0 },
+			"scale": { "x": 1, "y": 1, "z": -1 },
+			"origin": { "x": "middle", "y": "middle", "z": "middle" },
+			"copy": false,
+			"uniformScale": false
+		  }
+		},
+		{
+		  "id": "corner-shelf-pair",
+		  "name": "Perpendicular shelves",
+		  "position": { "x": -190, "y": 400 },
+		  "type": "transform",
+		  "data": {
+			"translation": { "x": 0, "y": 0, "z": 0 },
+			"rotation": { "x": 0, "y": -90, "z": 0 },
+			"scale": { "x": 1, "y": 1, "z": 1 },
+			"origin": { "x": "middle", "y": "middle", "z": "middle" },
+			"copy": true,
+			"uniformScale": true
+		  }
+		},
+		{
+		  "id": "corner-shelf-array",
+		  "name": "Corner shelf levels",
+		  "position": { "x": 150, "y": 400 },
+		  "type": "array",
+		  "data": { "count": 2, "axis": "y", "offset": 0.3 }
+		},
+		{
+		  "id": "corner-shelf-count-input",
+		  "name": "Shelves count",
+		  "position": { "x": -190, "y": 650 },
+		  "type": "graphInput",
+		  "data": { "inputId": "number-2" }
+		}
+	  ],
+	  "edges": [
+		{
+		  "id": "corner-group:geometry->corner-output:geometry",
+		  "sourceNodeId": "corner-group",
+		  "targetNodeId": "corner-output",
+		  "sourcePort": "geometry",
+		  "targetPort": "geometry"
+		},
+		{
+		  "id": "corner-back-panel:geometry->corner-back-panel-position:geometry",
+		  "sourceNodeId": "corner-back-panel",
+		  "targetNodeId": "corner-back-panel-position",
+		  "sourcePort": "geometry",
+		  "targetPort": "geometry"
+		},
+		{
+		  "id": "corner-back-panel-position:geometry->corner-back-panel-pair:geometry",
+		  "sourceNodeId": "corner-back-panel-position",
+		  "targetNodeId": "corner-back-panel-pair",
+		  "sourcePort": "geometry",
+		  "targetPort": "geometry"
+		},
+		{
+		  "id": "corner-back-panel-pair:geometry->corner-group:input-1",
+		  "sourceNodeId": "corner-back-panel-pair",
+		  "targetNodeId": "corner-group",
+		  "sourcePort": "geometry",
+		  "targetPort": "input-1"
+		},
+		{
+		  "id": "corner-base:geometry->corner-base-pair:geometry",
+		  "sourceNodeId": "corner-base",
+		  "targetNodeId": "corner-base-pair",
+		  "sourcePort": "geometry",
+		  "targetPort": "geometry"
+		},
+		{
+		  "id": "corner-base-pair:geometry->corner-group:input-2",
+		  "sourceNodeId": "corner-base-pair",
+		  "targetNodeId": "corner-group",
+		  "sourcePort": "geometry",
+		  "targetPort": "input-2"
+		},
+		{
+		  "id": "corner-shelf:geometry->corner-shelf-position:geometry",
+		  "sourceNodeId": "corner-shelf",
+		  "targetNodeId": "corner-shelf-position",
+		  "sourcePort": "geometry",
+		  "targetPort": "geometry"
+		},
+		{
+		  "id": "corner-shelf-position:geometry->corner-shelf-pair:geometry",
+		  "sourceNodeId": "corner-shelf-position",
+		  "targetNodeId": "corner-shelf-pair",
+		  "sourcePort": "geometry",
+		  "targetPort": "geometry"
+		},
+		{
+		  "id": "corner-shelf-pair:geometry->corner-shelf-array:geometry",
+		  "sourceNodeId": "corner-shelf-pair",
+		  "targetNodeId": "corner-shelf-array",
+		  "sourcePort": "geometry",
+		  "targetPort": "geometry"
+		},
+		{
+		  "id": "corner-shelf-count-input:number-2->corner-shelf-array:count",
+		  "sourceNodeId": "corner-shelf-count-input",
+		  "targetNodeId": "corner-shelf-array",
+		  "sourcePort": "number-2",
+		  "targetPort": "count"
+		},
+		{
+		  "id": "corner-shelf-array:geometry->corner-group:input-3",
+		  "sourceNodeId": "corner-shelf-array",
+		  "targetNodeId": "corner-group",
+		  "sourcePort": "geometry",
+		  "targetPort": "input-3"
+		}
+	  ]
     }
   ],
   "configurationPanel": {
@@ -732,12 +1051,6 @@
         "type": "slider",
         "label": "Shelves count",
         "inputId": "number-2"
-      },
-      {
-        "id": "include-last-support-control",
-        "type": "switch",
-        "label": "Include last post and base",
-        "inputId": "include-last-support"
       }
     ]
   }

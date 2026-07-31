@@ -1,29 +1,37 @@
-# Composable node capabilities
+Experimental architecture change to reduce number of nodes in graph.
 
-## Status
+Issue: any grph node output has group node before it
 
-Experimental proposal. Analyze before implementation and discard it if the resulting abstraction
-cost exceeds the reuse it provides.
+Issue: any mesh asset node has transform node after it
 
-## Problem
+Make nodes be composed of several Capability objects (common interface)
 
-Geometry-producing nodes may need repeated behaviors without requiring users to create additional
-standalone nodes. Two candidate capabilities are:
+Transform capability
 
-- **Transform** — add a collapsible transform section to Mesh Asset, Mesh Selector, and Array.
-  Embedded transforms would not expose connectable ports; the standalone Transform node would.
-- **Multiple geometry inputs** — let selected geometry inputs accept and group several incoming
-  connections instead of requiring a separate Group node.
+reused for asset placement node, asset select, node array nodes - adds collapsible transform section to node.
 
-## Analysis required
+only standalone transform node does produce connectable inputs.
 
-- Define a small capability interface and show how node definitions, serialization, evaluation,
-  and React views would consume it.
-- Keep capabilities independent and composed rather than inherited.
-- Determine whether multi-connection behavior belongs to a reusable capability or to input-port
-  metadata.
-- Compare the reduction in graph nodes with the added persistence and UI complexity.
-- Describe how existing MaxShelf graph structure would be preserved when the schema changes.
+when used as capability in other nodes does not produce connectable inputs.
 
-Do not implement until the proposal demonstrates meaningful reuse without creating a parallel
-node abstraction.
+Group capability
+
+any node accepting 3d object input automatically groups it's inputs, 3d input can have several input connections
+
+describe it in the input type as property of this particular kind of input
+
+Toggle capability
+
+swith current node on/off, making it noop
+
+there will be possibly more capabilities
+
+keep in mind separation of concerns, interface segregation, composition over inheritance
+
+analyze and prepare plan for implemntation such composability
+
+describe capability interface and how nodes use it
+
+if complexity will be too high or code reusability and composability too low, creating too much maintenace complication this apprach will be discarded
+
+since this is an experiment, any feedback, input, analysis and better solutions are welcome

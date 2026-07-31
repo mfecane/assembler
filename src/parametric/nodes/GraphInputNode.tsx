@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/select'
 import { DraftNumberInput } from '@/parametric/components/DraftNumberInput'
 import { Switch } from '@/components/ui/switch'
-import { NodeDeleteButton } from '@/parametric/components/NodeDeleteButton'
 import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { GeometryPreviewButton } from '@/parametric/components/GeometryPreviewButton'
 import { PresetColorSelect } from '@/parametric/components/PresetColorSelect'
@@ -38,14 +37,7 @@ export function GraphInputNode({ id }: NodeProps<ParametricFlowNode>) {
 		>
 			<NodeHeader
 				nodeId={id}
-				actions={(
-					<div className="flex items-center gap-0.5">
-					{input.valueType === 'geometry' && (
-						<GeometryPreviewButton nodeId={id} />
-					)}
-					<NodeDeleteButton nodeId={id} nodeLabel={input.label || input.valueType} />
-					</div>
-				)}
+				actions={input.valueType === 'geometry' ? <GeometryPreviewButton nodeId={id} /> : undefined}
 			/>
 			<div className="mb-2 text-[11px] capitalize text-muted-foreground">
 				{input.valueType} input

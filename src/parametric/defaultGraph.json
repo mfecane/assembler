@@ -1,61 +1,25 @@
 {
   "entryGraphId": "main",
   "entryInputValues": {
-    "bayCount": 5,
-    "shelfCount": 3,
-    "shelfStyle": "Label",
-    "backPanelStyle": "Perforated",
-    "finish": "#f4f4f5",
-    "showBackPanels": true
+    "number-1": 2,
+    "number-2": 3
   },
   "graphs": [
     {
       "id": "main",
-      "label": "MaxShelf Configurator",
+      "label": "Root",
       "inputs": [
         {
-          "id": "bayCount",
-          "label": "Bay count",
+          "id": "number-1",
+          "label": "Number",
           "valueType": "number",
-          "defaultValue": 5
+          "defaultValue": 1
         },
         {
-          "id": "shelfCount",
-          "label": "Shelves per bay",
+          "id": "number-2",
+          "label": "Number",
           "valueType": "number",
-          "defaultValue": 3
-        },
-        {
-          "id": "shelfStyle",
-          "label": "Shelf style",
-          "valueType": "enum",
-          "options": [
-            "Label",
-            "NoLabel"
-          ],
-          "defaultValue": "Label"
-        },
-        {
-          "id": "backPanelStyle",
-          "label": "Back panel style",
-          "valueType": "enum",
-          "options": [
-            "Perforated",
-            "Normal"
-          ],
-          "defaultValue": "Perforated"
-        },
-        {
-          "id": "finish",
-          "label": "Finish",
-          "valueType": "color",
-          "defaultValue": "#f4f4f5"
-        },
-        {
-          "id": "showBackPanels",
-          "label": "Show back panels",
-          "valueType": "boolean",
-          "defaultValue": true
+          "defaultValue": 1
         }
       ],
       "output": {
@@ -65,172 +29,63 @@
       },
       "nodes": [
         {
-          "id": "main-bay-count-input",
-          "name": "Bay count",
-          "type": "graphInput",
-          "position": {
-            "x": -371.4261873877324,
-            "y": -530.5628384812139
-          },
-          "data": {
-            "inputId": "bayCount"
-          }
-        },
-        {
-          "id": "main-shelf-count-input",
-          "name": "Shelves per bay",
-          "type": "graphInput",
-          "position": {
-            "x": -420.58897203949437,
-            "y": -1024.2340492626852
-          },
-          "data": {
-            "inputId": "shelfCount"
-          }
-        },
-        {
-          "id": "main-shelf-style-input",
-          "name": "Shelf style",
-          "type": "graphInput",
-          "position": {
-            "x": -1385.136656672325,
-            "y": -774.5599081284042
-          },
-          "data": {
-            "inputId": "shelfStyle"
-          }
-        },
-        {
-          "id": "main-back-panel-style-input",
-          "name": "Back panel style",
-          "type": "graphInput",
-          "position": {
-            "x": -1650.3427598628728,
-            "y": -259.39063265400085
-          },
-          "data": {
-            "inputId": "backPanelStyle"
-          }
-        },
-        {
-          "id": "main-finish-input",
-          "name": "Finish",
-          "type": "graphInput",
-          "position": {
-            "x": -1119.9581452438615,
-            "y": 174.64763015071568
-          },
-          "data": {
-            "inputId": "finish"
-          }
-        },
-        {
-          "id": "main-show-back-panels-input",
-          "name": "Show back panels",
-          "type": "graphInput",
-          "position": {
-            "x": -850,
-            "y": 360
-          },
-          "data": {
-            "inputId": "showBackPanels"
-          }
-        },
-        {
-          "id": "wing-instance",
-          "name": "Single Wing",
-          "type": "graphInstance",
-          "position": {
-            "x": 791.872543739938,
-            "y": 155.75762892485912
-          },
-          "data": {
-            "graphId": "wing"
-          }
-        },
-        {
           "id": "output",
           "name": "Configured shelving",
           "position": {
-            "x": 1794.0083163143997,
-            "y": 187.94032904254072
+            "x": 1900,
+            "y": 260
           },
           "type": "graphOutput",
           "data": {}
         },
         {
-          "id": "transform-4",
-          "name": "Transform",
+          "id": "graphInstance-1",
+          "name": "Wing A",
           "position": {
-            "x": 1000.433697895789,
-            "y": 336.75263558770405
+            "x": 920,
+            "y": 80
+          },
+          "type": "graphInstance",
+          "data": {
+            "graphId": "graph-1"
+          }
+        },
+        {
+          "id": "graphInstance-2",
+          "name": "Wing B",
+          "position": {
+            "x": 920,
+            "y": 360
+          },
+          "type": "graphInstance",
+          "data": {
+            "graphId": "graph-1"
+          }
+        },
+        {
+          "id": "graphInstance-3",
+          "name": "Corner",
+          "position": {
+            "x": 920,
+            "y": 680
+          },
+          "type": "graphInstance",
+          "data": {
+            "graphId": "graph-2"
+          }
+        },
+        {
+          "id": "transform-main-wing-a",
+          "name": "Attach wing A",
+          "position": {
+            "x": 1230,
+            "y": 80
           },
           "type": "transform",
           "data": {
             "translation": {
-              "x": 2.6,
+              "x": 1.26,
               "y": 0,
-              "z": 2.6
-            },
-            "rotation": {
-              "x": 0,
-              "y": -90,
-              "z": 0
-            },
-            "scale": {
-              "x": -1,
-              "y": 1,
-              "z": 1
-            },
-            "origin": {
-              "x": "middle",
-              "y": "middle",
-              "z": "middle"
-            },
-            "copy": true,
-            "uniformScale": false
-          }
-        },
-        {
-          "id": "group-3",
-          "name": "Group",
-          "position": {
-            "x": 1533.2201554585392,
-            "y": 164.64601197266342
-          },
-          "type": "group",
-          "data": {
-            "inputPorts": [
-              "input-1",
-              "input-2",
-              "input-3"
-            ]
-          }
-        },
-        {
-          "id": "meshAsset-4",
-          "name": "Mesh Asset",
-          "position": {
-            "x": 142.84989542268386,
-            "y": 1083.4697041998077
-          },
-          "type": "meshAsset",
-          "data": {
-            "meshId": "asset:backplate-corner"
-          }
-        },
-        {
-          "id": "transform-5",
-          "name": "Transform",
-          "position": {
-            "x": 412.84989542268386,
-            "y": 937.4697041998077
-          },
-          "type": "transform",
-          "data": {
-            "translation": {
-              "x": 0,
-              "y": 0.5,
               "z": 0
             },
             "rotation": {
@@ -253,23 +108,44 @@
           }
         },
         {
-          "id": "meshAsset-5",
-          "name": "Mesh Asset",
+          "id": "transform-main-wing-b",
+          "name": "Attach wing B",
           "position": {
-            "x": 142.84989542268386,
-            "y": 1383.4697041998077
+            "x": 1230,
+            "y": 360
           },
-          "type": "meshAsset",
+          "type": "transform",
           "data": {
-            "meshId": "asset:base-corner"
+            "translation": {
+              "x": 0,
+              "y": 0,
+              "z": 1.26
+            },
+            "rotation": {
+              "x": 0,
+              "y": -90,
+              "z": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": -1
+            },
+            "origin": {
+              "x": "middle",
+              "y": "middle",
+              "z": "middle"
+            },
+            "copy": false,
+            "uniformScale": false
           }
         },
         {
-          "id": "group-4",
-          "name": "Group",
+          "id": "group-main-corner-run",
+          "name": "Corner run",
           "position": {
-            "x": 838.8498954226839,
-            "y": 1219.4697041998077
+            "x": 1580,
+            "y": 260
           },
           "type": "group",
           "data": {
@@ -282,360 +158,171 @@
           }
         },
         {
-          "id": "meshAsset-6",
-          "name": "Mesh Asset",
+          "id": "graphInput-1",
+          "name": "Sections count",
           "position": {
-            "x": -287.15010457731614,
-            "y": 1635.4697041998077
+            "x": 480,
+            "y": 100
           },
-          "type": "meshAsset",
+          "type": "graphInput",
           "data": {
-            "meshId": "asset:shelf-corner"
+            "inputId": "number-1"
           }
         },
         {
-          "id": "transform-6",
-          "name": "Transform",
+          "id": "graphInput-2",
+          "name": "Shelves count",
           "position": {
-            "x": 20.849895422683858,
-            "y": 1527.4697041998077
+            "x": 480,
+            "y": 360
           },
-          "type": "transform",
+          "type": "graphInput",
           "data": {
-            "translation": {
-              "x": 0,
-              "y": 1.5,
-              "z": 0
-            },
-            "rotation": {
-              "x": 0,
-              "y": 0,
-              "z": 0
-            },
-            "scale": {
-              "x": 1,
-              "y": 1,
-              "z": 1
-            },
-            "origin": {
-              "x": "middle",
-              "y": "middle",
-              "z": "middle"
-            },
-            "copy": false,
-            "uniformScale": true
-          }
-        },
-        {
-          "id": "array-4",
-          "name": "Array",
-          "position": {
-            "x": 368.84989542268386,
-            "y": 1639.4697041998077
-          },
-          "type": "array",
-          "data": {
-            "count": 2,
-            "axis": "y",
-            "offset": 1
-          }
-        },
-        {
-          "id": "transform-7",
-          "name": "Transform",
-          "position": {
-            "x": 1106.3497733523714,
-            "y": 1084.7160115728545
-          },
-          "type": "transform",
-          "data": {
-            "translation": {
-              "x": 2.6,
-              "y": 0,
-              "z": 0
-            },
-            "rotation": {
-              "x": 0,
-              "y": 0,
-              "z": 0
-            },
-            "scale": {
-              "x": 1,
-              "y": 1,
-              "z": 1
-            },
-            "origin": {
-              "x": "middle",
-              "y": "middle",
-              "z": "middle"
-            },
-            "copy": false,
-            "uniformScale": true
+            "inputId": "number-2"
           }
         }
       ],
       "edges": [
         {
-          "id": "main-bayCount->wing-instance:bayCount",
-          "sourceNodeId": "main-bay-count-input",
-          "targetNodeId": "wing-instance",
-          "sourcePort": "bayCount",
-          "targetPort": "bayCount"
-        },
-        {
-          "id": "main-shelfCount->wing-instance:shelfCount",
-          "sourceNodeId": "main-shelf-count-input",
-          "targetNodeId": "wing-instance",
-          "sourcePort": "shelfCount",
-          "targetPort": "shelfCount"
-        },
-        {
-          "id": "main-shelfStyle->wing-instance:shelfStyle",
-          "sourceNodeId": "main-shelf-style-input",
-          "targetNodeId": "wing-instance",
-          "sourcePort": "shelfStyle",
-          "targetPort": "shelfStyle"
-        },
-        {
-          "id": "main-backPanelStyle->wing-instance:backPanelStyle",
-          "sourceNodeId": "main-back-panel-style-input",
-          "targetNodeId": "wing-instance",
-          "sourcePort": "backPanelStyle",
-          "targetPort": "backPanelStyle"
-        },
-        {
-          "id": "main-finish->wing-instance:finish",
-          "sourceNodeId": "main-finish-input",
-          "targetNodeId": "wing-instance",
-          "sourcePort": "finish",
-          "targetPort": "finish"
-        },
-        {
-          "id": "main-showBackPanels->wing-instance:showBackPanels",
-          "sourceNodeId": "main-show-back-panels-input",
-          "targetNodeId": "wing-instance",
-          "sourcePort": "showBackPanels",
-          "targetPort": "showBackPanels"
-        },
-        {
-          "id": "main-shelf-count-input:shelfCount->array-4:count",
-          "sourceNodeId": "main-shelf-count-input",
-          "targetNodeId": "array-4",
-          "sourcePort": "shelfCount",
-          "targetPort": "count"
-        },
-        {
-          "id": "wing-instance:geometry->transform-4:geometry",
-          "sourceNodeId": "wing-instance",
-          "targetNodeId": "transform-4",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
-        },
-        {
-          "id": "transform-4:geometry->group-3:input-1",
-          "sourceNodeId": "transform-4",
-          "targetNodeId": "group-3",
-          "sourcePort": "geometry",
-          "targetPort": "input-1"
-        },
-        {
-          "id": "transform-7:geometry->group-3:input-2",
-          "sourceNodeId": "transform-7",
-          "targetNodeId": "group-3",
-          "sourcePort": "geometry",
-          "targetPort": "input-2"
-        },
-        {
-          "id": "group-3:geometry->output:geometry",
-          "sourceNodeId": "group-3",
+          "id": "group-main-corner-run:geometry->output:geometry",
+          "sourceNodeId": "group-main-corner-run",
           "targetNodeId": "output",
           "sourcePort": "geometry",
           "targetPort": "geometry"
         },
         {
-          "id": "meshAsset-4:geometry->transform-5:geometry",
-          "sourceNodeId": "meshAsset-4",
-          "targetNodeId": "transform-5",
+          "id": "graphInput-1:number-1->graphInstance-1:number-1",
+          "sourceNodeId": "graphInput-1",
+          "targetNodeId": "graphInstance-1",
+          "sourcePort": "number-1",
+          "targetPort": "number-1"
+        },
+        {
+          "id": "graphInput-2:number-2->graphInstance-1:number-2",
+          "sourceNodeId": "graphInput-2",
+          "targetNodeId": "graphInstance-1",
+          "sourcePort": "number-2",
+          "targetPort": "number-2"
+        },
+        {
+          "id": "graphInput-1:number-1->graphInstance-2:number-1",
+          "sourceNodeId": "graphInput-1",
+          "targetNodeId": "graphInstance-2",
+          "sourcePort": "number-1",
+          "targetPort": "number-1"
+        },
+        {
+          "id": "graphInput-2:number-2->graphInstance-2:number-2",
+          "sourceNodeId": "graphInput-2",
+          "targetNodeId": "graphInstance-2",
+          "sourcePort": "number-2",
+          "targetPort": "number-2"
+        },
+        {
+          "id": "graphInput-2:number-2->graphInstance-3:number-2",
+          "sourceNodeId": "graphInput-2",
+          "targetNodeId": "graphInstance-3",
+          "sourcePort": "number-2",
+          "targetPort": "number-2"
+        },
+        {
+          "id": "graphInstance-1:geometry->transform-main-wing-a:geometry",
+          "sourceNodeId": "graphInstance-1",
+          "targetNodeId": "transform-main-wing-a",
           "sourcePort": "geometry",
           "targetPort": "geometry"
         },
         {
-          "id": "transform-5:geometry->group-4:input-1",
-          "sourceNodeId": "transform-5",
-          "targetNodeId": "group-4",
+          "id": "graphInstance-2:geometry->transform-main-wing-b:geometry",
+          "sourceNodeId": "graphInstance-2",
+          "targetNodeId": "transform-main-wing-b",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "transform-main-wing-a:geometry->group-main-corner-run:input-1",
+          "sourceNodeId": "transform-main-wing-a",
+          "targetNodeId": "group-main-corner-run",
           "sourcePort": "geometry",
           "targetPort": "input-1"
         },
         {
-          "id": "meshAsset-5:geometry->group-4:input-2",
-          "sourceNodeId": "meshAsset-5",
-          "targetNodeId": "group-4",
+          "id": "transform-main-wing-b:geometry->group-main-corner-run:input-2",
+          "sourceNodeId": "transform-main-wing-b",
+          "targetNodeId": "group-main-corner-run",
           "sourcePort": "geometry",
           "targetPort": "input-2"
         },
         {
-          "id": "meshAsset-6:geometry->transform-6:geometry",
-          "sourceNodeId": "meshAsset-6",
-          "targetNodeId": "transform-6",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
-        },
-        {
-          "id": "transform-6:geometry->array-4:geometry",
-          "sourceNodeId": "transform-6",
-          "targetNodeId": "array-4",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
-        },
-        {
-          "id": "array-4:geometry->group-4:input-3",
-          "sourceNodeId": "array-4",
-          "targetNodeId": "group-4",
+          "id": "graphInstance-3:geometry->group-main-corner-run:input-3",
+          "sourceNodeId": "graphInstance-3",
+          "targetNodeId": "group-main-corner-run",
           "sourcePort": "geometry",
           "targetPort": "input-3"
-        },
-        {
-          "id": "group-4:geometry->transform-7:geometry",
-          "sourceNodeId": "group-4",
-          "targetNodeId": "transform-7",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
         }
       ]
     },
     {
-      "id": "wing",
-      "label": "Single Wing",
+      "id": "graph-1",
+      "label": "Wing",
       "inputs": [
         {
-          "id": "bayCount",
-          "label": "Bay count",
-          "valueType": "number",
-          "defaultValue": 5
-        },
-        {
-          "id": "shelfCount",
-          "label": "Shelves per bay",
+          "id": "number-1",
+          "label": "Number",
           "valueType": "number",
           "defaultValue": 3
         },
         {
-          "id": "shelfStyle",
-          "label": "Shelf style",
-          "valueType": "enum",
-          "options": [
-            "Label",
-            "NoLabel"
-          ],
-          "defaultValue": "Label"
+          "id": "number-2",
+          "label": "Number",
+          "valueType": "number",
+          "defaultValue": 2
         },
         {
-          "id": "backPanelStyle",
-          "label": "Back panel style",
-          "valueType": "enum",
-          "options": [
-            "Perforated",
-            "Normal"
-          ],
-          "defaultValue": "Perforated"
-        },
-        {
-          "id": "finish",
-          "label": "Finish",
-          "valueType": "color",
-          "defaultValue": "#f4f4f5"
-        },
-        {
-          "id": "showBackPanels",
-          "label": "Show back panels",
+          "id": "include-last-support",
+          "label": "Include last post and base",
           "valueType": "boolean",
           "defaultValue": true
         }
       ],
       "output": {
         "id": "geometry",
-        "label": "Wing",
+        "label": "Geometry",
         "valueType": "geometry"
       },
       "nodes": [
         {
-          "id": "wing-bay-count-input",
-          "name": "Bay count",
-          "type": "graphInput",
+          "id": "graph-1-output",
+          "name": "Geometry",
           "position": {
-            "x": -371.4261873877324,
-            "y": -530.5628384812139
+            "x": 500,
+            "y": 120
           },
+          "type": "graphOutput",
+          "data": {}
+        },
+        {
+          "id": "group-1",
+          "name": "Shelf run",
+          "position": {
+            "x": 99.12377659678634,
+            "y": -107.25654256429297
+          },
+          "type": "group",
           "data": {
-            "inputId": "bayCount"
+            "inputPorts": [
+              "input-1",
+              "input-4",
+              "input-5"
+            ]
           }
         },
         {
-          "id": "wing-shelf-count-input",
-          "name": "Shelves per bay",
-          "type": "graphInput",
-          "position": {
-            "x": -420.58897203949437,
-            "y": -1024.2340492626852
-          },
-          "data": {
-            "inputId": "shelfCount"
-          }
-        },
-        {
-          "id": "wing-shelf-style-input",
-          "name": "Shelf style",
-          "type": "graphInput",
-          "position": {
-            "x": -1385.136656672325,
-            "y": -774.5599081284042
-          },
-          "data": {
-            "inputId": "shelfStyle"
-          }
-        },
-        {
-          "id": "wing-back-panel-style-input",
-          "name": "Back panel style",
-          "type": "graphInput",
-          "position": {
-            "x": -1650.3427598628728,
-            "y": -259.39063265400085
-          },
-          "data": {
-            "inputId": "backPanelStyle"
-          }
-        },
-        {
-          "id": "wing-finish-input",
-          "name": "Finish",
-          "type": "graphInput",
-          "position": {
-            "x": -1119.9581452438615,
-            "y": 174.64763015071568
-          },
-          "data": {
-            "inputId": "finish"
-          }
-        },
-        {
-          "id": "wing-show-back-panels-input",
-          "name": "Show back panels",
-          "type": "graphInput",
-          "position": {
-            "x": -850,
-            "y": 360
-          },
-          "data": {
-            "inputId": "showBackPanels"
-          }
-        },
-        {
-          "id": "meshAsset-2",
+          "id": "meshAsset-4",
           "name": "Mesh Asset",
           "position": {
-            "x": -407.3385879849635,
-            "y": 154.04919700535652
+            "x": -1688.699484292999,
+            "y": -1073.6708521833716
           },
           "type": "meshAsset",
           "data": {
@@ -643,47 +330,30 @@
           }
         },
         {
-          "id": "group-1",
-          "name": "Group",
-          "position": {
-            "x": 224.28373811952002,
-            "y": -93.66959014096255
-          },
-          "type": "group",
-          "data": {
-            "inputPorts": [
-              "input-1",
-              "input-2",
-              "input-3",
-              "input-5"
-            ]
-          }
-        },
-        {
-          "id": "meshAsset-3",
+          "id": "meshAsset-5",
           "name": "Mesh Asset",
           "position": {
-            "x": -709.2666670982513,
-            "y": 548.9490187958783
+            "x": -1691.0990601168749,
+            "y": -1484.668964900689
           },
           "type": "meshAsset",
           "data": {
-            "meshId": "asset:post"
+            "meshId": "asset:maxshelf:upright:1200"
           }
         },
         {
           "id": "transform-1",
           "name": "Transform",
           "position": {
-            "x": -414.53491839832805,
-            "y": 398.7046122805707
+            "x": -1399.3152746247852,
+            "y": -1628.3969231499602
           },
           "type": "transform",
           "data": {
             "translation": {
-              "x": 0.55,
+              "x": 0,
               "y": 0,
-              "z": 0
+              "z": -0.22
             },
             "rotation": {
               "x": 0,
@@ -708,8 +378,539 @@
           "id": "transform-2",
           "name": "Transform",
           "position": {
-            "x": -410.21712015030926,
-            "y": -270.5342973831455
+            "x": -1396.67157693116,
+            "y": -1209.5927827909486
+          },
+          "type": "transform",
+          "data": {
+            "translation": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            },
+            "origin": {
+              "x": "middle",
+              "y": "middle",
+              "z": "middle"
+            },
+            "copy": false,
+            "uniformScale": true
+          }
+        },
+        {
+          "id": "meshAsset-6",
+          "name": "Mesh Asset",
+          "position": {
+            "x": -2571.9552976987316,
+            "y": -61.61780043819658
+          },
+          "type": "meshAsset",
+          "data": {
+            "meshId": "asset:shelf-simple"
+          }
+        },
+        {
+          "id": "transform-3",
+          "name": "Transform",
+          "position": {
+            "x": -2286.689623322089,
+            "y": -211.00887250162646
+          },
+          "type": "transform",
+          "data": {
+            "translation": {
+              "x": 0.26,
+              "y": 0.64,
+              "z": 0.43
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": -1
+            },
+            "origin": {
+              "x": "middle",
+              "y": "middle",
+              "z": "middle"
+            },
+            "copy": false,
+            "uniformScale": false
+          }
+        },
+        {
+          "id": "meshAsset-7",
+          "name": "Mesh Asset",
+          "position": {
+            "x": -2844.7276878162224,
+            "y": 416.2816849684194
+          },
+          "type": "meshAsset",
+          "data": {
+            "meshId": "asset:maxshelf:bracket:370"
+          }
+        },
+        {
+          "id": "transform-4",
+          "name": "Transform",
+          "position": {
+            "x": -2552.806746153994,
+            "y": 279.5779251389703
+          },
+          "type": "transform",
+          "data": {
+            "translation": {
+              "x": 0,
+              "y": 0.58,
+              "z": 0.01
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": -1
+            },
+            "origin": {
+              "x": "middle",
+              "y": "middle",
+              "z": "middle"
+            },
+            "copy": false,
+            "uniformScale": false
+          }
+        },
+        {
+          "id": "array-1",
+          "name": "Supports",
+          "position": {
+            "x": -274.9907606303131,
+            "y": -233.24091901444598
+          },
+          "type": "array",
+          "data": {
+            "count": 3,
+            "axis": "x",
+            "offset": 1.26
+          }
+        },
+        {
+          "id": "group-2",
+          "name": "Post and base",
+          "position": {
+            "x": -622.3464251174536,
+            "y": -203.69275740651952
+          },
+          "type": "group",
+          "data": {
+            "inputPorts": [
+              "input-1",
+              "input-3",
+              "input-4"
+            ]
+          }
+        },
+        {
+          "id": "graphInput-1",
+          "name": "Number",
+          "position": {
+            "x": -1347.5375390720383,
+            "y": -755.7774759069309
+          },
+          "type": "graphInput",
+          "data": {
+            "inputId": "number-1"
+          }
+        },
+        {
+          "id": "group-3",
+          "name": "Group",
+          "position": {
+            "x": -1881.9754716587677,
+            "y": 95.03153433177738
+          },
+          "type": "group",
+          "data": {
+            "inputPorts": [
+              "input-1",
+              "input-2",
+              "input-3",
+              "input-4"
+            ]
+          }
+        },
+        {
+          "id": "array-2",
+          "name": "Array",
+          "position": {
+            "x": -988.4395252276774,
+            "y": -136.69018264443082
+          },
+          "type": "array",
+          "data": {
+            "count": 2,
+            "axis": "y",
+            "offset": 0.3
+          }
+        },
+        {
+          "id": "graphInput-2",
+          "name": "Number",
+          "position": {
+            "x": -2061.650796299403,
+            "y": -330.9606944139038
+          },
+          "type": "graphInput",
+          "data": {
+            "inputId": "number-2"
+          }
+        },
+        {
+          "id": "transform-5",
+          "name": "Transform",
+          "position": {
+            "x": -2175.3410600628627,
+            "y": 426.0384078854812
+          },
+          "type": "transform",
+          "data": {
+            "translation": {
+              "x": 1.26,
+              "y": 0,
+              "z": 0
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            },
+            "origin": {
+              "x": "middle",
+              "y": "middle",
+              "z": "middle"
+            },
+            "copy": false,
+            "uniformScale": true
+          }
+        },
+        {
+          "id": "transform-6",
+          "name": "Transform",
+          "position": {
+            "x": -1474.0193189262425,
+            "y": -82.470433609045
+          },
+          "type": "transform",
+          "data": {
+            "translation": {
+              "x": 0,
+              "y": 0,
+              "z": -0.33
+            },
+            "rotation": {
+              "x": 25,
+              "y": 0,
+              "z": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            },
+            "origin": {
+              "x": "min",
+              "y": "min",
+              "z": "min"
+            },
+            "copy": false,
+            "uniformScale": true
+          }
+        },
+        {
+          "id": "array-3",
+          "name": "Shelf Sections",
+          "position": {
+            "x": -610,
+            "y": 105
+          },
+          "type": "array",
+          "data": {
+            "count": 3,
+            "axis": "x",
+            "offset": 1.26
+          }
+        },
+        {
+          "id": "sum-1",
+          "name": "Optional last support",
+          "position": {
+            "x": -735,
+            "y": -510
+          },
+          "type": "sum",
+          "data": {
+            "constant": 1,
+            "enabled": true,
+            "inputPorts": [
+              "input-1",
+              "input-2"
+            ]
+          }
+        },
+        {
+          "id": "graphInput-3",
+          "name": "Include last post and base",
+          "position": {
+            "x": -1080,
+            "y": -525
+          },
+          "type": "graphInput",
+          "data": {
+            "inputId": "include-last-support"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "meshAsset-5:geometry->transform-1:geometry",
+          "sourceNodeId": "meshAsset-5",
+          "targetNodeId": "transform-1",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "meshAsset-4:geometry->transform-2:geometry",
+          "sourceNodeId": "meshAsset-4",
+          "targetNodeId": "transform-2",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "group-1:geometry->graph-1-output:geometry",
+          "sourceNodeId": "group-1",
+          "targetNodeId": "graph-1-output",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "meshAsset-6:geometry->transform-3:geometry",
+          "sourceNodeId": "meshAsset-6",
+          "targetNodeId": "transform-3",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "meshAsset-7:geometry->transform-4:geometry",
+          "sourceNodeId": "meshAsset-7",
+          "targetNodeId": "transform-4",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "group-2:geometry->array-1:geometry",
+          "sourceNodeId": "group-2",
+          "targetNodeId": "array-1",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "array-1:geometry->group-1:input-1",
+          "sourceNodeId": "array-1",
+          "targetNodeId": "group-1",
+          "sourcePort": "geometry",
+          "targetPort": "input-1"
+        },
+        {
+          "id": "sum-1:number->array-1:count",
+          "sourceNodeId": "sum-1",
+          "targetNodeId": "array-1",
+          "sourcePort": "number",
+          "targetPort": "count"
+        },
+        {
+          "id": "graphInput-1:number-1->sum-1:input-1",
+          "sourceNodeId": "graphInput-1",
+          "targetNodeId": "sum-1",
+          "sourcePort": "number-1",
+          "targetPort": "input-1"
+        },
+        {
+          "id": "graphInput-3:include-last-support->sum-1:enabled",
+          "sourceNodeId": "graphInput-3",
+          "targetNodeId": "sum-1",
+          "sourcePort": "include-last-support",
+          "targetPort": "enabled"
+        },
+        {
+          "id": "transform-2:geometry->group-2:input-3",
+          "sourceNodeId": "transform-2",
+          "targetNodeId": "group-2",
+          "sourcePort": "geometry",
+          "targetPort": "input-3"
+        },
+        {
+          "id": "transform-1:geometry->group-2:input-4",
+          "sourceNodeId": "transform-1",
+          "targetNodeId": "group-2",
+          "sourcePort": "geometry",
+          "targetPort": "input-4"
+        },
+        {
+          "id": "transform-3:geometry->group-3:input-1",
+          "sourceNodeId": "transform-3",
+          "targetNodeId": "group-3",
+          "sourcePort": "geometry",
+          "targetPort": "input-1"
+        },
+        {
+          "id": "transform-4:geometry->group-3:input-2",
+          "sourceNodeId": "transform-4",
+          "targetNodeId": "group-3",
+          "sourcePort": "geometry",
+          "targetPort": "input-2"
+        },
+        {
+          "id": "array-2:geometry->array-3:geometry",
+          "sourceNodeId": "array-2",
+          "targetNodeId": "array-3",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "graphInput-1:number-1->array-3:count",
+          "sourceNodeId": "graphInput-1",
+          "targetNodeId": "array-3",
+          "sourcePort": "number-1",
+          "targetPort": "count"
+        },
+        {
+          "id": "array-3:geometry->group-1:input-4",
+          "sourceNodeId": "array-3",
+          "targetNodeId": "group-1",
+          "sourcePort": "geometry",
+          "targetPort": "input-4"
+        },
+        {
+          "id": "graphInput-2:number-2->array-2:count",
+          "sourceNodeId": "graphInput-2",
+          "targetNodeId": "array-2",
+          "sourcePort": "number-2",
+          "targetPort": "count"
+        },
+        {
+          "id": "transform-4:geometry->transform-5:geometry",
+          "sourceNodeId": "transform-4",
+          "targetNodeId": "transform-5",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "transform-5:geometry->group-3:input-3",
+          "sourceNodeId": "transform-5",
+          "targetNodeId": "group-3",
+          "sourcePort": "geometry",
+          "targetPort": "input-3"
+        },
+        {
+          "id": "group-3:geometry->transform-6:geometry",
+          "sourceNodeId": "group-3",
+          "targetNodeId": "transform-6",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "transform-6:geometry->array-2:geometry",
+          "sourceNodeId": "transform-6",
+          "targetNodeId": "array-2",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        }
+      ]
+    },
+    {
+      "id": "graph-2",
+      "label": "Corner",
+      "inputs": [
+        {
+          "id": "number-2",
+          "label": "Shelves count",
+          "valueType": "number",
+          "defaultValue": 2
+        }
+      ],
+      "output": {
+        "id": "geometry",
+        "label": "Corner geometry",
+        "valueType": "geometry"
+      },
+      "nodes": [
+        {
+          "id": "corner-output",
+          "name": "Corner geometry",
+          "position": {
+            "x": 1050,
+            "y": 240
+          },
+          "type": "graphOutput",
+          "data": {}
+        },
+        {
+          "id": "corner-group",
+          "name": "Corner assembly",
+          "position": {
+            "x": 730,
+            "y": 240
+          },
+          "type": "group",
+          "data": {
+            "inputPorts": [
+              "input-1",
+              "input-2",
+              "input-3",
+              "input-4"
+            ]
+          }
+        },
+        {
+          "id": "corner-back-panel",
+          "name": "Corner back panel",
+          "position": {
+            "x": -877.6256372287752,
+            "y": -321.96455443894297
+          },
+          "type": "meshAsset",
+          "data": {
+            "meshId": "asset:maxshelf:backpanel:1000x300-plain"
+          }
+        },
+        {
+          "id": "corner-back-panel-position",
+          "name": "Position corner back panel",
+          "position": {
+            "x": -508.67783442033556,
+            "y": -379.72638979930156
           },
           "type": "transform",
           "data": {
@@ -734,127 +935,26 @@
               "z": "middle"
             },
             "copy": false,
-            "uniformScale": false
+            "uniformScale": true
           }
         },
         {
-          "id": "array-1",
-          "name": "Array",
+          "id": "corner-back-panel-pair",
+          "name": "Perpendicular back panels",
           "position": {
-            "x": 500.46683346569097,
-            "y": -96.55707143454984
-          },
-          "type": "array",
-          "data": {
-            "count": 3,
-            "axis": "x",
-            "offset": -1.1
-          }
-        },
-        {
-          "id": "array-2",
-          "name": "Array",
-          "position": {
-            "x": 434.5326191989484,
-            "y": 370.7581834564681
-          },
-          "type": "array",
-          "data": {
-            "count": 4,
-            "axis": "x",
-            "offset": -1.1
-          }
-        },
-        {
-          "id": "group-2",
-          "name": "Group",
-          "position": {
-            "x": 791.872543739938,
-            "y": 155.75762892485912
-          },
-          "type": "group",
-          "data": {
-            "inputPorts": [
-              "input-1",
-              "input-2",
-              "input-3"
-            ]
-          }
-        },
-        {
-          "id": "meshSelector-1",
-          "name": "Mesh Selector",
-          "position": {
-            "x": -1072.598820399954,
-            "y": -719.2539855172614
-          },
-          "type": "meshSelector",
-          "data": {
-            "selections": [
-              {
-                "enumValue": "Backplate Corner",
-                "meshId": "asset:backplate-corner"
-              },
-              {
-                "enumValue": "Backplate Perforated",
-                "meshId": "asset:backplate-perforated"
-              },
-              {
-                "enumValue": "Backplate Plain",
-                "meshId": "asset:backplate-plain"
-              },
-              {
-                "enumValue": "Base",
-                "meshId": "asset:base"
-              },
-              {
-                "enumValue": "Base Corner",
-                "meshId": "asset:base-corner"
-              },
-              {
-                "enumValue": "Post",
-                "meshId": "asset:post"
-              },
-              {
-                "enumValue": "Shelf Corner",
-                "meshId": "asset:shelf-corner"
-              },
-              {
-                "enumValue": "Shelf Label",
-                "meshId": "asset:shelf-label"
-              },
-              {
-                "enumValue": "Shelf Simple",
-                "meshId": "asset:shelf-simple"
-              },
-              {
-                "enumValue": "Label",
-                "meshId": "asset:shelf-label"
-              },
-              {
-                "enumValue": "NoLabel",
-                "meshId": "asset:shelf-simple"
-              }
-            ]
-          }
-        },
-        {
-          "id": "transform-3",
-          "name": "Transform",
-          "position": {
-            "x": -713.416246038669,
-            "y": -849.6262483932707
+            "x": -159.25550533487095,
+            "y": -413.690316390313
           },
           "type": "transform",
           "data": {
             "translation": {
               "x": 0,
-              "y": 1.5,
+              "y": 0,
               "z": 0
             },
             "rotation": {
               "x": 0,
-              "y": 0,
+              "y": -90,
               "z": 0
             },
             "scale": {
@@ -867,261 +967,237 @@
               "y": "middle",
               "z": "middle"
             },
-            "copy": false,
+            "copy": true,
             "uniformScale": true
           }
         },
         {
-          "id": "array-3",
-          "name": "Array",
+          "id": "corner-base",
+          "name": "Corner base",
           "position": {
-            "x": -156.59955019857915,
-            "y": -748.3334974584109
+            "x": -500,
+            "y": 80
+          },
+          "type": "meshAsset",
+          "data": {
+            "meshId": "asset:maxshelf:base-leg:470"
+          }
+        },
+        {
+          "id": "corner-base-pair",
+          "name": "Perpendicular bases",
+          "position": {
+            "x": -134.7344291877144,
+            "y": -15.285466917733814
+          },
+          "type": "transform",
+          "data": {
+            "translation": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "rotation": {
+              "x": 0,
+              "y": -90,
+              "z": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            },
+            "origin": {
+              "x": "middle",
+              "y": "middle",
+              "z": "middle"
+            },
+            "copy": true,
+            "uniformScale": true
+          }
+        },
+        {
+          "id": "corner-shelf",
+          "name": "Corner shelf",
+          "position": {
+            "x": -1006.7406481553268,
+            "y": 393.8511010669742
+          },
+          "type": "meshAsset",
+          "data": {
+            "meshId": "asset:maxshelf:shelf:1000x370"
+          }
+        },
+        {
+          "id": "corner-shelf-position",
+          "name": "Position corner shelf",
+          "position": {
+            "x": -712.1370131893905,
+            "y": 396.92555053348707
+          },
+          "type": "transform",
+          "data": {
+            "translation": {
+              "x": 0.26,
+              "y": 0.64,
+              "z": 0.43
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": -1
+            },
+            "origin": {
+              "x": "middle",
+              "y": "middle",
+              "z": "middle"
+            },
+            "copy": false,
+            "uniformScale": false
+          }
+        },
+        {
+          "id": "corner-shelf-pair",
+          "name": "Perpendicular shelves",
+          "position": {
+            "x": -190,
+            "y": 400
+          },
+          "type": "transform",
+          "data": {
+            "translation": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "rotation": {
+              "x": 0,
+              "y": -90,
+              "z": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            },
+            "origin": {
+              "x": "middle",
+              "y": "middle",
+              "z": "middle"
+            },
+            "copy": true,
+            "uniformScale": true
+          }
+        },
+        {
+          "id": "corner-shelf-array",
+          "name": "Corner shelf levels",
+          "position": {
+            "x": 150,
+            "y": 400
           },
           "type": "array",
           "data": {
-            "count": 8,
+            "count": 2,
             "axis": "y",
-            "offset": 1
+            "offset": 0.3
           }
         },
         {
-          "id": "sum-1",
-          "name": "Sum",
+          "id": "corner-shelf-count-input",
+          "name": "Shelves count",
           "position": {
-            "x": 79.86555394415626,
-            "y": 129.45880572413452
+            "x": -203.98931188991514,
+            "y": 903.3619820062409
           },
-          "type": "sum",
+          "type": "graphInput",
           "data": {
-            "constant": 1,
-            "enabled": true,
-            "inputPorts": [
-              "input-1",
-              "input-2"
-            ]
+            "inputId": "number-2"
           }
-        },
-        {
-          "id": "meshSelector-2",
-          "name": "Mesh Selector",
-          "position": {
-            "x": -1287.10083193554,
-            "y": -153.59216934493202
-          },
-          "type": "meshSelector",
-          "data": {
-            "selections": [
-              {
-                "enumValue": "Backplate Corner",
-                "meshId": "asset:backplate-corner"
-              },
-              {
-                "enumValue": "Backplate Perforated",
-                "meshId": "asset:backplate-perforated"
-              },
-              {
-                "enumValue": "Backplate Plain",
-                "meshId": "asset:backplate-plain"
-              },
-              {
-                "enumValue": "Base",
-                "meshId": "asset:base"
-              },
-              {
-                "enumValue": "Base Corner",
-                "meshId": "asset:base-corner"
-              },
-              {
-                "enumValue": "Post",
-                "meshId": "asset:post"
-              },
-              {
-                "enumValue": "Shelf Corner",
-                "meshId": "asset:shelf-corner"
-              },
-              {
-                "enumValue": "Shelf Label",
-                "meshId": "asset:shelf-label"
-              },
-              {
-                "enumValue": "Shelf Simple",
-                "meshId": "asset:shelf-simple"
-              },
-              {
-                "enumValue": "Perforated",
-                "meshId": "asset:backplate-perforated"
-              },
-              {
-                "enumValue": "Normal",
-                "meshId": "asset:backplate-plain"
-              }
-            ]
-          }
-        },
-        {
-          "id": "material-1",
-          "name": "Material",
-          "position": {
-            "x": -842.5706024411794,
-            "y": -77.61073171773907
-          },
-          "type": "material",
-          "data": {
-            "color": "#eaceac"
-          }
-        },
-        {
-          "id": "wing-output",
-          "name": "Wing",
-          "type": "graphOutput",
-          "position": {
-            "x": 1040,
-            "y": 155.75762892485912
-          },
-          "data": {}
         }
       ],
       "edges": [
         {
-          "id": "meshAsset-2:geometry->group-1:input-2",
-          "sourceNodeId": "meshAsset-2",
-          "targetNodeId": "group-1",
-          "sourcePort": "geometry",
-          "targetPort": "input-2"
-        },
-        {
-          "id": "meshAsset-3:geometry->transform-1:geometry",
-          "sourceNodeId": "meshAsset-3",
-          "targetNodeId": "transform-1",
+          "id": "corner-group:geometry->corner-output:geometry",
+          "sourceNodeId": "corner-group",
+          "targetNodeId": "corner-output",
           "sourcePort": "geometry",
           "targetPort": "geometry"
         },
         {
-          "id": "transform-2:geometry->group-1:input-1",
-          "sourceNodeId": "transform-2",
-          "targetNodeId": "group-1",
+          "id": "corner-back-panel:geometry->corner-back-panel-position:geometry",
+          "sourceNodeId": "corner-back-panel",
+          "targetNodeId": "corner-back-panel-position",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "corner-back-panel-position:geometry->corner-back-panel-pair:geometry",
+          "sourceNodeId": "corner-back-panel-position",
+          "targetNodeId": "corner-back-panel-pair",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "corner-back-panel-pair:geometry->corner-group:input-1",
+          "sourceNodeId": "corner-back-panel-pair",
+          "targetNodeId": "corner-group",
           "sourcePort": "geometry",
           "targetPort": "input-1"
         },
         {
-          "id": "group-1:geometry->array-1:geometry",
-          "sourceNodeId": "group-1",
-          "targetNodeId": "array-1",
+          "id": "corner-base:geometry->corner-base-pair:geometry",
+          "sourceNodeId": "corner-base",
+          "targetNodeId": "corner-base-pair",
           "sourcePort": "geometry",
           "targetPort": "geometry"
         },
         {
-          "id": "transform-1:geometry->array-2:geometry",
-          "sourceNodeId": "transform-1",
-          "targetNodeId": "array-2",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
-        },
-        {
-          "id": "array-2:geometry->group-2:input-1",
-          "sourceNodeId": "array-2",
-          "targetNodeId": "group-2",
-          "sourcePort": "geometry",
-          "targetPort": "input-1"
-        },
-        {
-          "id": "array-1:geometry->group-2:input-2",
-          "sourceNodeId": "array-1",
-          "targetNodeId": "group-2",
+          "id": "corner-base-pair:geometry->corner-group:input-2",
+          "sourceNodeId": "corner-base-pair",
+          "targetNodeId": "corner-group",
           "sourcePort": "geometry",
           "targetPort": "input-2"
         },
         {
-          "id": "wing-shelf-style-input:shelfStyle->meshSelector-1:enum",
-          "sourceNodeId": "wing-shelf-style-input",
-          "targetNodeId": "meshSelector-1",
-          "sourcePort": "shelfStyle",
-          "targetPort": "enum"
-        },
-        {
-          "id": "meshSelector-1:geometry->transform-3:geometry",
-          "sourceNodeId": "meshSelector-1",
-          "targetNodeId": "transform-3",
+          "id": "corner-shelf:geometry->corner-shelf-position:geometry",
+          "sourceNodeId": "corner-shelf",
+          "targetNodeId": "corner-shelf-position",
           "sourcePort": "geometry",
           "targetPort": "geometry"
         },
         {
-          "id": "wing-bay-count-input:bayCount->array-1:count",
-          "sourceNodeId": "wing-bay-count-input",
-          "targetNodeId": "array-1",
-          "sourcePort": "bayCount",
+          "id": "corner-shelf-position:geometry->corner-shelf-pair:geometry",
+          "sourceNodeId": "corner-shelf-position",
+          "targetNodeId": "corner-shelf-pair",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "corner-shelf-pair:geometry->corner-shelf-array:geometry",
+          "sourceNodeId": "corner-shelf-pair",
+          "targetNodeId": "corner-shelf-array",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "corner-shelf-count-input:number-2->corner-shelf-array:count",
+          "sourceNodeId": "corner-shelf-count-input",
+          "targetNodeId": "corner-shelf-array",
+          "sourcePort": "number-2",
           "targetPort": "count"
         },
         {
-          "id": "transform-3:geometry->array-3:geometry",
-          "sourceNodeId": "transform-3",
-          "targetNodeId": "array-3",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
-        },
-        {
-          "id": "array-3:geometry->group-1:input-3",
-          "sourceNodeId": "array-3",
-          "targetNodeId": "group-1",
+          "id": "corner-shelf-array:geometry->corner-group:input-3",
+          "sourceNodeId": "corner-shelf-array",
+          "targetNodeId": "corner-group",
           "sourcePort": "geometry",
           "targetPort": "input-3"
-        },
-        {
-          "id": "sum-1:number->array-2:count",
-          "sourceNodeId": "sum-1",
-          "targetNodeId": "array-2",
-          "sourcePort": "number",
-          "targetPort": "count"
-        },
-        {
-          "id": "wing-bay-count-input:bayCount->sum-1:input-1",
-          "sourceNodeId": "wing-bay-count-input",
-          "targetNodeId": "sum-1",
-          "sourcePort": "bayCount",
-          "targetPort": "input-1"
-        },
-        {
-          "id": "wing-shelf-count-input:shelfCount->array-3:count",
-          "sourceNodeId": "wing-shelf-count-input",
-          "targetNodeId": "array-3",
-          "sourcePort": "shelfCount",
-          "targetPort": "count"
-        },
-        {
-          "id": "wing-back-panel-style-input:backPanelStyle->meshSelector-2:enum",
-          "sourceNodeId": "wing-back-panel-style-input",
-          "targetNodeId": "meshSelector-2",
-          "sourcePort": "backPanelStyle",
-          "targetPort": "enum"
-        },
-        {
-          "id": "meshSelector-2:geometry->material-1:geometry",
-          "sourceNodeId": "meshSelector-2",
-          "targetNodeId": "material-1",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
-        },
-        {
-          "id": "material-1:geometry->transform-2:geometry",
-          "sourceNodeId": "material-1",
-          "targetNodeId": "transform-2",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
-        },
-        {
-          "id": "wing-finish-input:finish->material-1:color",
-          "sourceNodeId": "wing-finish-input",
-          "targetNodeId": "material-1",
-          "sourcePort": "finish",
-          "targetPort": "color"
-        },
-        {
-          "id": "group-2:geometry->wing-output:geometry",
-          "sourceNodeId": "group-2",
-          "targetNodeId": "wing-output",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
         }
       ]
     }
@@ -1129,46 +1205,22 @@
   "configurationPanel": {
     "controls": [
       {
-        "id": "bay-count-control",
-        "inputId": "bayCount",
-        "label": "Bay count",
+        "id": "number-1-control",
+        "max": 5,
+        "min": 0,
+        "step": 1,
         "type": "slider",
-        "min": 1,
-        "max": 12,
-        "step": 1
+        "label": "Sections count",
+        "inputId": "number-1"
       },
       {
-        "id": "shelf-count-control",
-        "inputId": "shelfCount",
-        "label": "Shelves per bay",
+        "id": "number-2-control",
+        "max": 5,
+        "min": 0,
+        "step": 1,
         "type": "slider",
-        "min": 1,
-        "max": 8,
-        "step": 1
-      },
-      {
-        "id": "shelf-style-control",
-        "inputId": "shelfStyle",
-        "label": "Shelf style",
-        "type": "select"
-      },
-      {
-        "id": "back-panel-style-control",
-        "inputId": "backPanelStyle",
-        "label": "Back panel style",
-        "type": "select"
-      },
-      {
-        "id": "finish-control",
-        "inputId": "finish",
-        "label": "Finish",
-        "type": "color"
-      },
-      {
-        "id": "show-back-panels-control",
-        "inputId": "showBackPanels",
-        "label": "Show back panels",
-        "type": "switch"
+        "label": "Shelves count",
+        "inputId": "number-2"
       }
     ]
   }

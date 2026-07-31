@@ -22,15 +22,21 @@ interface GraphTreeItem {
 	key: string
 	graphId: string
 	label: string
-	instanceId?: string
 	children: GraphTreeItem[]
 }
 
-export function GraphTree({ controller }: { controller: EditorController }) {
+export function GraphTree({
+	controller,
+	disabled = false,
+}: {
+	controller: EditorController
+	disabled?: boolean
+}) {
 	const { document, activeGraphId, revision } = useSyncExternalStore(
 		controller.subscribe,
 		controller.getSnapshot
 	)
+	const activeGraph = document.requireGraph(activeGraphId)
 	const [open, setOpen] = useState(false)
 	const { root, unused } = useMemo(
 		() => createGraphTree(document),
@@ -50,14 +56,16 @@ export function GraphTree({ controller }: { controller: EditorController }) {
 							<Button
 								data-id="graph-tree-trigger"
 								type="button"
-								variant="ghost"
+								variant="outline"
 								size="sm"
-								className="text-xs text-muted-foreground"
+								className="min-w-0 max-w-64 justify-start gap-2 bg-muted/40 px-3 shadow-none"
+								disabled={disabled}
 								aria-label="Select assembly"
+								aria-haspopup="tree"
 							>
-								<Network />
-								Assemblies
-								<ChevronDown className="opacity-50" />
+								<Network className="text-muted-foreground" />
+								<span className="min-w-0 flex-1 truncate text-left">{activeGraph.label}</span>
+								<ChevronDown className="ml-auto text-muted-foreground" />
 							</Button>
 						</PopoverTrigger>
 					</TooltipTrigger>
@@ -126,14 +134,11 @@ function TreeRow({
 				}`}
 				style={{ paddingLeft: 8 + depth * 14 }}
 				onClick={() => onOpen(item.graphId)}
-				title={item.instanceId ? `${item.label} instance ${item.instanceId}` : item.label}
+				title={item.label}
 			>
 				{depth > 0 && <ChevronRight className="h-3 w-3 opacity-50" />}
 				{entry ? <FileBox className="h-3.5 w-3.5" /> : <Network className="h-3.5 w-3.5" />}
 				<span className="truncate">{item.label}</span>
-				{item.instanceId && (
-					<span className="ml-auto truncate text-[9px] opacity-50">{item.instanceId}</span>
-				)}
 			</Button>
 			{item.children.map((child) => (
 				<TreeRow
@@ -152,36 +157,44 @@ function createGraphTree(document: EditorControllerSnapshot['document']): {
 	root: GraphTreeItem
 	unused: GraphTreeItem[]
 } {
-	const reachable = new Set<string>()
-	const build = (graphId: string, path: string, ancestors: ReadonlySet<string>): GraphTreeItem => {
+	const included = new Set<string>()
+	const build = (graphId: string, entry = false): GraphTreeItem | null => {
+		if (included.has(graphId)) return null
 		const graph = document.requireGraph(graphId)
-		reachable.add(graphId)
-		const nextAncestors = new Set(ancestors)
-		nextAncestors.add(graphId)
+		included.add(graphId)
 		const children = graph.model.getNodes()
 			.filter((node): node is GraphInstanceGraphNode => node instanceof GraphInstanceGraphNode)
 			.flatMap((node) => {
-				const child = document.getGraph(node.getGraphId())
-				if (!child || nextAncestors.has(child.id)) return []
-				const childPath = `${path}/${node.id}`
-				const item = build(child.id, childPath, nextAncestors)
-				return [{ ...item, key: childPath, instanceId: node.id }]
+				const childId = node.getGraphId()
+				if (!document.getGraph(childId)) return []
+				const item = build(childId)
+				return item ? [item] : []
 			})
-		return { key: path, graphId, label: graph.label, children }
+		return { key: entry ? `entry/${graphId}` : graphId, graphId, label: graph.label, children }
 	}
 
 	const entryId = document.getEntryGraphId()
-	const root = build(entryId, entryId, new Set())
-	const unreachable = document.getGraphs().filter((graph) => !reachable.has(graph.id))
-	const referencedByUnreachable = new Set(
-		unreachable.flatMap((graph) =>
+	const root = build(entryId, true)
+	if (!root) throw new Error(`Entry assembly "${entryId}" was already added to its own selector tree`)
+	const remaining = document.getGraphs().filter((graph) => !included.has(graph.id))
+	const remainingIds = new Set(remaining.map((graph) => graph.id))
+	const referencedByRemaining = new Set(
+		remaining.flatMap((graph) =>
 			graph.model.getNodes()
 				.filter((node): node is GraphInstanceGraphNode => node instanceof GraphInstanceGraphNode)
 				.map((node) => node.getGraphId())
+				.filter((graphId) => remainingIds.has(graphId))
 		)
 	)
-	const unusedRoots = unreachable.filter((graph) => !referencedByUnreachable.has(graph.id))
-	const unused = (unusedRoots.length > 0 ? unusedRoots : unreachable)
-		.map((graph) => build(graph.id, `unused/${graph.id}`, new Set()))
+	const unused = remaining
+		.filter((graph) => !referencedByRemaining.has(graph.id))
+		.flatMap((graph) => {
+			const item = build(graph.id)
+			return item ? [item] : []
+		})
+	remaining.forEach((graph) => {
+		const item = build(graph.id)
+		if (item) unused.push(item)
+	})
 	return { root, unused }
 }

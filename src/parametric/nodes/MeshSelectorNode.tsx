@@ -34,7 +34,7 @@ export function MeshSelectorNode({ id }: NodeProps<ParametricFlowNode>) {
 			className="min-w-60 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
 		>
 			<TypedHandle id="enum" type="target" position={Position.Left} valueType="enum" />
-			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} nodeLabel="Mesh Selector" />} />
+			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} />} />
 			<div className="flex flex-col gap-1.5">
 				{binding.availableEnumValues.map((enumValue) => {
 					const selection = binding.selections.find(

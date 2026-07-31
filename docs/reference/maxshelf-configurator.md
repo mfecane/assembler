@@ -130,6 +130,24 @@ An internal corner is modeled as **two independent wall runs** (A and B) meeting
    - Rows are re-sorted into a fixed category order: Uprights → Base → Shelves → Back Panel → Accessories → Gondola → Internal Corner.
 3. Minimum wall length is 1250mm (`IC_MIN_WALL`) — the 750mm corner plus at least one 500mm bay; shorter inputs are rejected outright.
 
+### 5.1 Current graph-fixture approximation
+
+[`projects/maxshelf/assembly.json`](../../projects/maxshelf/assembly.json) represents the internal
+corner as two independent instances of the reusable Wing graph plus a reusable Corner graph.
+The second section is rotated 90 degrees, with its depth axis mirrored so its shelves face away
+from the wall. Both sections are offset by one 1.26-unit shelf span from the corner origin. Section
+count and shelf count are forwarded to both wings; shelf count is also forwarded to the corner shelf
+array.
+
+The Wing graph's `include-last-support` input is intentionally not promoted to the Root graph or
+configuration panel. Both corner-run instances use its `false` default, removing the terminal post
+and base at the side joined to the Corner assembly.
+
+No dedicated internal-corner GLB assets are registered. The Corner graph therefore builds an MVP
+L-shaped infill by pairing the available 1000 × 300 back panel, 470mm base leg, and 1000 × 370 shelf
+meshes with rotated copies. This fixture demonstrates composition and configuration topology rather
+than the exact 750mm diagonal production geometry described above.
+
 ## 6. Visualization
 
 Two isometric SVG renderers, hand-built (no 3D library), using a fixed axonometric projection `P(x,y,z) = [(x−z)*0.866, (x+z)*0.5−y]`:

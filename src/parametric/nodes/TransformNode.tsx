@@ -24,7 +24,7 @@ export function TransformNode({ id }: NodeProps<ParametricFlowNode>) {
 			className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
 		>
 			<TypedHandle id="geometry" type="target" position={Position.Left} valueType="geometry" />
-			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} nodeLabel="Transform" />} />
+			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} />} />
 			<div className="flex flex-col gap-2">
 				<Vec3Field label="Position" fields={translation} />
 				<Vec3Field label="Rotation" fields={rotation} step={1} />

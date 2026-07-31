@@ -4,9 +4,19 @@
 
 - Actions use compact icon buttons with accessible labels and tooltips.
 - The delete-edge action appears only when one or more edges are selected.
-- Assembly deletion, assembly clearing, configuration-panel editing, node creation, asset
-  browsing, and JSON import/export are launched from the toolbar.
-- Destructive assembly actions retain confirmation dialogs.
+- Configuration-panel editing, node creation, asset browsing, and JSON import/export are launched
+  from the canvas toolbar.
+- The project header presents a breadcrumb-like hierarchy: a folder icon identifies the project,
+  followed by a directional separator and a grouped assembly control. The full current-assembly
+  control opens the assembly tree, keeping the dropdown anchored to the name it changes. Each graph
+  definition appears once even when it has multiple instances.
+- The assembly selector and adjacent actions button use a shared button group so they read as one
+  control. The actions menu provides Rename assembly, Clear assembly, and Delete assembly. Rename
+  uses a focused dialog. Clearing retains the Output node, while deletion removes the complete
+  assembly; both destructive actions require confirmation. Deletion is unavailable for the entry
+  assembly or an assembly that still has instances. Hovering or focusing the disabled delete action
+  explains the exact restriction, including the referencing assemblies and instance count when
+  applicable.
 - Node controls and viewport tools remain beside the content they affect.
 - The Add node menu stays within the viewport and scrolls internally when its node groups exceed
   the available height.
@@ -32,13 +42,15 @@ not persisted in the graph document.
 
 ## Node headers
 
-Every node uses the shared header treatment: a Lucide type icon, its persisted node name, and any
-node-specific actions. Double-clicking the name opens an inline editor. Enter or blur commits a
-non-empty trimmed name; Escape restores the current name. Assembly-input cards edit defaults and
-enum options only—their public labels remain owned by the separate configuration mapping UI.
+Every node uses the shared header treatment: a Lucide type icon, its persisted node name, any
+node-specific actions, and a three-dots actions menu. The header icon and title are drag surfaces;
+renaming is intentionally available only from the actions menu so editing gestures do not compete
+with node movement. Rename opens a focused dialog, while Delete retains a confirmation step and is
+omitted for the required Output node. Assembly-input cards edit defaults and enum options only—their
+public labels remain owned by the separate configuration mapping UI.
 
-Assembly instances use their explicit open action for navigation so header double-click remains
-consistent with every other node type.
+Assembly instances retain their explicit open action for navigation. Labels above transform vector
+inputs are also drag surfaces, while the inputs themselves remain interactive and do not move nodes.
 
 ## Verification
 

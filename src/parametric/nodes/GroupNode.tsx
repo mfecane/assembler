@@ -11,7 +11,7 @@ export function GroupNode({ id }: NodeProps<ParametricFlowNode>) {
 
 	return (
 		<div data-id={`group-node-${id}`} className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md">
-			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} nodeLabel="Group" />} />
+			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} />} />
 			<div className="flex flex-col gap-2">
 				{binding.inputPorts.map((port) => (
 					<div key={port.id} className="relative h-6 rounded border border-border bg-input">

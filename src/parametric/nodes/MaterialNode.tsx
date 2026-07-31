@@ -22,7 +22,7 @@ export function MaterialNode({ id }: NodeProps<ParametricFlowNode>) {
 				valueType="geometry"
 				style={{ top: '35%' }}
 			/>
-			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} nodeLabel="Material" />} />
+			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} />} />
 			<div className="nodrag relative">
 				<TypedHandle
 					id="color"

@@ -9,7 +9,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/ui/select'
-import { NodeDeleteButton } from '@/parametric/components/NodeDeleteButton'
 import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
@@ -41,7 +40,7 @@ export function SelectorNode({ id }: NodeProps<ParametricFlowNode>) {
 			data-id={`selector-node-${id}`}
 			className="min-w-56 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
 		>
-			<NodeHeader nodeId={id} actions={<NodeDeleteButton nodeId={id} nodeLabel="Enum" />} />
+			<NodeHeader nodeId={id} />
 			<div className="flex flex-col gap-2 text-xs">
 				<div className="flex flex-col gap-1">
 					<div className="flex items-center justify-between">

@@ -1,6 +1,21 @@
-import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Check, ChevronDown, Copy, Loader2, Plus, Save } from 'lucide-react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import {
+	ArrowLeft,
+	Check,
+	ChevronDown,
+	ChevronRight,
+	Copy,
+	Eraser,
+	FolderKanban,
+	Loader2,
+	MoreHorizontal,
+	Pencil,
+	Plus,
+	Save,
+	Trash2,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ButtonGroup } from '@/components/ui/button-group'
 import {
 	Dialog,
 	DialogContent,
@@ -15,9 +30,17 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from '@/components/ui/popover'
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { UserMenu } from '@/auth/UserMenu'
+import { ConfirmationDialog } from '@/parametric/components/ConfirmationDialog'
 import { GraphTree } from '@/parametric/components/GraphTree'
 import type { EditorController } from '@/parametric/editor/EditorController'
+import { GraphInstanceGraphNode } from '@/parametric/model/GraphNode'
 import type { User } from '@supabase/supabase-js'
 
 export type SaveState = 'clean' | 'dirty' | 'saving' | 'saved' | 'failed'
@@ -81,7 +104,7 @@ export function ProjectToolbar({
 				data-id="project-toolbar"
 				className="flex min-h-14 items-center justify-between gap-4 border-b border-border bg-surface px-3"
 			>
-				<div className="flex min-w-0 items-center gap-3">
+				<div className="flex min-w-0 items-center gap-2">
 					<Button
 						data-id="project-back-button"
 						type="button"
@@ -93,44 +116,56 @@ export function ProjectToolbar({
 						<ArrowLeft />
 						Back
 					</Button>
-					<div className="min-w-0">
-						<ProjectName
-							name={name}
-							disabled={projectRenamePending || saveState === 'saving'}
-							pending={projectRenamePending}
-							onRename={onRename}
+					<div data-id="project-identity" className="flex min-w-0 items-center gap-2 px-1">
+						<FolderKanban
+							className="size-4 shrink-0 text-muted-foreground"
+							aria-hidden="true"
 						/>
-						{projectRenameError && (
-							<details
-								data-id="project-rename-error-details"
-								className="relative text-xs"
-								open
-							>
-								<summary className="cursor-pointer text-danger underline underline-offset-2">
-									Project rename error details
-								</summary>
-								<pre className="absolute left-0 top-full z-50 mt-2 max-h-80 w-[min(40rem,calc(100vw-1.5rem))] overflow-auto whitespace-pre-wrap rounded-md border border-danger/40 bg-surface p-3 text-left text-xs text-foreground shadow-lg">
-									{projectRenameError}
-								</pre>
-							</details>
-						)}
-						{saveState === 'failed' && saveError && (
-							<details data-id="project-save-error-details" className="relative text-xs">
-								<summary className="cursor-pointer text-danger underline underline-offset-2">
-									Save error details
-								</summary>
-								<pre className="absolute left-0 top-full z-50 mt-2 max-h-80 w-[min(40rem,calc(100vw-1.5rem))] overflow-auto whitespace-pre-wrap rounded-md border border-danger/40 bg-surface p-3 text-left text-xs text-foreground shadow-lg">
-									{saveError}
-								</pre>
-							</details>
-						)}
+						<div className="min-w-0">
+							<ProjectName
+								name={name}
+								disabled={projectRenamePending || saveState === 'saving'}
+								pending={projectRenamePending}
+								onRename={onRename}
+							/>
+							{projectRenameError && (
+								<details
+									data-id="project-rename-error-details"
+									className="relative text-xs"
+									open
+								>
+									<summary className="cursor-pointer text-danger underline underline-offset-2">
+										Project rename error details
+									</summary>
+									<pre className="absolute left-0 top-full z-50 mt-2 max-h-80 w-[min(40rem,calc(100vw-1.5rem))] overflow-auto whitespace-pre-wrap rounded-md border border-danger/40 bg-surface p-3 text-left text-xs text-foreground shadow-lg">
+										{projectRenameError}
+									</pre>
+								</details>
+							)}
+							{saveState === 'failed' && saveError && (
+								<details data-id="project-save-error-details" className="relative text-xs">
+									<summary className="cursor-pointer text-danger underline underline-offset-2">
+										Save error details
+									</summary>
+									<pre className="absolute left-0 top-full z-50 mt-2 max-h-80 w-[min(40rem,calc(100vw-1.5rem))] overflow-auto whitespace-pre-wrap rounded-md border border-danger/40 bg-surface p-3 text-left text-xs text-foreground shadow-lg">
+										{saveError}
+									</pre>
+								</details>
+							)}
+						</div>
 					</div>
-					<div className="h-6 w-px bg-border" aria-hidden="true" />
+					<ChevronRight
+						className="size-4 shrink-0 text-muted-foreground/60"
+						aria-hidden="true"
+					/>
 					<div
 						data-id="project-assembly-controls"
 						className="flex items-center gap-1"
 					>
-						<GraphTree controller={controller} />
+						<AssemblyHeaderControls
+							controller={controller}
+							disabled={projectRenamePending || saveState === 'saving'}
+						/>
 						<Button
 							data-id="add-graph-button"
 							type="button"
@@ -283,6 +318,214 @@ export function ProjectToolbar({
 					</form>
 				</DialogContent>
 			</Dialog>
+		</>
+	)
+}
+
+function AssemblyHeaderControls({
+	controller,
+	disabled,
+}: {
+	controller: EditorController
+	disabled: boolean
+}) {
+	const { document, activeGraphId } = useSyncExternalStore(
+		controller.subscribe,
+		controller.getSnapshot,
+		controller.getSnapshot
+	)
+	const activeGraph = document.requireGraph(activeGraphId)
+	const canRemoveGraph = controller.canRemoveGraph(activeGraphId)
+	const isEntryGraph = activeGraphId === document.getEntryGraphId()
+	const referencingGraphs = document.getGraphs().flatMap((graph) => {
+		const instanceCount = graph.model.getNodes().filter(
+			(node) => node instanceof GraphInstanceGraphNode && node.getGraphId() === activeGraphId
+		).length
+		return instanceCount > 0 ? [{ label: graph.label, instanceCount }] : []
+	})
+	const graphInstanceCount = referencingGraphs.reduce(
+		(total, graph) => total + graph.instanceCount,
+		0
+	)
+	const deleteDisabledReason = isEntryGraph
+		? `“${activeGraph.label}” is the project entry assembly and cannot be deleted.`
+		: !canRemoveGraph
+			? `“${activeGraph.label}” is used by ${graphInstanceCount} instance${graphInstanceCount === 1 ? '' : 's'} in ${referencingGraphs.map((graph) => `“${graph.label}”`).join(', ')}. Remove ${graphInstanceCount === 1 ? 'that instance' : 'those instances'} before deleting the assembly.`
+			: 'Delete current assembly'
+	const [actionMenuOpen, setActionMenuOpen] = useState(false)
+	const [renameOpen, setRenameOpen] = useState(false)
+	const [renameDraft, setRenameDraft] = useState(activeGraph.label)
+	const [confirmingClear, setConfirmingClear] = useState(false)
+	const [confirmingRemove, setConfirmingRemove] = useState(false)
+
+	useEffect(() => {
+		setRenameDraft(activeGraph.label)
+		setRenameOpen(false)
+		setActionMenuOpen(false)
+		setConfirmingClear(false)
+		setConfirmingRemove(false)
+	}, [activeGraphId, activeGraph.label])
+
+	const openRename = () => {
+		setRenameDraft(activeGraph.label)
+		setActionMenuOpen(false)
+		setRenameOpen(true)
+	}
+
+	const submitRename = () => {
+		const normalizedName = renameDraft.trim()
+		if (!normalizedName) return
+		if (normalizedName !== activeGraph.label) {
+			controller.renameGraph(activeGraph.id, normalizedName)
+		}
+		setRenameOpen(false)
+	}
+
+	return (
+		<>
+			<ButtonGroup
+				data-id="active-assembly-header-controls"
+				className="min-w-0"
+				aria-label={`Current assembly: ${activeGraph.label}`}
+			>
+				<GraphTree controller={controller} disabled={disabled} />
+				<Popover open={actionMenuOpen} onOpenChange={setActionMenuOpen}>
+					<PopoverTrigger asChild>
+						<Button
+							data-id="assembly-actions-menu-button"
+							type="button"
+							variant="outline"
+							size="icon"
+							className="h-8 w-8 bg-muted/40 text-muted-foreground shadow-none"
+							disabled={disabled}
+							aria-label="Open assembly actions"
+							aria-haspopup="menu"
+						>
+							<MoreHorizontal />
+						</Button>
+					</PopoverTrigger>
+					<PopoverContent
+						data-id="assembly-actions-menu"
+						align="end"
+						className="w-52 p-1"
+					>
+						<div role="menu" aria-label={`Actions for ${activeGraph.label}`}>
+							<Button
+								data-id="rename-assembly-menu-item"
+								type="button"
+								variant="ghost"
+								className="h-9 w-full justify-start px-2 font-normal"
+								role="menuitem"
+								onClick={openRename}
+							>
+								<Pencil />
+								Rename assembly…
+							</Button>
+							<Button
+								data-id="clear-assembly-menu-item"
+								type="button"
+								variant="ghost"
+								className="h-9 w-full justify-start px-2 font-normal text-destructive hover:text-destructive"
+								role="menuitem"
+								onClick={() => {
+									setActionMenuOpen(false)
+									setConfirmingClear(true)
+								}}
+							>
+								<Eraser />
+								Clear assembly…
+							</Button>
+							<TooltipProvider delayDuration={300}>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<span
+											data-id="delete-assembly-tooltip-trigger"
+											className="block"
+											tabIndex={canRemoveGraph ? -1 : 0}
+										>
+											<Button
+												data-id="delete-assembly-menu-item"
+												type="button"
+												variant="ghost"
+												className="h-9 w-full justify-start px-2 font-normal text-destructive hover:text-destructive"
+												role="menuitem"
+												disabled={!canRemoveGraph}
+												onClick={() => {
+													setActionMenuOpen(false)
+													setConfirmingRemove(true)
+												}}
+											>
+												<Trash2 />
+												Delete assembly
+											</Button>
+										</span>
+									</TooltipTrigger>
+									<TooltipContent side="right" className="max-w-80">
+										{deleteDisabledReason}
+									</TooltipContent>
+								</Tooltip>
+							</TooltipProvider>
+						</div>
+					</PopoverContent>
+				</Popover>
+			</ButtonGroup>
+			<Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+				<DialogContent data-id="rename-assembly-dialog" className="sm:max-w-md">
+					<form
+						data-id="rename-assembly-form"
+						onSubmit={(event) => {
+							event.preventDefault()
+							submitRename()
+						}}
+					>
+						<DialogHeader>
+							<DialogTitle>Rename assembly</DialogTitle>
+							<DialogDescription>
+								Choose the name shown in the assembly selector and instance menus.
+							</DialogDescription>
+						</DialogHeader>
+						<Input
+							data-id="rename-assembly-name-input"
+							value={renameDraft}
+							aria-label="Assembly name"
+							className="mt-4"
+							onChange={(event) => setRenameDraft(event.target.value)}
+							onFocus={(event) => event.currentTarget.select()}
+							autoFocus
+						/>
+						<DialogFooter className="mt-6">
+							<Button type="button" variant="outline" onClick={() => setRenameOpen(false)}>
+								Cancel
+							</Button>
+							<Button type="submit" disabled={!renameDraft.trim()}>
+								Rename assembly
+							</Button>
+						</DialogFooter>
+					</form>
+				</DialogContent>
+			</Dialog>
+			<ConfirmationDialog
+				open={confirmingClear}
+				title={`Clear "${activeGraph.label}"?`}
+				message="All nodes and connections except the Output node will be removed."
+				confirmLabel="Clear assembly"
+				onCancel={() => setConfirmingClear(false)}
+				onConfirm={() => {
+					controller.clearGraph()
+					setConfirmingClear(false)
+				}}
+			/>
+			<ConfirmationDialog
+				open={confirmingRemove}
+				title={`Delete "${activeGraph.label}"?`}
+				message="The assembly and all of its nodes and connections will be permanently removed."
+				confirmLabel="Delete assembly"
+				onCancel={() => setConfirmingRemove(false)}
+				onConfirm={() => {
+					controller.removeGraph(activeGraph.id)
+					setConfirmingRemove(false)
+				}}
+			/>
 		</>
 	)
 }
