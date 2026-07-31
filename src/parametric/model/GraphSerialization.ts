@@ -36,6 +36,7 @@ export interface GraphDefinitionDocument {
 
 export interface GraphDocumentNode {
 	id: string
+	name: string
 	position: GraphPoint
 	type: string
 	data: unknown
@@ -63,6 +64,7 @@ export function serializeGraph(
 			output: { ...graph.output },
 			nodes: graph.model.getNodes().map((node) => ({
 				id: node.id,
+				name: node.getName(),
 				position: node.getPosition(),
 				type: node.type,
 				data: registry.serialize(node),
@@ -103,9 +105,16 @@ export function deserializeGraph(value: unknown, registry: NodeRegistry): GraphD
 
 	const getGraphInterface = (graphId: string) => interfaces.get(graphId)
 	const definitions: GraphDefinition[] = value.graphs.map((graph) => {
-		const nodes = graph.nodes.map((node) =>
-			registry.deserialize(node.type, node.id, node.position, node.data)
-		)
+		const nodes = graph.nodes.map((serializedNode) => {
+			const node = registry.deserialize(
+				serializedNode.type,
+				serializedNode.id,
+				serializedNode.position,
+				serializedNode.data
+			)
+			node.setName(serializedNode.name)
+			return node
+		})
 		assertBoundaryNodes(graph, nodes)
 		const edges = graph.edges.map(
 			(edge) => new GraphEdge(
@@ -150,7 +159,7 @@ function assertUniqueInterfaceIds(graph: GraphDefinitionDocument): void {
 }
 
 function assertInputDefinition(input: GraphInputDefinition, graphId: string): void {
-	if (!['number', 'enum', 'color', 'geometry'].includes(input.valueType)) {
+	if (!['number', 'enum', 'color', 'boolean', 'geometry'].includes(input.valueType)) {
 		throw new Error(`Input "${input.id}" in graph "${graphId}" has an unknown value type`)
 	}
 	if (input.valueType === 'geometry') {
@@ -181,6 +190,9 @@ function assertInputDefinition(input: GraphInputDefinition, graphId: string): vo
 	if (input.valueType === 'color' && typeof input.defaultValue !== 'string') {
 		throw new Error(`Input "${input.id}" in graph "${graphId}" has an invalid color default`)
 	}
+	if (input.valueType === 'boolean' && typeof input.defaultValue !== 'boolean') {
+		throw new Error(`Input "${input.id}" in graph "${graphId}" has an invalid boolean default`)
+	}
 }
 
 function assertUniqueIds(graph: GraphDefinitionDocument): void {
@@ -192,6 +204,20 @@ function assertUniqueIds(graph: GraphDefinitionDocument): void {
 	if (new Set(edgeIds).size !== edgeIds.length) {
 		throw new Error(`Graph "${graph.id}" has duplicate edge IDs`)
 	}
+}
+
+function isGraphDocumentNode(value: unknown): value is GraphDocumentNode {
+	if (!value || typeof value !== 'object') return false
+	const node = value as Partial<GraphDocumentNode>
+	return typeof node.id === 'string'
+		&& typeof node.name === 'string'
+		&& node.name.trim().length > 0
+		&& typeof node.type === 'string'
+		&& Boolean(node.position)
+		&& typeof node.position?.x === 'number'
+		&& typeof node.position?.y === 'number'
+		&& Boolean(node.data)
+		&& typeof node.data === 'object'
 }
 
 function assertBoundaryNodes(
@@ -278,5 +304,6 @@ function isGraphDefinitionDocument(value: unknown): value is GraphDefinitionDocu
 		&& typeof graph.output?.id === 'string'
 		&& graph.output?.valueType === 'geometry'
 		&& Array.isArray(graph.nodes)
+		&& graph.nodes.every(isGraphDocumentNode)
 		&& Array.isArray(graph.edges)
 }

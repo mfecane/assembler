@@ -1,5 +1,6 @@
 import { Position, type NodeProps } from '@xyflow/react'
 import { GeometryNodeActions } from '@/parametric/components/GeometryNodeActions'
+import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { PresetColorSelect } from '@/parametric/components/PresetColorSelect'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
@@ -10,7 +11,10 @@ export function MaterialNode({ id }: NodeProps<ParametricFlowNode>) {
 	if (!binding) return null
 
 	return (
-		<div className="min-w-44 rounded-md border border-border bg-surface px-3 py-2 shadow-md">
+		<div
+			data-id={`material-node-${id}`}
+			className="min-w-44 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
+		>
 			<TypedHandle
 				id="geometry"
 				type="target"
@@ -18,10 +22,7 @@ export function MaterialNode({ id }: NodeProps<ParametricFlowNode>) {
 				valueType="geometry"
 				style={{ top: '35%' }}
 			/>
-			<div className="mb-2 flex items-center justify-between gap-2">
-				<div className="text-sm font-semibold text-foreground">Material</div>
-				<GeometryNodeActions nodeId={id} nodeLabel="Material" />
-			</div>
+			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} nodeLabel="Material" />} />
 			<div className="nodrag relative">
 				<TypedHandle
 					id="color"

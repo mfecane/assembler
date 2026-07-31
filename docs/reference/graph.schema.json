@@ -12,7 +12,8 @@
       "additionalProperties": {
         "oneOf": [
           { "type": "number" },
-          { "type": "string" }
+          { "type": "string" },
+          { "type": "boolean" }
         ]
       }
     },
@@ -91,6 +92,17 @@
         {
           "type": "object",
           "additionalProperties": false,
+          "required": ["id", "label", "valueType", "defaultValue"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "label": { "type": "string" },
+            "valueType": { "const": "boolean" },
+            "defaultValue": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
           "required": ["id", "label", "valueType"],
           "properties": {
             "id": { "$ref": "#/$defs/id" },
@@ -141,9 +153,10 @@
     "node": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "type", "position", "data"],
+      "required": ["id", "name", "type", "position", "data"],
       "properties": {
         "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1 },
         "position": { "$ref": "#/$defs/point" },
         "type": {
           "enum": [
@@ -272,6 +285,17 @@
             "inputId": { "$ref": "#/$defs/id" },
             "label": { "type": "string" },
             "type": { "const": "color" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "inputId", "label", "type"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "inputId": { "$ref": "#/$defs/id" },
+            "label": { "type": "string" },
+            "type": { "const": "switch" }
           }
         }
       ]

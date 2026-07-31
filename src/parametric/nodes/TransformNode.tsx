@@ -5,6 +5,7 @@ import { NumericInput } from '@/parametric/components/NumericInput'
 import { Vec3Field } from '@/parametric/components/Vec3Field'
 import { TransformOriginField } from '@/parametric/components/TransformOriginField'
 import { GeometryNodeActions } from '@/parametric/components/GeometryNodeActions'
+import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import { useTransformNode, useVectorNumericFields } from '@/parametric/hooks/useGraphNode'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
@@ -19,14 +20,11 @@ export function TransformNode({ id }: NodeProps<ParametricFlowNode>) {
 
 	return (
 		<div
-			data-id="transform-node"
+			data-id={`transform-node-${id}`}
 			className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
 		>
 			<TypedHandle id="geometry" type="target" position={Position.Left} valueType="geometry" />
-			<div className="mb-2 flex items-center justify-between gap-2">
-				<div className="text-sm font-semibold text-foreground">Transform</div>
-				<GeometryNodeActions nodeId={id} nodeLabel="Transform" />
-			</div>
+			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} nodeLabel="Transform" />} />
 			<div className="flex flex-col gap-2">
 				<Vec3Field label="Position" fields={translation} />
 				<Vec3Field label="Rotation" fields={rotation} step={1} />

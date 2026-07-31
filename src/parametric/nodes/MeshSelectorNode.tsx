@@ -7,6 +7,7 @@ import {
 	SelectValue,
 } from '@/components/ui/select'
 import { GeometryNodeActions } from '@/parametric/components/GeometryNodeActions'
+import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 import { useMeshSelectorNode } from '@/parametric/hooks/useGraphNode'
@@ -28,12 +29,12 @@ export function MeshSelectorNode({ id }: NodeProps<ParametricFlowNode>) {
 	}
 
 	return (
-		<div className="min-w-60 rounded-md border border-border bg-surface px-3 py-2 shadow-md">
+		<div
+			data-id={`mesh-selector-node-${id}`}
+			className="min-w-60 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
+		>
 			<TypedHandle id="enum" type="target" position={Position.Left} valueType="enum" />
-			<div className="mb-2 flex items-center justify-between gap-2">
-				<div className="text-sm font-semibold text-foreground">Mesh Selector</div>
-				<GeometryNodeActions nodeId={id} nodeLabel="Mesh Selector" />
-			</div>
+			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} nodeLabel="Mesh Selector" />} />
 			<div className="flex flex-col gap-1.5">
 				{binding.availableEnumValues.map((enumValue) => {
 					const selection = binding.selections.find(

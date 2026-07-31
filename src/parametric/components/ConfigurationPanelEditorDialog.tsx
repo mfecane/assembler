@@ -293,12 +293,14 @@ const controlTypeLabels: Record<ControlType, string> = {
 	slider: 'Slider',
 	select: 'Select',
 	color: 'Color picker',
+	switch: 'Switch',
 }
 
 function getCompatibleControlTypes(input: GraphInputDefinition): ControlType[] {
 	if (input.valueType === 'number') return ['number', 'slider']
 	if (input.valueType === 'enum') return ['select']
 	if (input.valueType === 'color') return ['color']
+	if (input.valueType === 'boolean') return ['switch']
 	return []
 }
 
@@ -319,6 +321,7 @@ function createControl(
 	}
 	if (type === 'number') return { ...base, type, step: 0.1 }
 	if (type === 'select') return { ...base, type }
+	if (type === 'switch') return { ...base, type }
 	return { ...base, type: 'color' }
 }
 

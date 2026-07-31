@@ -1,6 +1,6 @@
 import { Position, type NodeProps } from '@xyflow/react'
-import { Input } from '@/components/ui/input'
 import { DraftNumberInput } from '@/parametric/components/DraftNumberInput'
+import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { NodeDeleteButton } from '@/parametric/components/NodeDeleteButton'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
@@ -11,19 +11,12 @@ export function NumberInputNode({ id }: NodeProps<ParametricFlowNode>) {
 	if (!binding) return null
 
 	return (
-		<div className="min-w-44 rounded-md border border-border bg-surface px-3 py-2 shadow-md">
-			<div className="mb-2 flex items-center justify-between gap-2 pr-3">
-				<div className="text-sm font-semibold text-foreground">Number</div>
-				<NodeDeleteButton nodeId={id} nodeLabel="Number" />
-			</div>
+		<div
+			data-id={`number-node-${id}`}
+			className="min-w-44 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
+		>
+			<NodeHeader nodeId={id} actions={<NodeDeleteButton nodeId={id} nodeLabel="Number" />} />
 			<div className="flex flex-col gap-2 text-xs">
-				<Input
-					className="nodrag h-8 px-2 text-xs"
-					value={binding.label}
-					onChange={(event) => binding.setLabel(event.target.value)}
-					aria-label="Number label"
-					placeholder="Label"
-				/>
 				<DraftNumberInput
 					value={binding.value}
 					onValueChange={binding.setValue}

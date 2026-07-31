@@ -41,9 +41,9 @@ a recursive dependency.
 
 ## Public inputs
 
-Number, enum, color, and geometry inputs are created as Graph Input nodes. Their labels, defaults,
-and enum options are edited on the node. Removing the node also removes its declaration, affected
-instance edges, saved entry value, and configuration control.
+Number, enum, color, boolean, and geometry inputs are created as Graph Input nodes. Their labels,
+defaults, and enum options are edited on the node. Removing the node also removes its declaration,
+affected instance edges, saved entry value, and configuration control.
 
 Configuration controls bind only to compatible public inputs of the entry graph. Inner nodes,
 child inputs, instance ports, and instance paths are not binding targets. See

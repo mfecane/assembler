@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/select'
 import { GeometryNodeActions } from '@/parametric/components/GeometryNodeActions'
 import { NumericInput } from '@/parametric/components/NumericInput'
+import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 import { useArrayNode, useNumericField } from '@/parametric/hooks/useGraphNode'
@@ -21,12 +22,9 @@ export function ArrayNode({ id }: NodeProps<ParametricFlowNode>) {
 	if (!binding) return null
 
 	return (
-		<div className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md">
+		<div data-id={`array-node-${id}`} className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md">
 			<TypedHandle id="geometry" type="target" position={Position.Left} valueType="geometry" />
-			<div className="mb-2 flex items-center justify-between gap-2">
-				<div className="text-sm font-semibold text-foreground">Array</div>
-				<GeometryNodeActions nodeId={id} nodeLabel="Array" />
-			</div>
+			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} nodeLabel="Array" />} />
 			<div className="flex flex-col gap-2 text-xs">
 				<div className="nodrag relative flex items-center justify-between gap-2 text-muted-foreground">
 					<TypedHandle id="count" type="target" position={Position.Left} valueType="number" style={{ top: '50%' }} />

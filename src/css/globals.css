@@ -96,6 +96,11 @@ body {
 	border-color: #ffd5e9;
 }
 
+.react-flow__handle.port-boolean {
+	background: #4ade80;
+	border-color: #dcfce7;
+}
+
 .react-flow {
 	--xy-edge-stroke-selected: var(--primary);
 }

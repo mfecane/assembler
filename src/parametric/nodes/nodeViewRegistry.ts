@@ -4,6 +4,8 @@ import {
 	Cuboid,
 	Grid3X3,
 	Hash,
+	LogIn,
+	LogOut,
 	Network,
 	ListFilter,
 	Move3d,
@@ -113,5 +115,15 @@ export const nodeViewPresentation: Record<string, NodeViewPresentation> = {
 		group: 'Geometry',
 		description: 'Instantiate a graph from this document',
 		icon: Network,
+	},
+	graphInput: {
+		group: 'Inputs',
+		description: 'Expose an assembly input',
+		icon: LogIn,
+	},
+	graphOutput: {
+		group: 'Other',
+		description: 'Define the assembly output',
+		icon: LogOut,
 	},
 }

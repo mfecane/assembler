@@ -1,7 +1,7 @@
 import type { GraphValueType } from '@/parametric/model/GraphNode'
 import type { GraphModel } from '@/parametric/model/GraphModel'
 
-export type GraphInputValue = number | string
+export type GraphInputValue = number | string | boolean
 
 export interface GraphInputDefinition {
 	id: string
@@ -44,6 +44,7 @@ export type ConfigurationPanelControl =
 	})
 	| (ConfigurationPanelControlBase & { type: 'select' })
 	| (ConfigurationPanelControlBase & { type: 'color' })
+	| (ConfigurationPanelControlBase & { type: 'switch' })
 
 export type ConfigurationField =
 	| { id: string; type: 'number'; label: string; value: number; step: number }
@@ -58,6 +59,7 @@ export type ConfigurationField =
 	}
 	| { id: string; type: 'enum'; label: string; value: string; options: string[] }
 	| { id: string; type: 'color'; label: string; value: string }
+	| { id: string; type: 'boolean'; label: string; value: boolean }
 
 export class GraphDocumentModel {
 	private readonly graphs = new Map<string, GraphDefinition>()
@@ -279,6 +281,7 @@ function isControlCompatible(
 	}
 	if (input.valueType === 'enum') return control.type === 'select'
 	if (input.valueType === 'color') return control.type === 'color'
+	if (input.valueType === 'boolean') return control.type === 'switch'
 	return false
 }
 
@@ -298,5 +301,6 @@ export function isInputValueCompatible(
 		return typeof value === 'string' && Boolean(input.options?.includes(value))
 	}
 	if (input.valueType === 'color') return typeof value === 'string'
+	if (input.valueType === 'boolean') return typeof value === 'boolean'
 	return false
 }

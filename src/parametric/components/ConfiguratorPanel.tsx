@@ -6,6 +6,7 @@ import { PresetColorSelect } from '@/parametric/components/PresetColorSelect'
 import { useConfiguration } from '@/parametric/hooks/useConfiguration'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
+import { Switch } from '@/components/ui/switch'
 import {
 	Select,
 	SelectContent,
@@ -16,7 +17,13 @@ import {
 
 export function ConfiguratorPanel() {
 	const [expanded, setExpanded] = useState(true)
-	const { values, setNumberValue, setEnumValue, setColorValue } = useConfiguration()
+	const {
+		values,
+		setNumberValue,
+		setEnumValue,
+		setColorValue,
+		setBooleanValue,
+	} = useConfiguration()
 	if (values.length === 0) return null
 
 	return (
@@ -104,13 +111,23 @@ export function ConfiguratorPanel() {
 										))}
 									</SelectContent>
 								</Select>
-							) : (
+							) : value.type === 'color' ? (
 								<PresetColorSelect
 									id={`configuration-${value.id}`}
 									value={value.value}
 									onValueChange={(next) => setColorValue(value.id, next)}
 									className="h-8 w-full"
 								/>
+							) : (
+								<div className="flex h-8 items-center justify-end">
+									<Switch
+										id={`configuration-${value.id}`}
+										data-id={`configuration-switch-${value.id}`}
+										checked={value.value}
+										onCheckedChange={(next) => setBooleanValue(value.id, next)}
+										aria-label={value.label}
+									/>
+								</div>
 							)}
 						</div>
 					))}

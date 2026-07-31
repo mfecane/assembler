@@ -1,6 +1,7 @@
 import { Position, type NodeProps } from '@xyflow/react'
 import { NumericInput } from '@/parametric/components/NumericInput'
 import { NodeDeleteButton } from '@/parametric/components/NodeDeleteButton'
+import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 import { useSumNode } from '@/parametric/hooks/useGraphNode'
@@ -10,11 +11,8 @@ export function SumNode({ id }: NodeProps<ParametricFlowNode>) {
 	if (!binding) return null
 
 	return (
-		<div className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md">
-			<div className="mb-2 flex items-center justify-between gap-2">
-				<div className="text-sm font-semibold text-foreground">Sum</div>
-				<NodeDeleteButton nodeId={id} nodeLabel="Sum" />
-			</div>
+		<div data-id={`sum-node-${id}`} className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md">
+			<NodeHeader nodeId={id} actions={<NodeDeleteButton nodeId={id} nodeLabel="Sum" />} />
 			<div className="flex flex-col gap-2 text-xs">
 				<div className="nodrag flex items-center justify-between gap-2">
 					<span className="text-muted-foreground">Constant</span>

@@ -11,7 +11,7 @@ export type GraphNodeType = string
 export type PrimitiveKind = 'box' | 'sphere' | 'cylinder' | 'cone'
 export type Axis = 'x' | 'y' | 'z'
 export type OriginAxis = 'min' | 'middle' | 'max'
-export type GraphValueType = string
+export type GraphValueType = 'geometry' | 'number' | 'enum' | 'color' | 'boolean'
 
 export interface GraphInputPort {
 	id: string
@@ -41,6 +41,7 @@ export interface TransformOrigin {
 
 export abstract class GraphNode {
 	public abstract readonly type: GraphNodeType
+	private name = ''
 
 	protected constructor(
 		public readonly id: string,
@@ -53,6 +54,14 @@ export abstract class GraphNode {
 
 	public setPosition(position: GraphPoint): void {
 		this.position = { ...position }
+	}
+
+	public getName(): string {
+		return this.name
+	}
+
+	public setName(name: string): void {
+		this.name = name.trim()
 	}
 
 }
@@ -93,18 +102,9 @@ export class NumberInputGraphNode extends GraphNode {
 	public constructor(
 		id: string,
 		position: GraphPoint,
-		private label: string,
 		private value: number
 	) {
 		super(id, position)
-	}
-
-	public getLabel(): string {
-		return this.label
-	}
-
-	public setLabel(label: string): void {
-		this.label = label
 	}
 
 	public getValue(): number {
@@ -125,21 +125,12 @@ export class SelectorGraphNode extends GraphNode {
 	public constructor(
 		id: string,
 		position: GraphPoint,
-		private label: string,
 		options: string[],
 		value: string
 	) {
 		super(id, position)
 		this.options = this.normalizeOptions(options)
 		this.value = this.options.includes(value) ? value : this.options[0]
-	}
-
-	public getLabel(): string {
-		return this.label
-	}
-
-	public setLabel(label: string): void {
-		this.label = label
 	}
 
 	public getOptions(): string[] {
@@ -171,19 +162,10 @@ export class ColorGraphNode extends GraphNode {
 	public constructor(
 		id: string,
 		position: GraphPoint,
-		private label: string,
 		private color: string
 	) {
 		super(id, position)
 		this.color = normalizePresetColor(color)
-	}
-
-	public getLabel(): string {
-		return this.label
-	}
-
-	public setLabel(label: string): void {
-		this.label = label
 	}
 
 	public getColor(): string {

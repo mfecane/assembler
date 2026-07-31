@@ -48,6 +48,18 @@ export function useConfiguration() {
 				value,
 			})
 		}
+		if (
+			input.valueType === 'boolean'
+			&& typeof value === 'boolean'
+			&& control.type === 'switch'
+		) {
+			fields.push({
+				id: input.id,
+				type: 'boolean',
+				label: control.label,
+				value,
+			})
+		}
 		return fields
 	}, [])
 	const setNumberValue = useCallback(
@@ -62,6 +74,10 @@ export function useConfiguration() {
 		(id: string, value: string) => controller.setEntryInputValue(id, value),
 		[controller]
 	)
+	const setBooleanValue = useCallback(
+		(id: string, value: boolean) => controller.setEntryInputValue(id, value),
+		[controller]
+	)
 
-	return { values, setNumberValue, setEnumValue, setColorValue }
+	return { values, setNumberValue, setEnumValue, setColorValue, setBooleanValue }
 }

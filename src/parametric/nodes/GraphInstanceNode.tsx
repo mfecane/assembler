@@ -3,6 +3,7 @@ import { ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { NodeDeleteButton } from '@/parametric/components/NodeDeleteButton'
 import { GeometryPreviewButton } from '@/parametric/components/GeometryPreviewButton'
+import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 import { useEditorController } from '@/parametric/editor/react/EditorContext'
@@ -19,17 +20,13 @@ export function GraphInstanceNode({ id }: NodeProps<ParametricFlowNode>) {
 
 	return (
 		<div
+			data-id={`graph-instance-node-${id}`}
 			className="min-w-52 rounded-md border border-primary/50 bg-surface px-3 py-2 shadow-md"
-			onDoubleClick={() => controller.openGraph(graph.id)}
 		>
-			<div className="mb-2 flex items-center justify-between gap-2">
-				<div>
-					<div className="text-[10px] font-semibold uppercase tracking-wider text-primary">
-						Assembly instance
-					</div>
-					<div className="text-sm font-semibold text-foreground">{graph.label}</div>
-				</div>
-				<div className="flex items-center">
+			<NodeHeader
+				nodeId={id}
+				actions={(
+					<div className="flex items-center">
 					{graph.output.valueType === 'geometry' && (
 						<GeometryPreviewButton nodeId={id} />
 					)}
@@ -45,8 +42,9 @@ export function GraphInstanceNode({ id }: NodeProps<ParametricFlowNode>) {
 						<ExternalLink />
 					</Button>
 					<NodeDeleteButton nodeId={id} nodeLabel={graph.label} />
-				</div>
-			</div>
+					</div>
+				)}
+			/>
 			<div className="flex flex-col gap-1.5">
 				{graph.inputs.length === 0 ? (
 					<div className="text-[11px] text-muted-foreground">No inputs</div>

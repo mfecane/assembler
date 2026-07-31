@@ -23,11 +23,22 @@ element types and settings inline:
 - Number inputs support number fields and sliders.
 - Enum inputs support selects.
 - Color inputs support color controls.
+- Boolean inputs support switches.
 - Geometry inputs cannot be exposed in the panel.
 
 The editor is available only while the entry graph is open. Runtime controls use an even
 label/control grid. The runtime panel can be collapsed, but collapsed state is view-only and is
 not persisted in the graph document.
+
+## Node headers
+
+Every node uses the shared header treatment: a Lucide type icon, its persisted node name, and any
+node-specific actions. Double-clicking the name opens an inline editor. Enter or blur commits a
+non-empty trimmed name; Escape restores the current name. Assembly-input cards edit defaults and
+enum options only—their public labels remain owned by the separate configuration mapping UI.
+
+Assembly instances use their explicit open action for navigation so header double-click remains
+consistent with every other node type.
 
 ## Verification
 

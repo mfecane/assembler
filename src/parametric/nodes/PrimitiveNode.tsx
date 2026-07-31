@@ -7,6 +7,7 @@ import {
 	SelectValue,
 } from '@/components/ui/select'
 import { GeometryNodeActions } from '@/parametric/components/GeometryNodeActions'
+import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import { Vec3Field } from '@/parametric/components/Vec3Field'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
@@ -26,11 +27,11 @@ export function PrimitiveNode({ id }: NodeProps<ParametricFlowNode>) {
 	if (!binding) return null
 
 	return (
-		<div className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md">
-			<div className="mb-2 flex items-center justify-between gap-2">
-				<div className="text-sm font-semibold text-foreground">Primitive</div>
-				<GeometryNodeActions nodeId={id} nodeLabel="Primitive" />
-			</div>
+		<div
+			data-id={`primitive-node-${id}`}
+			className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
+		>
+			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} nodeLabel="Primitive" />} />
 			<div className="flex flex-col gap-2">
 				<Select
 					value={binding.primitive}

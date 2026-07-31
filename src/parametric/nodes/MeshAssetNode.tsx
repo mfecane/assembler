@@ -7,6 +7,7 @@ import {
 	SelectValue,
 } from '@/components/ui/select'
 import { GeometryNodeActions } from '@/parametric/components/GeometryNodeActions'
+import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 import { useMeshAssetNode } from '@/parametric/hooks/useGraphNode'
@@ -16,11 +17,11 @@ export function MeshAssetNode({ id }: NodeProps<ParametricFlowNode>) {
 	if (!binding) return null
 
 	return (
-		<div className="min-w-52 rounded-md border border-border bg-surface px-3 py-2 shadow-md">
-			<div className="mb-2 flex items-center justify-between gap-2">
-				<div className="text-sm font-semibold text-foreground">Mesh Asset</div>
-				<GeometryNodeActions nodeId={id} nodeLabel="Mesh Asset" />
-			</div>
+		<div
+			data-id={`mesh-asset-node-${id}`}
+			className="min-w-52 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
+		>
+			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} nodeLabel="Mesh Asset" />} />
 			<Select value={binding.meshId} onValueChange={binding.setMeshId}>
 				<SelectTrigger
 					className="nodrag h-8 px-2 text-xs"

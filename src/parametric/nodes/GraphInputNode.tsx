@@ -2,6 +2,7 @@ import { Position, type NodeProps } from '@xyflow/react'
 import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
 	Select,
 	SelectContent,
@@ -10,7 +11,9 @@ import {
 	SelectValue,
 } from '@/components/ui/select'
 import { DraftNumberInput } from '@/parametric/components/DraftNumberInput'
+import { Switch } from '@/components/ui/switch'
 import { NodeDeleteButton } from '@/parametric/components/NodeDeleteButton'
+import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { GeometryPreviewButton } from '@/parametric/components/GeometryPreviewButton'
 import { PresetColorSelect } from '@/parametric/components/PresetColorSelect'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
@@ -33,31 +36,21 @@ export function GraphInputNode({ id }: NodeProps<ParametricFlowNode>) {
 			data-id={`graph-input-node-${input.id}`}
 			className="min-w-52 rounded-md border border-primary/40 bg-surface px-3 py-2 shadow-md"
 		>
-			<div className="mb-2 flex items-center justify-between gap-2 pr-3">
-				<div>
-					<div className="text-[10px] font-semibold uppercase tracking-wider text-primary">
-						Assembly input
-					</div>
-					<div className="text-[11px] text-muted-foreground">{input.valueType}</div>
-				</div>
-				<div className="flex items-center gap-0.5">
+			<NodeHeader
+				nodeId={id}
+				actions={(
+					<div className="flex items-center gap-0.5">
 					{input.valueType === 'geometry' && (
 						<GeometryPreviewButton nodeId={id} />
 					)}
 					<NodeDeleteButton nodeId={id} nodeLabel={input.label || input.valueType} />
-				</div>
+					</div>
+				)}
+			/>
+			<div className="mb-2 text-[11px] capitalize text-muted-foreground">
+				{input.valueType} input
 			</div>
 			<div className="flex flex-col gap-2">
-				<Input
-					data-id={`graph-input-label-${input.id}`}
-					className="nodrag h-8 px-2 text-xs"
-					value={input.label}
-					onChange={(event) => controller.updateGraphInput(input.id, {
-						label: event.target.value,
-					})}
-					aria-label={`${input.valueType} input label`}
-					placeholder="Label"
-				/>
 				{input.valueType === 'number' && (
 					<DraftNumberInput
 						data-id={`graph-input-default-${input.id}`}
@@ -77,6 +70,26 @@ export function GraphInputNode({ id }: NodeProps<ParametricFlowNode>) {
 							defaultValue: value,
 						})}
 					/>
+				)}
+				{input.valueType === 'boolean' && (
+					<div className="flex h-8 items-center justify-between gap-3">
+						<Label
+							htmlFor={`graph-input-default-${input.id}`}
+							className="text-xs text-muted-foreground"
+						>
+							Default value
+						</Label>
+						<Switch
+							id={`graph-input-default-${input.id}`}
+							data-id={`graph-input-default-${input.id}`}
+							className="nodrag"
+							checked={input.defaultValue === true}
+							onCheckedChange={(defaultValue) => controller.updateGraphInput(input.id, {
+								defaultValue,
+							})}
+							aria-label={`Default value for ${input.label || input.id}`}
+						/>
+					</div>
 				)}
 				{input.valueType === 'enum' && (
 					<>

@@ -5,7 +5,8 @@
     "shelfCount": 3,
     "shelfStyle": "Label",
     "backPanelStyle": "Perforated",
-    "finish": "#f4f4f5"
+    "finish": "#f4f4f5",
+    "showBackPanels": true
   },
   "graphs": [
     {
@@ -49,6 +50,12 @@
           "label": "Finish",
           "valueType": "color",
           "defaultValue": "#f4f4f5"
+        },
+        {
+          "id": "showBackPanels",
+          "label": "Show back panels",
+          "valueType": "boolean",
+          "defaultValue": true
         }
       ],
       "output": {
@@ -58,9 +65,10 @@
       },
       "nodes": [
         {
-          "id": "main-bay-count-input",
-          "type": "graphInput",
-          "position": {
+         "id": "main-bay-count-input",
+          "name": "Bay count",
+         "type": "graphInput",
+         "position": {
             "x": -371.4261873877324,
             "y": -530.5628384812139
           },
@@ -69,9 +77,10 @@
           }
         },
         {
-          "id": "main-shelf-count-input",
-          "type": "graphInput",
-          "position": {
+         "id": "main-shelf-count-input",
+          "name": "Shelves per bay",
+         "type": "graphInput",
+         "position": {
             "x": -420.58897203949437,
             "y": -1024.2340492626852
           },
@@ -80,9 +89,10 @@
           }
         },
         {
-          "id": "main-shelf-style-input",
-          "type": "graphInput",
-          "position": {
+         "id": "main-shelf-style-input",
+          "name": "Shelf style",
+         "type": "graphInput",
+         "position": {
             "x": -1385.136656672325,
             "y": -774.5599081284042
           },
@@ -91,9 +101,10 @@
           }
         },
         {
-          "id": "main-back-panel-style-input",
-          "type": "graphInput",
-          "position": {
+         "id": "main-back-panel-style-input",
+          "name": "Back panel style",
+         "type": "graphInput",
+         "position": {
             "x": -1650.3427598628728,
             "y": -259.39063265400085
           },
@@ -102,9 +113,10 @@
           }
         },
         {
-          "id": "main-finish-input",
-          "type": "graphInput",
-          "position": {
+         "id": "main-finish-input",
+          "name": "Finish",
+         "type": "graphInput",
+         "position": {
             "x": -1119.9581452438615,
             "y": 174.64763015071568
           },
@@ -113,9 +125,22 @@
           }
         },
         {
-          "id": "wing-instance",
-          "type": "graphInstance",
-          "position": {
+         "id": "main-show-back-panels-input",
+          "name": "Show back panels",
+         "type": "graphInput",
+         "position": {
+            "x": -850,
+            "y": 360
+          },
+          "data": {
+            "inputId": "showBackPanels"
+          }
+        },
+        {
+         "id": "wing-instance",
+          "name": "Single Wing",
+         "type": "graphInstance",
+         "position": {
             "x": 791.872543739938,
             "y": 155.75762892485912
           },
@@ -124,18 +149,20 @@
           }
         },
         {
-          "id": "output",
-          "position": {
-            "x": 1794.0083163143997,
+         "id": "output",
+          "name": "Configured shelving",
+         "position": {
+           "x": 1794.0083163143997,
             "y": 187.94032904254072
           },
           "type": "graphOutput",
           "data": {}
         },
         {
-          "id": "transform-4",
-          "position": {
-            "x": 1000.433697895789,
+         "id": "transform-4",
+          "name": "Transform",
+         "position": {
+           "x": 1000.433697895789,
             "y": 336.75263558770405
           },
           "type": "transform",
@@ -165,9 +192,10 @@
           }
         },
         {
-          "id": "group-3",
-          "position": {
-            "x": 1533.2201554585392,
+         "id": "group-3",
+          "name": "Group",
+         "position": {
+           "x": 1533.2201554585392,
             "y": 164.64601197266342
           },
           "type": "group",
@@ -180,9 +208,10 @@
           }
         },
         {
-          "id": "meshAsset-4",
-          "position": {
-            "x": 142.84989542268386,
+         "id": "meshAsset-4",
+          "name": "Mesh Asset",
+         "position": {
+           "x": 142.84989542268386,
             "y": 1083.4697041998077
           },
           "type": "meshAsset",
@@ -191,9 +220,10 @@
           }
         },
         {
-          "id": "transform-5",
-          "position": {
-            "x": 412.84989542268386,
+         "id": "transform-5",
+          "name": "Transform",
+         "position": {
+           "x": 412.84989542268386,
             "y": 937.4697041998077
           },
           "type": "transform",
@@ -223,9 +253,10 @@
           }
         },
         {
-          "id": "meshAsset-5",
-          "position": {
-            "x": 142.84989542268386,
+         "id": "meshAsset-5",
+          "name": "Mesh Asset",
+         "position": {
+           "x": 142.84989542268386,
             "y": 1383.4697041998077
           },
           "type": "meshAsset",
@@ -234,9 +265,10 @@
           }
         },
         {
-          "id": "group-4",
-          "position": {
-            "x": 838.8498954226839,
+         "id": "group-4",
+          "name": "Group",
+         "position": {
+           "x": 838.8498954226839,
             "y": 1219.4697041998077
           },
           "type": "group",
@@ -250,9 +282,10 @@
           }
         },
         {
-          "id": "meshAsset-6",
-          "position": {
-            "x": -287.15010457731614,
+         "id": "meshAsset-6",
+          "name": "Mesh Asset",
+         "position": {
+           "x": -287.15010457731614,
             "y": 1635.4697041998077
           },
           "type": "meshAsset",
@@ -261,9 +294,10 @@
           }
         },
         {
-          "id": "transform-6",
-          "position": {
-            "x": 20.849895422683858,
+         "id": "transform-6",
+          "name": "Transform",
+         "position": {
+           "x": 20.849895422683858,
             "y": 1527.4697041998077
           },
           "type": "transform",
@@ -293,9 +327,10 @@
           }
         },
         {
-          "id": "array-4",
-          "position": {
-            "x": 368.84989542268386,
+         "id": "array-4",
+          "name": "Array",
+         "position": {
+           "x": 368.84989542268386,
             "y": 1639.4697041998077
           },
           "type": "array",
@@ -306,9 +341,10 @@
           }
         },
         {
-          "id": "transform-7",
-          "position": {
-            "x": 1106.3497733523714,
+         "id": "transform-7",
+          "name": "Transform",
+         "position": {
+           "x": 1106.3497733523714,
             "y": 1084.7160115728545
           },
           "type": "transform",
@@ -373,6 +409,13 @@
           "targetNodeId": "wing-instance",
           "sourcePort": "finish",
           "targetPort": "finish"
+        },
+        {
+          "id": "main-showBackPanels->wing-instance:showBackPanels",
+          "sourceNodeId": "main-show-back-panels-input",
+          "targetNodeId": "wing-instance",
+          "sourcePort": "showBackPanels",
+          "targetPort": "showBackPanels"
         },
         {
           "id": "main-shelf-count-input:shelfCount->array-4:count",
@@ -501,6 +544,12 @@
           "label": "Finish",
           "valueType": "color",
           "defaultValue": "#f4f4f5"
+        },
+        {
+          "id": "showBackPanels",
+          "label": "Show back panels",
+          "valueType": "boolean",
+          "defaultValue": true
         }
       ],
       "output": {
@@ -510,9 +559,10 @@
       },
       "nodes": [
         {
-          "id": "wing-bay-count-input",
-          "type": "graphInput",
-          "position": {
+         "id": "wing-bay-count-input",
+          "name": "Bay count",
+         "type": "graphInput",
+         "position": {
             "x": -371.4261873877324,
             "y": -530.5628384812139
           },
@@ -521,9 +571,10 @@
           }
         },
         {
-          "id": "wing-shelf-count-input",
-          "type": "graphInput",
-          "position": {
+         "id": "wing-shelf-count-input",
+          "name": "Shelves per bay",
+         "type": "graphInput",
+         "position": {
             "x": -420.58897203949437,
             "y": -1024.2340492626852
           },
@@ -532,9 +583,10 @@
           }
         },
         {
-          "id": "wing-shelf-style-input",
-          "type": "graphInput",
-          "position": {
+         "id": "wing-shelf-style-input",
+          "name": "Shelf style",
+         "type": "graphInput",
+         "position": {
             "x": -1385.136656672325,
             "y": -774.5599081284042
           },
@@ -543,9 +595,10 @@
           }
         },
         {
-          "id": "wing-back-panel-style-input",
-          "type": "graphInput",
-          "position": {
+         "id": "wing-back-panel-style-input",
+          "name": "Back panel style",
+         "type": "graphInput",
+         "position": {
             "x": -1650.3427598628728,
             "y": -259.39063265400085
           },
@@ -554,9 +607,10 @@
           }
         },
         {
-          "id": "wing-finish-input",
-          "type": "graphInput",
-          "position": {
+         "id": "wing-finish-input",
+          "name": "Finish",
+         "type": "graphInput",
+         "position": {
             "x": -1119.9581452438615,
             "y": 174.64763015071568
           },
@@ -565,9 +619,22 @@
           }
         },
         {
-          "id": "meshAsset-2",
-          "position": {
-            "x": -407.3385879849635,
+         "id": "wing-show-back-panels-input",
+          "name": "Show back panels",
+         "type": "graphInput",
+         "position": {
+            "x": -850,
+            "y": 360
+          },
+          "data": {
+            "inputId": "showBackPanels"
+          }
+        },
+        {
+         "id": "meshAsset-2",
+          "name": "Mesh Asset",
+         "position": {
+           "x": -407.3385879849635,
             "y": 154.04919700535652
           },
           "type": "meshAsset",
@@ -576,9 +643,10 @@
           }
         },
         {
-          "id": "group-1",
-          "position": {
-            "x": 224.28373811952002,
+         "id": "group-1",
+          "name": "Group",
+         "position": {
+           "x": 224.28373811952002,
             "y": -93.66959014096255
           },
           "type": "group",
@@ -592,9 +660,10 @@
           }
         },
         {
-          "id": "meshAsset-3",
-          "position": {
-            "x": -709.2666670982513,
+         "id": "meshAsset-3",
+          "name": "Mesh Asset",
+         "position": {
+           "x": -709.2666670982513,
             "y": 548.9490187958783
           },
           "type": "meshAsset",
@@ -603,9 +672,10 @@
           }
         },
         {
-          "id": "transform-1",
-          "position": {
-            "x": -414.53491839832805,
+         "id": "transform-1",
+          "name": "Transform",
+         "position": {
+           "x": -414.53491839832805,
             "y": 398.7046122805707
           },
           "type": "transform",
@@ -635,9 +705,10 @@
           }
         },
         {
-          "id": "transform-2",
-          "position": {
-            "x": -410.21712015030926,
+         "id": "transform-2",
+          "name": "Transform",
+         "position": {
+           "x": -410.21712015030926,
             "y": -270.5342973831455
           },
           "type": "transform",
@@ -667,9 +738,10 @@
           }
         },
         {
-          "id": "array-1",
-          "position": {
-            "x": 500.46683346569097,
+         "id": "array-1",
+          "name": "Array",
+         "position": {
+           "x": 500.46683346569097,
             "y": -96.55707143454984
           },
           "type": "array",
@@ -680,9 +752,10 @@
           }
         },
         {
-          "id": "array-2",
-          "position": {
-            "x": 434.5326191989484,
+         "id": "array-2",
+          "name": "Array",
+         "position": {
+           "x": 434.5326191989484,
             "y": 370.7581834564681
           },
           "type": "array",
@@ -693,9 +766,10 @@
           }
         },
         {
-          "id": "group-2",
-          "position": {
-            "x": 791.872543739938,
+         "id": "group-2",
+          "name": "Group",
+         "position": {
+           "x": 791.872543739938,
             "y": 155.75762892485912
           },
           "type": "group",
@@ -708,9 +782,10 @@
           }
         },
         {
-          "id": "meshSelector-1",
-          "position": {
-            "x": -1072.598820399954,
+         "id": "meshSelector-1",
+          "name": "Mesh Selector",
+         "position": {
+           "x": -1072.598820399954,
             "y": -719.2539855172614
           },
           "type": "meshSelector",
@@ -764,9 +839,10 @@
           }
         },
         {
-          "id": "transform-3",
-          "position": {
-            "x": -713.416246038669,
+         "id": "transform-3",
+          "name": "Transform",
+         "position": {
+           "x": -713.416246038669,
             "y": -849.6262483932707
           },
           "type": "transform",
@@ -796,9 +872,10 @@
           }
         },
         {
-          "id": "array-3",
-          "position": {
-            "x": -156.59955019857915,
+         "id": "array-3",
+          "name": "Array",
+         "position": {
+           "x": -156.59955019857915,
             "y": -748.3334974584109
           },
           "type": "array",
@@ -809,9 +886,10 @@
           }
         },
         {
-          "id": "sum-1",
-          "position": {
-            "x": 79.86555394415626,
+         "id": "sum-1",
+          "name": "Sum",
+         "position": {
+           "x": 79.86555394415626,
             "y": 129.45880572413452
           },
           "type": "sum",
@@ -824,9 +902,10 @@
           }
         },
         {
-          "id": "meshSelector-2",
-          "position": {
-            "x": -1287.10083193554,
+         "id": "meshSelector-2",
+          "name": "Mesh Selector",
+         "position": {
+           "x": -1287.10083193554,
             "y": -153.59216934493202
           },
           "type": "meshSelector",
@@ -880,9 +959,10 @@
           }
         },
         {
-          "id": "material-1",
-          "position": {
-            "x": -842.5706024411794,
+         "id": "material-1",
+          "name": "Material",
+         "position": {
+           "x": -842.5706024411794,
             "y": -77.61073171773907
           },
           "type": "material",
@@ -891,9 +971,10 @@
           }
         },
         {
-          "id": "wing-output",
-          "type": "graphOutput",
-          "position": {
+         "id": "wing-output",
+          "name": "Wing",
+         "type": "graphOutput",
+         "position": {
             "x": 1040,
             "y": 155.75762892485912
           },
@@ -1081,6 +1162,12 @@
         "inputId": "finish",
         "label": "Finish",
         "type": "color"
+      },
+      {
+        "id": "show-back-panels-control",
+        "inputId": "showBackPanels",
+        "label": "Show back panels",
+        "type": "switch"
       }
     ]
   }

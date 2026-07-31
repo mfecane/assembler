@@ -1,6 +1,16 @@
 import { useState } from 'react'
 import { type Edge, useReactFlow } from '@xyflow/react'
-import { ChevronDown, Circle, Hash, ListFilter, Network, Palette, Plus, Shapes } from 'lucide-react'
+import {
+	ChevronDown,
+	Circle,
+	Hash,
+	ListFilter,
+	Network,
+	Palette,
+	Plus,
+	Shapes,
+	ToggleLeft,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
@@ -47,7 +57,9 @@ export function NodeSelector({ selectedEdges }: { selectedEdges: Edge[] }) {
 	const getSelectedEdgeId = () =>
 		selectedEdges.length === 1 ? selectedEdges[0].id : undefined
 
-	const addSelectedInput = (valueType: 'number' | 'enum' | 'color' | 'geometry') => {
+	const addSelectedInput = (
+		valueType: 'number' | 'enum' | 'color' | 'boolean' | 'geometry'
+	) => {
 		addGraphInput(valueType, getInsertPosition())
 		setOpen(false)
 	}
@@ -95,10 +107,31 @@ export function NodeSelector({ selectedEdges }: { selectedEdges: Edge[] }) {
 							Assembly inputs
 						</div>
 						<div className="grid grid-cols-2 gap-1">
-							<InputNodeButton icon={Hash} label="Number" onClick={() => addSelectedInput('number')} />
-							<InputNodeButton icon={ListFilter} label="Enum" onClick={() => addSelectedInput('enum')} />
-							<InputNodeButton icon={Palette} label="Color" onClick={() => addSelectedInput('color')} />
-							<InputNodeButton icon={Shapes} label="Geometry" onClick={() => addSelectedInput('geometry')} />
+							<InputNodeButton
+								icon={Hash}
+								label="Number"
+								onClick={() => addSelectedInput('number')}
+							/>
+							<InputNodeButton
+								icon={ListFilter}
+								label="Enum"
+								onClick={() => addSelectedInput('enum')}
+							/>
+							<InputNodeButton
+								icon={Palette}
+								label="Color"
+								onClick={() => addSelectedInput('color')}
+							/>
+							<InputNodeButton
+								icon={ToggleLeft}
+								label="Boolean"
+								onClick={() => addSelectedInput('boolean')}
+							/>
+							<InputNodeButton
+								icon={Shapes}
+								label="Geometry"
+								onClick={() => addSelectedInput('geometry')}
+							/>
 						</div>
 					</div>
 					{graphDefinitions.length > 0 && (

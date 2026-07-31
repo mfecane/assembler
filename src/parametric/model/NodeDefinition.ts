@@ -83,7 +83,10 @@ export class NodeRegistry {
 	}
 
 	public create(type: string, id: string, position: GraphPoint, context: NodeCreationContext): GraphNode | undefined {
-		return this.definitions.get(type)?.create?.(id, position, context)
+		const definition = this.definitions.get(type)
+		const node = definition?.create?.(id, position, context)
+		if (node && definition) node.setName(definition.label)
+		return node
 	}
 
 	public getInputPorts(node: GraphNode, context?: NodePortContext): readonly GraphInputPort[] {

@@ -10,6 +10,7 @@ import {
 	SelectValue,
 } from '@/components/ui/select'
 import { NodeDeleteButton } from '@/parametric/components/NodeDeleteButton'
+import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 import { useSelectorNode } from '@/parametric/hooks/useGraphNode'
@@ -36,19 +37,12 @@ export function SelectorNode({ id }: NodeProps<ParametricFlowNode>) {
 	}
 
 	return (
-		<div className="min-w-56 rounded-md border border-border bg-surface px-3 py-2 shadow-md">
-			<div className="mb-2 flex items-center justify-between gap-2 pr-3">
-				<div className="text-sm font-semibold text-foreground">Enum</div>
-				<NodeDeleteButton nodeId={id} nodeLabel="Enum" />
-			</div>
+		<div
+			data-id={`selector-node-${id}`}
+			className="min-w-56 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
+		>
+			<NodeHeader nodeId={id} actions={<NodeDeleteButton nodeId={id} nodeLabel="Enum" />} />
 			<div className="flex flex-col gap-2 text-xs">
-				<Input
-					className="nodrag h-8 px-2 text-xs"
-					value={binding.label}
-					onChange={(event) => binding.setLabel(event.target.value)}
-					aria-label="Enum label"
-					placeholder="Label"
-				/>
 				<div className="flex flex-col gap-1">
 					<div className="flex items-center justify-between">
 						<span className="text-muted-foreground">Options</span>

@@ -71,9 +71,7 @@ export function usePrimitiveNode(nodeId: string): PrimitiveNodeBinding | undefin
 }
 
 export interface NumberInputNodeBinding {
-	label: string
 	value: number
-	setLabel: (label: string) => void
 	setValue: (value: number) => void
 }
 
@@ -81,24 +79,18 @@ export function useNumberInputNode(nodeId: string): NumberInputNodeBinding | und
 	const controller = useEditorController()
 	const { model } = useGraphSnapshot()
 	const node = model.getNode(nodeId)
-	const setLabel = useCallback(
-		(label: string) => controller.setNumberInputLabel(nodeId, label),
-		[controller, nodeId]
-	)
 	const setValue = useCallback(
 		(value: number) => controller.setNumericValue(nodeId, 'value', value),
 		[controller, nodeId]
 	)
 
 	if (!(node instanceof NumberInputGraphNode)) return undefined
-	return { label: node.getLabel(), value: node.getValue(), setLabel, setValue }
+	return { value: node.getValue(), setValue }
 }
 
 export interface SelectorNodeBinding {
-	label: string
 	options: string[]
 	value: string
-	setLabel: (label: string) => void
 	setOptions: (options: string[]) => void
 	setValue: (value: string) => void
 }
@@ -107,10 +99,6 @@ export function useSelectorNode(nodeId: string): SelectorNodeBinding | undefined
 	const controller = useEditorController()
 	const { model } = useGraphSnapshot()
 	const node = model.getNode(nodeId)
-	const setLabel = useCallback(
-		(label: string) => controller.setSelectorLabel(nodeId, label),
-		[controller, nodeId]
-	)
 	const setOptions = useCallback(
 		(options: string[]) => controller.setSelectorOptions(nodeId, options),
 		[controller, nodeId]
@@ -122,19 +110,15 @@ export function useSelectorNode(nodeId: string): SelectorNodeBinding | undefined
 
 	if (!(node instanceof SelectorGraphNode)) return undefined
 	return {
-		label: node.getLabel(),
 		options: node.getOptions(),
 		value: node.getValue(),
-		setLabel,
 		setOptions,
 		setValue,
 	}
 }
 
 export interface ColorNodeBinding {
-	label: string
 	color: string
-	setLabel: (label: string) => void
 	setColor: (color: string) => void
 }
 
@@ -142,17 +126,13 @@ export function useColorNode(nodeId: string): ColorNodeBinding | undefined {
 	const controller = useEditorController()
 	const { model } = useGraphSnapshot()
 	const node = model.getNode(nodeId)
-	const setLabel = useCallback(
-		(label: string) => controller.setColorNodeLabel(nodeId, label),
-		[controller, nodeId]
-	)
 	const setColor = useCallback(
 		(color: string) => controller.setColorNodeValue(nodeId, color),
 		[controller, nodeId]
 	)
 
 	if (!(node instanceof ColorGraphNode)) return undefined
-	return { label: node.getLabel(), color: node.getColor(), setLabel, setColor }
+	return { color: node.getColor(), setColor }
 }
 
 export interface MeshSelectorNodeBinding {

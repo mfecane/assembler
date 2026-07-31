@@ -44,18 +44,15 @@ interface PrimitiveData {
 }
 
 interface NumberInputData {
-	label: string
 	value: number
 }
 
 interface SelectorData {
-	label: string
 	options: string[]
 	value: string
 }
 
 interface ColorData {
-	label?: string
 	color: string
 }
 
@@ -215,7 +212,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		type: 'numberInput',
 		label: 'Number',
 		creatable: true,
-		create: (id, position) => new NumberInputGraphNode(id, position, 'Number', 1),
+		create: (id, position) => new NumberInputGraphNode(id, position, 1),
 		ports: { outputs: [{ id: 'number', valueType: 'number' }] },
 		numericFields: {
 			value: {
@@ -223,10 +220,10 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 				set: (node, value) => node.setValue(value),
 			},
 		},
-		serialize: (node) => ({ label: node.getLabel(), value: node.getValue() }),
+		serialize: (node) => ({ value: node.getValue() }),
 		deserialize: (id, position, data) => {
 			const value = data as NumberInputData
-			return new NumberInputGraphNode(id, position, value.label, value.value)
+			return new NumberInputGraphNode(id, position, value.value)
 		},
 		evaluate: (node) => new Map([['number', number(node.getValue())]]),
 	})
@@ -236,19 +233,18 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		label: 'Enum',
 		creatable: true,
 		create: (id, position) =>
-			new SelectorGraphNode(id, position, 'Style', ['Cube', 'Cone', 'Ring'], 'Cube'),
+			new SelectorGraphNode(id, position, ['Cube', 'Cone', 'Ring'], 'Cube'),
 		ports: {
 			outputs: [{ id: 'enum', valueType: 'enum' }],
 			getOutputOptions: (node, portId) => portId === 'enum' ? node.getOptions() : undefined,
 		},
 		serialize: (node) => ({
-			label: node.getLabel(),
 			options: node.getOptions(),
 			value: node.getValue(),
 		}),
 		deserialize: (id, position, data) => {
 			const value = data as SelectorData
-			return new SelectorGraphNode(id, position, value.label, value.options, value.value)
+			return new SelectorGraphNode(id, position, value.options, value.value)
 		},
 		evaluate: (node) => new Map([['enum', enumValue(node.getValue())]]),
 	})
@@ -257,12 +253,12 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		type: 'color',
 		label: 'Color',
 		creatable: true,
-		create: (id, position) => new ColorGraphNode(id, position, 'Color', defaultMaterialColor),
+		create: (id, position) => new ColorGraphNode(id, position, defaultMaterialColor),
 		ports: { outputs: [{ id: 'color', valueType: 'color' }] },
-		serialize: (node) => ({ label: node.getLabel(), color: node.getColor() }),
+		serialize: (node) => ({ color: node.getColor() }),
 		deserialize: (id, position, data) => {
 			const value = data as ColorData
-			return new ColorGraphNode(id, position, value.label ?? 'Color', value.color)
+			return new ColorGraphNode(id, position, value.color)
 		},
 		evaluate: (node) => new Map([['color', colorValue(node.getColor())]]),
 	})

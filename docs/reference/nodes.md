@@ -8,10 +8,13 @@ Ports are written as `port-id: value-type`. Built-in value types are:
 - `number` — a JavaScript number.
 - `enum` — one string selected from a source node's options.
 - `color` — a preset color string.
+- `boolean` — a JavaScript boolean.
 
 Connections require exact value-type equality. An input accepts at most one incoming edge. Group and Sum maintain dynamic `input-N` ports: connected ports are retained and one empty port is kept available.
 
-All nodes persist the common fields `id`, `type`, `position: { x, y }`, and type-specific `data`.
+All nodes persist the common fields `id`, non-empty `name`, `type`, `position: { x, y }`, and
+type-specific `data`. Every node header displays a Lucide icon for its type. Double-click the node
+name to edit it; Enter or leaving the field saves the trimmed name, while Escape cancels.
 
 ## Geometry sources
 
@@ -53,8 +56,8 @@ Emits a stored number inside a graph. It does not create a configuration-panel c
 
 - Inputs: none.
 - Outputs: `number: number`.
-- Data: `label` string; `value` number.
-- Default: label `Number`, value `1`.
+- Data: `value` number.
+- Default: name `Number`, value `1`.
 - Normalization: non-finite values set through the model become `0`.
 
 ### Selector (`selector`)
@@ -63,8 +66,8 @@ Emits one stored string choice inside a graph. It does not create a configuratio
 
 - Inputs: none.
 - Outputs: `enum: enum`.
-- Data: `label` string; non-empty `options` string array; `value`, which must be one of the options.
-- Default: label `Style`, options `Cube`, `Cone`, and `Ring`, with `Cube` selected.
+- Data: non-empty `options` string array; `value`, which must be one of the options.
+- Default: name `Enum`, options `Cube`, `Cone`, and `Ring`, with `Cube` selected.
 - Normalization: options are trimmed, empty and duplicate values are removed, and an empty list becomes `["Option"]`. An invalid current value becomes the first option.
 
 ### Color Input (`color`)
@@ -74,8 +77,8 @@ configuration-panel control.
 
 - Inputs: none.
 - Outputs: `color: color`.
-- Data: `label` string; `color` preset hex value.
-- Default: label `Color`, color `#eaceac` (Sand).
+- Data: `color` preset hex value.
+- Default: name `Color`, color `#eaceac` (Sand).
 - Normalization: an unrecognized color becomes the default color.
 
 Supported persisted colors are `#eaceac`, `#f4f4f5`, `#27272a`, `#dc5a5a`, `#e8913a`, `#e3c84f`, `#55a86d`, `#528bd1`, and `#9067c6`.
@@ -153,8 +156,10 @@ Exposes one public input of the containing graph.
 - Data: `inputId`, referencing an input declared by the containing graph.
 - Inputs: none.
 - Output: the referenced input ID and value type.
-- Placement: add a Number, Enum, Color, or Geometry graph input from the node menu.
-- Editing: label, default value, and enum options are edited directly on the node.
+- Placement: add a Number, Enum, Color, Boolean, or Geometry graph input from the node menu.
+- Editing: default values and enum options are edited directly on the node. The public input label
+  is managed separately by the configuration-panel mapping UI; the node's own name is edited from
+  its header like every other node.
 - Deletion: deleting the node also removes its public input declaration, configuration control,
   saved entry value, and affected graph-instance connections.
 

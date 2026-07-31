@@ -26,6 +26,10 @@ Every graph definition contains:
 - Exactly one `graphOutput` boundary node.
 - Exactly one `graphInput` boundary node for each public input.
 
+Every persisted node has its own non-empty `name`, independent of graph-interface labels and
+configuration-control labels. Names are editable from node headers and do not affect evaluation or
+port identity.
+
 The entry graph has exactly the same structure as every child graph. Its only special behavior
 is that `entryGraphId` selects it as the document result.
 
@@ -65,6 +69,7 @@ valid:
   and `step`.
 - Enum inputs support `select`.
 - Color inputs support `color`.
+- Boolean inputs support `switch`.
 - Geometry inputs cannot be mapped to the configuration panel.
 
 The configuration-panel editor is available only while the entry graph is open. It lists every
@@ -107,9 +112,10 @@ second embedded copy.
 
 The fixture uses two graph definitions:
 
-- `main` exposes bay count, shelves per bay, shelf style, back-panel style, and finish. Every
-  input has a configuration-panel control. It instantiates one wing, copies and rotates that
-  result into the second side, and combines both sides with the corner infill.
-- `wing` contains one complete straight shelving wing. Its five public inputs replace the
+- `main` exposes bay count, shelves per bay, shelf style, back-panel style, finish, and a boolean
+  back-panel flag. Every input has a configuration-panel control. It instantiates one wing, copies
+  and rotates that result into the second side, and combines both sides with the corner infill.
+- `wing` contains one complete straight shelving wing. Its six public inputs replace the
   former embedded number, selector, and color value nodes while preserving the original wing's
-  mesh, transform, array, grouping, and material topology.
+  mesh, transform, array, grouping, and material topology. The boolean flag is forwarded across
+  the instance boundary to exercise persisted boolean connections without changing that topology.

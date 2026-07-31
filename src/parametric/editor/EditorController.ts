@@ -19,7 +19,6 @@ import {
 	MaterialGraphNode,
 	MeshAssetGraphNode,
 	MeshSelectorGraphNode,
-	NumberInputGraphNode,
 	OutputGraphNode,
 	PrimitiveGraphNode,
 	SelectorGraphNode,
@@ -85,6 +84,15 @@ export class EditorController {
 		)
 	}
 
+	public setNodeName(nodeId: string, name: string): void {
+		const normalizedName = name.trim()
+		if (!normalizedName) return
+		this.execute(
+			`Rename node "${nodeId}" to "${normalizedName}"`,
+			() => this.activeModel.getNode(nodeId)?.setName(normalizedName)
+		)
+	}
+
 	public addNode(type: string, position: GraphPoint, selectedEdgeId?: string): void {
 		this.execute(`Add ${type} node`, () => {
 			const id = this.createNodeId(type)
@@ -109,7 +117,9 @@ export class EditorController {
 		}
 		this.execute(`Add mesh asset "${meshId}"`, () => {
 			const id = this.createNodeId('meshAsset')
-			this.activeModel.addNode(new MeshAssetGraphNode(id, position, mesh.id))
+			const node = new MeshAssetGraphNode(id, position, mesh.id)
+			node.setName('Mesh Asset')
+			this.activeModel.addNode(node)
 		})
 	}
 
@@ -123,6 +133,7 @@ export class EditorController {
 		this.execute(`Add instance of graph "${graphId}"`, () => {
 			const id = this.createNodeId('graphInstance')
 			const node = new GraphInstanceGraphNode(id, position, graphId)
+			node.setName(this.document.requireGraph(graphId).label)
 			if (selectedEdgeId && this.insertNodeOnEdge(node, selectedEdgeId)) return
 			this.activeModel.addNode(node)
 		})
@@ -131,9 +142,11 @@ export class EditorController {
 	public addGraph(): void {
 		this.execute('Add assembly', () => {
 			const id = this.createGraphId()
+			const outputNode = new OutputGraphNode(`${id}-output`, { x: 500, y: 120 })
+			outputNode.setName('Assembly Output')
 			const model = new GraphModel(
 				this.nodeRegistry,
-				[new OutputGraphNode(`${id}-output`, { x: 500, y: 120 })]
+				[outputNode]
 			)
 			this.document.addGraph({
 				id,
@@ -183,7 +196,9 @@ export class EditorController {
 			const input = createInputDefinition(inputId, valueType)
 			if (!this.document.addInput(graph.id, input)) return
 			const boundaryId = this.createNodeId('graphInput')
-			graph.model.addNode(new GraphInputGraphNode(boundaryId, position, inputId))
+			const node = new GraphInputGraphNode(boundaryId, position, inputId)
+			node.setName(input.label)
+			graph.model.addNode(node)
 		})
 	}
 
@@ -386,26 +401,6 @@ export class EditorController {
 		)
 	}
 
-	public setNumberInputLabel(nodeId: string, label: string): void {
-		this.updateNode<NumberInputGraphNode>(
-			nodeId,
-			'numberInput',
-			`Set label on number node "${nodeId}"`,
-			(node) => node.setLabel(label),
-			`number-label:${this.activeGraphId}:${nodeId}`
-		)
-	}
-
-	public setSelectorLabel(nodeId: string, label: string): void {
-		this.updateNode<SelectorGraphNode>(
-			nodeId,
-			'selector',
-			`Set label on selector node "${nodeId}"`,
-			(node) => node.setLabel(label),
-			`selector-label:${this.activeGraphId}:${nodeId}`
-		)
-	}
-
 	public setSelectorOptions(nodeId: string, options: string[]): void {
 		this.updateNode<SelectorGraphNode>(
 			nodeId,
@@ -421,16 +416,6 @@ export class EditorController {
 			'selector',
 			`Set value on selector node "${nodeId}"`,
 			(node) => node.setValue(value)
-		)
-	}
-
-	public setColorNodeLabel(nodeId: string, label: string): void {
-		this.updateNode<ColorGraphNode>(
-			nodeId,
-			'color',
-			`Set label on color node "${nodeId}"`,
-			(node) => node.setLabel(label),
-			`color-label:${this.activeGraphId}:${nodeId}`
 		)
 	}
 
@@ -799,6 +784,9 @@ function createInputDefinition(
 	}
 	if (valueType === 'color') {
 		return { id, label: 'Color', valueType, defaultValue: '#eaceac' }
+	}
+	if (valueType === 'boolean') {
+		return { id, label: 'Boolean', valueType, defaultValue: false }
 	}
 	return { id, label: 'Geometry', valueType: 'geometry' }
 }
