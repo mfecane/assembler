@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { useGraphController } from '@/parametric/controller/GraphEditorContext'
+import { useEditorController } from '@/parametric/editor/react/EditorContext'
 import type { GraphPoint } from '@/parametric/model/GraphNode'
 import type { GraphInputDefinition } from '@/parametric/model/GraphDocumentModel'
 import type { CreatableNodeDefinition } from '@/parametric/model/NodeDefinition'
@@ -17,7 +17,7 @@ export interface GraphActions {
 }
 
 export function useGraphActions(): GraphActions {
-	const controller = useGraphController()
+	const controller = useEditorController()
 	const { document, activeGraphId } = useGraphSnapshot()
 	const addNode = useCallback(
 		(type: string, position: GraphPoint, selectedEdgeId?: string) =>

@@ -1,36 +1,31 @@
 import type { TransformControlsMode } from 'three/examples/jsm/controls/TransformControls.js'
-import type { GraphController } from '@/parametric/controller/GraphController'
-import type { EvaluatedAssetSource } from '@/parametric/evaluation/EvaluationTypes'
+import type {
+	EditorController,
+	TransformNodeValues,
+} from '@/parametric/editor/EditorController'
+import type { ReactBridge } from '@/parametric/editor/ReactBridge'
+import type { SceneNodeInstanceReference } from '@/parametric/evaluation/SceneMetadata'
 import { TransformGraphNode } from '@/parametric/model/GraphNode'
-import type { ViewportReactBridge } from '@/parametric/three/editor/ViewportReactBridge'
-import {
-	EditorCommandFactory,
-	HistoryController,
-	type TransformNodeValues,
-} from '@/parametric/three/editor/EditorCommands'
 import {
 	InteractionHandlerRouter,
 	MeshSelectionInteractionHandler,
 } from '@/parametric/three/editor/InteractionSystem'
 
 export class ViewportEditorController {
-	public readonly history = new HistoryController()
-	public readonly commandFactory: EditorCommandFactory
 	public readonly interactions = new InteractionHandlerRouter()
 	private activeGraphId: string
 
 	public constructor(
-		private readonly graphController: GraphController,
-		private readonly bridge: ViewportReactBridge,
+		private readonly editorController: EditorController,
+		private readonly bridge: ReactBridge,
 		private readonly requestRenderSync: () => void
 	) {
-		this.activeGraphId = graphController.getSnapshot().activeGraphId
-		this.commandFactory = new EditorCommandFactory(graphController)
+		this.activeGraphId = editorController.getSnapshot().activeGraphId
 		this.interactions.add(new MeshSelectionInteractionHandler(this))
 	}
 
 	public openNode(nodeId: string): void {
-		const snapshot = this.graphController.getSnapshot()
+		const snapshot = this.editorController.getSnapshot()
 		const node = snapshot.model.getNode(nodeId)
 		if (!node) return
 		this.bridge.update({
@@ -63,13 +58,13 @@ export class ViewportEditorController {
 
 	public selectMesh(
 		meshInstanceId: string,
-		assetSource: EvaluatedAssetSource,
+		originNode: SceneNodeInstanceReference,
 		x: number,
 		y: number
 	): void {
 		this.bridge.update({
 			selectedMeshInstanceId: meshInstanceId,
-			contextMenu: { x, y, meshInstanceId, assetSource },
+			contextMenu: { x, y, meshInstanceId, originNode },
 		})
 		this.requestRenderSync()
 	}
@@ -81,9 +76,9 @@ export class ViewportEditorController {
 	}
 
 	public goToOriginalAssetNode(): void {
-		const source = this.bridge.getSnapshot().contextMenu?.assetSource
+		const source = this.bridge.getSnapshot().contextMenu?.originNode
 		if (!source) return
-		this.graphController.openGraph(source.graphId)
+		this.editorController.openGraph(source.graphId)
 		this.bridge.update({
 			previewNodeId: null,
 			transformNodeId: null,
@@ -103,34 +98,23 @@ export class ViewportEditorController {
 	public applyTransform(
 		nodeId: string,
 		before: TransformNodeValues,
-		after: TransformNodeValues
+		after: TransformNodeValues,
+		historyGroup: string
 	): void {
-		const graphSnapshot = this.graphController.getSnapshot()
+		const graphSnapshot = this.editorController.getSnapshot()
 		const graphId = graphSnapshot.activeGraphId
-		const node = graphSnapshot.model.getNode(nodeId)
-		const normalizedAfter = node instanceof TransformGraphNode && node.getUniformScale()
-			? {
-				...after,
-				scale: (() => {
-					const changedAxis = (['x', 'y', 'z'] as const).find(
-						(axis) => after.scale[axis] !== before.scale[axis]
-					)
-					const value = changedAxis ? after.scale[changedAxis] : after.scale.x
-					return { x: value, y: value, z: value }
-				})(),
-			}
-			: after
-		this.history.execute(this.commandFactory.setTransformNode(
+		this.editorController.setTransformNodeValues(
 			graphId,
 			nodeId,
 			before,
-			normalizedAfter
-		))
+			after,
+			historyGroup
+		)
 	}
 
 	public handleGraphChange(): void {
 		const bridgeSnapshot = this.bridge.getSnapshot()
-		const graphSnapshot = this.graphController.getSnapshot()
+		const graphSnapshot = this.editorController.getSnapshot()
 		if (graphSnapshot.activeGraphId !== this.activeGraphId) {
 			this.activeGraphId = graphSnapshot.activeGraphId
 			this.bridge.update({

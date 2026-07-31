@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Check, ChevronDown, Copy, Loader2, Pencil, Plus, Save } from 'lucide-react'
+import { ArrowLeft, Check, ChevronDown, Copy, Loader2, Plus, Save } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
 	Dialog,
@@ -15,15 +15,9 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from '@/components/ui/popover'
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from '@/components/ui/tooltip'
 import { UserMenu } from '@/auth/UserMenu'
 import { GraphTree } from '@/parametric/components/GraphTree'
-import type { GraphController } from '@/parametric/controller/GraphController'
+import type { EditorController } from '@/parametric/editor/EditorController'
 import type { User } from '@supabase/supabase-js'
 
 export type SaveState = 'clean' | 'dirty' | 'saving' | 'saved' | 'failed'
@@ -50,7 +44,7 @@ export function ProjectToolbar({
 	user: User
 	saveState: SaveState
 	saveError: string | null
-	controller: GraphController
+	controller: EditorController
 	projectRenamePending: boolean
 	projectRenameError: string | null
 	saveAsPending: boolean
@@ -359,32 +353,24 @@ function ProjectName({
 	}
 
 	return (
-		<div className="flex min-w-0 items-center gap-1">
+		<div data-id="project-name-display" className="flex min-w-0 items-center gap-1">
 			<h1
 				data-id="project-name"
-				className="m-0 max-w-64 truncate text-sm font-semibold text-foreground"
+				className="m-0 max-w-64 cursor-text truncate text-sm font-semibold text-foreground"
+				title={disabled ? name : `${name} — double-click to rename`}
+				onDoubleClick={() => {
+					if (!disabled) setEditing(true)
+				}}
 			>
 				{name}
 			</h1>
-			<TooltipProvider delayDuration={300}>
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<Button
-							data-id="rename-project-button"
-							type="button"
-							variant="ghost"
-							size="icon"
-							className="h-7 w-7 text-muted-foreground"
-							disabled={disabled}
-							aria-label="Rename project"
-							onClick={() => setEditing(true)}
-						>
-							{pending ? <Loader2 className="animate-spin" /> : <Pencil />}
-						</Button>
-					</TooltipTrigger>
-					<TooltipContent side="bottom">Rename project</TooltipContent>
-				</Tooltip>
-			</TooltipProvider>
+			{pending && (
+				<Loader2
+					data-id="project-rename-pending-indicator"
+					className="size-3.5 animate-spin text-muted-foreground"
+					aria-label="Renaming project"
+				/>
+			)}
 		</div>
 	)
 }

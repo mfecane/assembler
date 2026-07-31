@@ -1,5 +1,3 @@
-import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import {
 	Dialog,
 	DialogContent,
@@ -16,8 +14,9 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { DraftNumberInput } from '@/parametric/components/DraftNumberInput'
-import { useGraphController } from '@/parametric/controller/GraphEditorContext'
+import { useEditorController } from '@/parametric/editor/react/EditorContext'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
 import type {
 	ConfigurationPanelControl,
@@ -31,16 +30,13 @@ export function ConfigurationPanelEditorDialog({
 	open: boolean
 	onClose: () => void
 }) {
-	const controller = useGraphController()
+	const controller = useEditorController()
 	const { document: graphDocument, activeGraphId } = useGraphSnapshot()
 	const isEntry = activeGraphId === graphDocument.getEntryGraphId()
 	const inputs = graphDocument.getEntryGraph().inputs.filter(
 		(input) => input.valueType !== 'geometry'
 	)
 	const controls = graphDocument.getConfigurationControls()
-	const availableInputs = inputs.filter(
-		(input) => !controls.some((control) => control.inputId === input.id)
-	)
 
 	const setControls = (next: ConfigurationPanelControl[]) => {
 		controller.setConfigurationControls(next)
@@ -51,12 +47,6 @@ export function ConfigurationPanelEditorDialog({
 		update: (control: ConfigurationPanelControl) => ConfigurationPanelControl
 	) => {
 		setControls(controls.map((control) => control.id === controlId ? update(control) : control))
-	}
-
-	const addControl = () => {
-		const input = availableInputs[0]
-		if (!input) return
-		setControls([...controls, createControl(input, controls)])
 	}
 
 	if (!isEntry) return null
@@ -72,60 +62,35 @@ export function ConfigurationPanelEditorDialog({
 				<DialogHeader className="border-b border-border px-6 py-5">
 					<DialogTitle>Configuration panel</DialogTitle>
 					<DialogDescription>
-						Map root assembly inputs to the controls shown in the product configurator.
+						Choose which root assembly inputs appear in the product configurator.
 					</DialogDescription>
 				</DialogHeader>
 
 				<div className="min-h-0 flex-1 overflow-y-auto p-6">
-					<div className="mb-4 flex items-center justify-between gap-4">
-						<div className="text-xs text-muted-foreground">
-							{controls.length} {controls.length === 1 ? 'control' : 'controls'}
-						</div>
-						<Button
-							data-id="add-configuration-control"
-							type="button"
-							variant="outline"
-							size="sm"
-							disabled={availableInputs.length === 0}
-							onClick={addControl}
-						>
-							<Plus />
-							Add control
-						</Button>
+					<div className="mb-4 text-xs text-muted-foreground">
+						{controls.length} of {inputs.length} enabled
 					</div>
 
 					{inputs.length === 0 ? (
 						<EmptyState>
 							Add number, enum, or color input nodes to the root assembly first.
 						</EmptyState>
-					) : controls.length === 0 ? (
-						<EmptyState>
-							No inputs are mapped yet. Add a control to build the configuration panel.
-						</EmptyState>
 					) : (
 						<div className="flex flex-col gap-3" data-id="configuration-control-list">
-							{controls.map((control, index) => {
-								const input = inputs.find((candidate) => candidate.id === control.inputId)
-								if (!input) return null
+							{inputs.map((input) => {
+								const control = controls.find((candidate) => candidate.inputId === input.id)
 								return (
-									<ControlEditor
-										key={control.id}
+									<InputControlSection
+										key={input.id}
 										control={control}
 										input={input}
-										inputs={inputs}
 										controls={controls}
-										index={index}
-										onChange={(next) => updateControl(control.id, () => next)}
-										onRemove={() => setControls(
-											controls.filter((candidate) => candidate.id !== control.id)
+										onEnable={() => setControls([...controls, createControl(input, controls)])}
+										onDisable={() => setControls(
+											controls.filter((candidate) => candidate.inputId !== input.id)
 										)}
-										onMove={(offset) => {
-											const target = index + offset
-											if (target < 0 || target >= controls.length) return
-											const next = [...controls]
-											const [moved] = next.splice(index, 1)
-											next.splice(target, 0, moved)
-											setControls(next)
+										onChange={(next) => {
+											if (control) updateControl(control.id, () => next)
 										}}
 									/>
 								)
@@ -149,63 +114,78 @@ function EmptyState({ children }: { children: string }) {
 	)
 }
 
+function InputControlSection({
+	control,
+	input,
+	controls,
+	onEnable,
+	onDisable,
+	onChange,
+}: {
+	control?: ConfigurationPanelControl
+	input: GraphInputDefinition
+	controls: ConfigurationPanelControl[]
+	onEnable: () => void
+	onDisable: () => void
+	onChange: (control: ConfigurationPanelControl) => void
+}) {
+	const switchId = `configuration-input-enabled-${input.id}`
+
+	return (
+		<div
+			data-id={`configuration-input-${input.id}`}
+			className="overflow-hidden rounded-md border border-border bg-surface"
+		>
+			<div className="flex items-center justify-between gap-4 px-4 py-3">
+				<div className="min-w-0">
+					<div className="truncate text-sm font-medium">{input.label || input.id}</div>
+					<div className="text-xs text-muted-foreground">{input.valueType} input</div>
+				</div>
+				<div className="flex shrink-0 items-center gap-2">
+					<Label htmlFor={switchId} className="cursor-pointer text-xs text-muted-foreground">
+						{control ? 'Enabled' : 'Disabled'}
+					</Label>
+					<Switch
+						id={switchId}
+						data-id={`configuration-input-switch-${input.id}`}
+						checked={Boolean(control)}
+						onCheckedChange={(checked) => checked ? onEnable() : onDisable()}
+						aria-label={`${control ? 'Disable' : 'Enable'} ${input.label || input.id}`}
+					/>
+				</div>
+			</div>
+
+			{control && (
+				<ControlEditor
+					control={control}
+					input={input}
+					controls={controls}
+					onChange={onChange}
+				/>
+			)}
+		</div>
+	)
+}
+
 function ControlEditor({
 	control,
 	input,
-	inputs,
 	controls,
-	index,
 	onChange,
-	onRemove,
-	onMove,
 }: {
 	control: ConfigurationPanelControl
 	input: GraphInputDefinition
-	inputs: GraphInputDefinition[]
 	controls: ConfigurationPanelControl[]
-	index: number
 	onChange: (control: ConfigurationPanelControl) => void
-	onRemove: () => void
-	onMove: (offset: number) => void
 }) {
 	const compatibleTypes = getCompatibleControlTypes(input)
 
 	return (
 		<div
 			data-id={`configuration-control-${control.id}`}
-			className="rounded-md border border-border bg-surface p-4"
+			className="border-t border-border bg-muted/20 p-4"
 		>
 			<div className="grid gap-3 sm:grid-cols-2">
-				<div>
-					<Label className="mb-1 text-xs text-muted-foreground">Assembly input</Label>
-					<Select
-						value={input.id}
-						onValueChange={(inputId) => {
-							const nextInput = inputs.find((candidate) => candidate.id === inputId)
-							if (nextInput) onChange(createControl(nextInput, controls, control.id))
-						}}
-					>
-						<SelectTrigger
-							data-id={`configuration-control-input-${control.id}`}
-							className="h-8 text-xs"
-						>
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							{inputs.map((candidate) => {
-								const used = controls.some(
-									(existing) =>
-										existing.id !== control.id && existing.inputId === candidate.id
-								)
-								return (
-									<SelectItem key={candidate.id} value={candidate.id} disabled={used}>
-										{candidate.label || candidate.id} ({candidate.valueType})
-									</SelectItem>
-								)
-							})}
-						</SelectContent>
-					</Select>
-				</div>
 
 				<div>
 					<Label className="mb-1 text-xs text-muted-foreground">Control type</Label>
@@ -278,42 +258,6 @@ function ControlEditor({
 					/>
 				</div>
 			)}
-
-			<div className="mt-3 flex justify-end gap-1 border-t border-border pt-3">
-				<Button
-					type="button"
-					variant="ghost"
-					size="icon"
-					className="h-8 w-8"
-					disabled={index === 0}
-					onClick={() => onMove(-1)}
-					aria-label={`Move ${control.label} up`}
-				>
-					<ArrowUp />
-				</Button>
-				<Button
-					type="button"
-					variant="ghost"
-					size="icon"
-					className="h-8 w-8"
-					disabled={index === controls.length - 1}
-					onClick={() => onMove(1)}
-					aria-label={`Move ${control.label} down`}
-				>
-					<ArrowDown />
-				</Button>
-				<Button
-					data-id={`remove-configuration-control-${control.id}`}
-					type="button"
-					variant="ghost"
-					size="icon"
-					className="h-8 w-8 text-muted-foreground hover:text-destructive"
-					onClick={onRemove}
-					aria-label={`Remove ${control.label}`}
-				>
-					<Trash2 />
-				</Button>
-			</div>
 		</div>
 	)
 }

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Connection, Edge, EdgeChange, Node, NodeChange } from '@xyflow/react'
 import {
-	useGraphController,
-	useViewportBridgeSnapshot,
-	useViewportEditor,
-} from '@/parametric/controller/GraphEditorContext'
+	useEditor,
+	useEditorController,
+	useReactBridgeSnapshot,
+} from '@/parametric/editor/react/EditorContext'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
 
 interface FlowNodeData extends Record<string, unknown> {}
@@ -24,18 +24,20 @@ export interface FlowGraphBinding {
 }
 
 export function useFlowGraph(): FlowGraphBinding {
-	const controller = useGraphController()
-	const viewportEditor = useViewportEditor()
-	const viewportSnapshot = useViewportBridgeSnapshot()
+	const controller = useEditorController()
+	const viewportEditor = useEditor().viewport
+	const viewportSnapshot = useReactBridgeSnapshot()
 	const { activeGraphId, model, revision } = useGraphSnapshot()
 	const [selectedNodeIds, setSelectedNodeIds] = useState<ReadonlySet<string>>(() => new Set())
 	const [selectedEdgeIds, setSelectedEdgeIds] = useState<ReadonlySet<string>>(() => new Set())
+	const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null)
 	const selectedNodeIdsRef = useRef<ReadonlySet<string>>(new Set())
 
 	useEffect(() => {
 		selectedNodeIdsRef.current = new Set()
 		setSelectedNodeIds(selectedNodeIdsRef.current)
 		setSelectedEdgeIds(new Set())
+		setFocusedNodeId(null)
 	}, [activeGraphId])
 
 	useEffect(() => {
@@ -45,6 +47,7 @@ export function useFlowGraph(): FlowGraphBinding {
 		selectedNodeIdsRef.current = next
 		setSelectedNodeIds(next)
 		setSelectedEdgeIds(new Set())
+		setFocusedNodeId(request.nodeId)
 		viewportEditor.controller.acknowledgeGraphNodeFocus()
 	}, [
 		activeGraphId,
@@ -52,6 +55,12 @@ export function useFlowGraph(): FlowGraphBinding {
 		viewportEditor,
 		viewportSnapshot.graphNodeFocusRequest,
 	])
+
+	useEffect(() => {
+		if (!focusedNodeId) return
+		const timeout = window.setTimeout(() => setFocusedNodeId(null), 1_400)
+		return () => window.clearTimeout(timeout)
+	}, [focusedNodeId])
 
 	const nodes = useMemo<ParametricFlowNode[]>(
 		() =>
@@ -66,9 +75,10 @@ export function useFlowGraph(): FlowGraphBinding {
 				position: node.getPosition(),
 				data: {},
 				selected: selectedNodeIds.has(node.id),
+				className: focusedNodeId === node.id ? 'graph-node-focus-pulse' : undefined,
 				deletable: model.isNodeRemovable(node.id),
 			})),
-		[model, revision, selectedNodeIds]
+		[focusedNodeId, model, revision, selectedNodeIds]
 	)
 
 	const edges = useMemo<Edge[]>(
@@ -80,6 +90,7 @@ export function useFlowGraph(): FlowGraphBinding {
 				sourceHandle: edge.sourcePort,
 				targetHandle: edge.targetPort,
 				selected: selectedEdgeIds.has(edge.id),
+
 			})),
 		[model, revision, selectedEdgeIds]
 	)

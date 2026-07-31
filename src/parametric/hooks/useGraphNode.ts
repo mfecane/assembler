@@ -1,8 +1,5 @@
 import { useCallback } from 'react'
-import {
-	useGraphController,
-	useGraphEditorServices,
-} from '@/parametric/controller/GraphEditorContext'
+import { useEditorController } from '@/parametric/editor/react/EditorContext'
 import {
 	ArrayGraphNode,
 	type Axis,
@@ -20,7 +17,7 @@ import {
 	type TransformOrigin,
 	TransformGraphNode,
 } from '@/parametric/model/GraphNode'
-import { Vector3Value, type Vector3Snapshot } from '@/parametric/model/Vector3Value'
+import type { Vector3Snapshot } from '@/parametric/model/Vector3Value'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
 import type { MeshDescriptor } from '@/parametric/model/MeshCatalog'
 
@@ -30,7 +27,7 @@ export interface NumericFieldBinding {
 }
 
 export function useNumericField(nodeId: string, field: string, _label?: string): NumericFieldBinding {
-	const controller = useGraphController()
+	const controller = useEditorController()
 	const { model } = useGraphSnapshot()
 	const value = model.getNumericValue(nodeId, field) ?? 0
 	const setValue = useCallback(
@@ -57,23 +54,15 @@ export interface PrimitiveNodeBinding {
 }
 
 export function usePrimitiveNode(nodeId: string): PrimitiveNodeBinding | undefined {
-	const controller = useGraphController()
+	const controller = useEditorController()
 	const { model } = useGraphSnapshot()
 	const node = model.getNode(nodeId)
 	const setPrimitive = useCallback(
-		(value: PrimitiveKind) => controller.updateNode<PrimitiveGraphNode>(
-			nodeId,
-			'primitive',
-			(node) => node.setPrimitive(value)
-		),
+		(value: PrimitiveKind) => controller.setPrimitive(nodeId, value),
 		[controller, nodeId]
 	)
 	const setSize = useCallback(
-		(value: Vector3Snapshot) => controller.updateNode<PrimitiveGraphNode>(
-			nodeId,
-			'primitive',
-			(node) => node.setSize(Vector3Value.from(value))
-		),
+		(value: Vector3Snapshot) => controller.setPrimitiveSize(nodeId, value),
 		[controller, nodeId]
 	)
 
@@ -89,15 +78,11 @@ export interface NumberInputNodeBinding {
 }
 
 export function useNumberInputNode(nodeId: string): NumberInputNodeBinding | undefined {
-	const controller = useGraphController()
+	const controller = useEditorController()
 	const { model } = useGraphSnapshot()
 	const node = model.getNode(nodeId)
 	const setLabel = useCallback(
-		(label: string) => controller.updateNode<NumberInputGraphNode>(
-			nodeId,
-			'numberInput',
-			(node) => node.setLabel(label)
-		),
+		(label: string) => controller.setNumberInputLabel(nodeId, label),
 		[controller, nodeId]
 	)
 	const setValue = useCallback(
@@ -119,31 +104,19 @@ export interface SelectorNodeBinding {
 }
 
 export function useSelectorNode(nodeId: string): SelectorNodeBinding | undefined {
-	const controller = useGraphController()
+	const controller = useEditorController()
 	const { model } = useGraphSnapshot()
 	const node = model.getNode(nodeId)
 	const setLabel = useCallback(
-		(label: string) => controller.updateNode<SelectorGraphNode>(
-			nodeId,
-			'selector',
-			(node) => node.setLabel(label)
-		),
+		(label: string) => controller.setSelectorLabel(nodeId, label),
 		[controller, nodeId]
 	)
 	const setOptions = useCallback(
-		(options: string[]) => controller.updateNode<SelectorGraphNode>(
-			nodeId,
-			'selector',
-			(node) => node.setOptions(options)
-		),
+		(options: string[]) => controller.setSelectorOptions(nodeId, options),
 		[controller, nodeId]
 	)
 	const setValue = useCallback(
-		(value: string) => controller.updateNode<SelectorGraphNode>(
-			nodeId,
-			'selector',
-			(node) => node.setValue(value)
-		),
+		(value: string) => controller.setSelectorValue(nodeId, value),
 		[controller, nodeId]
 	)
 
@@ -166,23 +139,15 @@ export interface ColorNodeBinding {
 }
 
 export function useColorNode(nodeId: string): ColorNodeBinding | undefined {
-	const controller = useGraphController()
+	const controller = useEditorController()
 	const { model } = useGraphSnapshot()
 	const node = model.getNode(nodeId)
 	const setLabel = useCallback(
-		(label: string) => controller.updateNode<ColorGraphNode>(
-			nodeId,
-			'color',
-			(node) => node.setLabel(label)
-		),
+		(label: string) => controller.setColorNodeLabel(nodeId, label),
 		[controller, nodeId]
 	)
 	const setColor = useCallback(
-		(color: string) => controller.updateNode<ColorGraphNode>(
-			nodeId,
-			'color',
-			(node) => node.setColor(color)
-		),
+		(color: string) => controller.setColorNodeValue(nodeId, color),
 		[controller, nodeId]
 	)
 
@@ -198,15 +163,11 @@ export interface MeshSelectorNodeBinding {
 }
 
 export function useMeshSelectorNode(nodeId: string): MeshSelectorNodeBinding | undefined {
-	const controller = useGraphController()
+	const controller = useEditorController()
 	const { model } = useGraphSnapshot()
 	const node = model.getNode(nodeId)
 	const setSelections = useCallback(
-		(selections: MeshSelection[]) => controller.updateNode<MeshSelectorGraphNode>(
-			nodeId,
-			'meshSelector',
-			(node) => node.setSelections(selections)
-		),
+		(selections: MeshSelection[]) => controller.setMeshSelections(nodeId, selections),
 		[controller, nodeId]
 	)
 
@@ -226,15 +187,11 @@ export interface MeshAssetNodeBinding {
 }
 
 export function useMeshAssetNode(nodeId: string): MeshAssetNodeBinding | undefined {
-	const controller = useGraphController()
+	const controller = useEditorController()
 	const { model } = useGraphSnapshot()
 	const node = model.getNode(nodeId)
 	const setMeshId = useCallback(
-		(meshId: string) => controller.updateNode<MeshAssetGraphNode>(
-			nodeId,
-			'meshAsset',
-			(node) => node.setMeshId(meshId)
-		),
+		(meshId: string) => controller.setMeshAsset(nodeId, meshId),
 		[controller, nodeId]
 	)
 
@@ -253,16 +210,11 @@ export interface MaterialNodeBinding {
 }
 
 export function useMaterialNode(nodeId: string): MaterialNodeBinding | undefined {
-	const controller = useGraphController()
-	const { evaluator } = useGraphEditorServices()
-	const { document: graphDocument, activeGraphId, model } = useGraphSnapshot()
+	const controller = useEditorController()
+	const { activeGraphId, model } = useGraphSnapshot()
 	const node = model.getNode(nodeId)
 	const setColor = useCallback(
-		(color: string) => controller.updateNode<MaterialGraphNode>(
-			nodeId,
-			'material',
-			(node) => node.setColor(color)
-		),
+		(color: string) => controller.setMaterialColor(nodeId, color),
 		[controller, nodeId]
 	)
 
@@ -271,8 +223,7 @@ export function useMaterialNode(nodeId: string): MaterialNodeBinding | undefined
 		(edge) => edge.targetNodeId === nodeId && edge.targetPort === 'color'
 	)
 	const connectedValue = colorEdge?.sourcePort
-		? evaluator.evaluateOutput(
-			graphDocument,
+		? controller.evaluateOutput(
 			activeGraphId,
 			colorEdge.sourceNodeId,
 			colorEdge.sourcePort
@@ -298,7 +249,7 @@ export interface ArrayNodeBinding {
 }
 
 export function useArrayNode(nodeId: string): ArrayNodeBinding | undefined {
-	const controller = useGraphController()
+	const controller = useEditorController()
 	const { model } = useGraphSnapshot()
 	const node = model.getNode(nodeId)
 	const setCount = useCallback(
@@ -306,11 +257,7 @@ export function useArrayNode(nodeId: string): ArrayNodeBinding | undefined {
 		[controller, nodeId]
 	)
 	const setAxis = useCallback(
-		(value: Axis) => controller.updateNode<ArrayGraphNode>(
-			nodeId,
-			'array',
-			(node) => node.setAxis(value)
-		),
+		(value: Axis) => controller.setArrayAxis(nodeId, value),
 		[controller, nodeId]
 	)
 	const setOffset = useCallback(
@@ -357,7 +304,7 @@ export interface SumNodeBinding {
 }
 
 export function useSumNode(nodeId: string): SumNodeBinding | undefined {
-	const controller = useGraphController()
+	const controller = useEditorController()
 	const { model } = useGraphSnapshot()
 	const node = model.getNode(nodeId)
 	const setConstant = useCallback(
@@ -399,55 +346,31 @@ export interface TransformNodeBinding {
 }
 
 export function useTransformNode(nodeId: string): TransformNodeBinding | undefined {
-	const controller = useGraphController()
+	const controller = useEditorController()
 	const { model } = useGraphSnapshot()
 	const node = model.getNode(nodeId)
 	const setTranslation = useCallback(
-		(value: Vector3Snapshot) => controller.updateNode<TransformGraphNode>(
-			nodeId,
-			'transform',
-			(node) => node.setTranslation(Vector3Value.from(value))
-		),
+		(value: Vector3Snapshot) => controller.setTransformTranslation(nodeId, value),
 		[controller, nodeId]
 	)
 	const setRotation = useCallback(
-		(value: Vector3Snapshot) => controller.updateNode<TransformGraphNode>(
-			nodeId,
-			'transform',
-			(node) => node.setRotation(Vector3Value.from(value))
-		),
+		(value: Vector3Snapshot) => controller.setTransformRotation(nodeId, value),
 		[controller, nodeId]
 	)
 	const setScale = useCallback(
-		(value: Vector3Snapshot) => controller.updateNode<TransformGraphNode>(
-			nodeId,
-			'transform',
-			(node) => node.setScale(Vector3Value.from(value))
-		),
+		(value: Vector3Snapshot) => controller.setTransformScale(nodeId, value),
 		[controller, nodeId]
 	)
 	const setOrigin = useCallback(
-		(value: TransformOrigin) => controller.updateNode<TransformGraphNode>(
-			nodeId,
-			'transform',
-			(node) => node.setOrigin(value)
-		),
+		(value: TransformOrigin) => controller.setTransformOrigin(nodeId, value),
 		[controller, nodeId]
 	)
 	const setCopy = useCallback(
-		(value: boolean) => controller.updateNode<TransformGraphNode>(
-			nodeId,
-			'transform',
-			(node) => node.setCopy(value)
-		),
+		(value: boolean) => controller.setTransformCopy(nodeId, value),
 		[controller, nodeId]
 	)
 	const setUniformScale = useCallback(
-		(value: boolean) => controller.updateNode<TransformGraphNode>(
-			nodeId,
-			'transform',
-			(node) => node.setUniformScale(value)
-		),
+		(value: boolean) => controller.setTransformUniformScale(nodeId, value),
 		[controller, nodeId]
 	)
 

@@ -5,7 +5,7 @@ import { UserMenu } from '@/auth/UserMenu'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ConfirmationDialog } from '@/parametric/components/ConfirmationDialog'
-import { createDefaultGraphController } from '@/parametric/controller/createDefaultGraphController'
+import { createDefaultEditor } from '@/parametric/editor/createEditor'
 import type { ProjectRepository } from '@/projects/ProjectRepository'
 import type { ProjectSummary } from '@/projects/projectTypes'
 
@@ -49,7 +49,9 @@ export function ProjectDashboard({
 		setIsCreating(true)
 		setError(null)
 		try {
-			const document = createDefaultGraphController().exportGraph()
+			const editor = createDefaultEditor()
+			const document = editor.controller.exportGraph()
+			editor.dispose()
 			const project = await repository.create(trimmedName, document)
 			onOpen(project.id)
 		} catch (cause) {

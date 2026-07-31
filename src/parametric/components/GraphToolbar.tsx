@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Panel, type Edge } from '@xyflow/react'
-import { Eraser, Pencil, Settings2, Trash2, Unlink } from 'lucide-react'
+import { Eraser, Redo2, Settings2, Trash2, Undo2, Unlink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -15,7 +15,8 @@ import { useGraphActions } from '@/parametric/hooks/useGraphActions'
 import { ConfigurationPanelEditorDialog } from '@/parametric/components/ConfigurationPanelEditorDialog'
 import { GraphJsonControls } from '@/parametric/components/GraphJsonControls'
 import { AssetHelperDialog } from '@/parametric/components/AssetHelperDialog'
-import { useGraphController } from '@/parametric/controller/GraphEditorContext'
+import { useEditorController } from '@/parametric/editor/react/EditorContext'
+import { useReactBridgeSnapshot } from '@/parametric/editor/react/EditorContext'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
 
 export function GraphToolbar({ selectedEdges }: { selectedEdges: Edge[] }) {
@@ -23,7 +24,8 @@ export function GraphToolbar({ selectedEdges }: { selectedEdges: Edge[] }) {
 	const [confirmingRemove, setConfirmingRemove] = useState(false)
 	const [editingInterface, setEditingInterface] = useState(false)
 	const { clearGraph, removeEdge } = useGraphActions()
-	const controller = useGraphController()
+	const controller = useEditorController()
+	const { canUndo, canRedo } = useReactBridgeSnapshot()
 	const { document, activeGraphId } = useGraphSnapshot()
 	const activeGraph = document.requireGraph(activeGraphId)
 	const isEntryGraph = activeGraphId === document.getEntryGraphId()
@@ -39,6 +41,49 @@ export function GraphToolbar({ selectedEdges }: { selectedEdges: Edge[] }) {
 					className="nodrag nopan flex items-center gap-1 rounded-md border border-border bg-surface p-1 shadow-md"
 				>
 					<TooltipProvider delayDuration={300}>
+						<div data-id="graph-history-tools" className="flex items-center gap-1">
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<span className="inline-flex">
+										<Button
+											data-id="undo-graph-change-button"
+											type="button"
+											variant="ghost"
+											size="icon"
+											className="h-8 w-8 text-muted-foreground"
+											disabled={!canUndo}
+											aria-label="Undo graph change"
+											aria-keyshortcuts="Control+Z Meta+Z"
+											onClick={() => controller.undo()}
+										>
+											<Undo2 />
+										</Button>
+									</span>
+								</TooltipTrigger>
+								<TooltipContent side="top">Undo</TooltipContent>
+							</Tooltip>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<span className="inline-flex">
+										<Button
+											data-id="redo-graph-change-button"
+											type="button"
+											variant="ghost"
+											size="icon"
+											className="h-8 w-8 text-muted-foreground"
+											disabled={!canRedo}
+											aria-label="Redo graph change"
+											aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y"
+											onClick={() => controller.redo()}
+										>
+											<Redo2 />
+										</Button>
+									</span>
+								</TooltipTrigger>
+								<TooltipContent side="top">Redo</TooltipContent>
+							</Tooltip>
+						</div>
+						<div className="h-5 w-px bg-border" aria-hidden="true" />
 						<div
 							data-id="graph-creation-tools"
 							className="flex items-center gap-1"
@@ -218,30 +263,14 @@ function EditableAssemblyName({
 
 	if (!editing) {
 		return (
-			<div
+			<span
 				data-id="active-assembly-name"
-				className="flex min-w-0 items-center gap-1"
+				className="max-w-40 cursor-text truncate px-2 text-xs font-medium text-foreground"
+				title={`${graphName} — double-click to rename`}
+				onDoubleClick={() => setEditing(true)}
 			>
-				<span className="max-w-40 truncate px-2 text-xs font-medium text-foreground">
-					{graphName}
-				</span>
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<Button
-							data-id="rename-assembly-button"
-							type="button"
-							variant="ghost"
-							size="icon"
-							className="h-8 w-8 text-muted-foreground"
-							aria-label="Rename current assembly"
-							onClick={() => setEditing(true)}
-						>
-							<Pencil />
-						</Button>
-					</TooltipTrigger>
-					<TooltipContent side="top">Rename current assembly</TooltipContent>
-				</Tooltip>
-			</div>
+				{graphName}
+			</span>
 		)
 	}
 

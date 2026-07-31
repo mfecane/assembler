@@ -1,4 +1,4 @@
-# Project save UX
+# Project saving
 
 Project documents autosave 800 milliseconds after the latest persisted document change. The
 toolbar also provides a manual save action and supports `Ctrl+S` and `Command+S`. Manual saving
@@ -19,22 +19,23 @@ persist the current document at any time.
 The save split button communicates the transient save state. Its arrow menu provides **Save as…**,
 which opens a name dialog and creates a new project from the editor's current document before
 opening the copy. The source project is not renamed or overwritten. Save and Save as failures
-preserve the relevant project ID, requested name, document revision, underlying error, and stack
+preserve the relevant project ID, requested name, document version, underlying error, and stack
 in the details disclosure and console.
 
 ## Project rename
 
-The pencil beside the project name enables an inline editor. Enter or blur persists a non-empty
-name; Escape cancels. Project rename and document save writes do not run concurrently. Rename
-failures preserve and expose the project ID, user ID, previous name, requested name, underlying
-error, and stack in the toolbar and console.
+Double-clicking the project name enables an inline editor. Enter or blur persists a non-empty name;
+Escape cancels. Project rename and document save writes do not run concurrently. Rename failures
+preserve and expose the project ID, user ID, previous name, requested name, underlying error, and
+stack in the toolbar and console.
 
 ## Dirty tracking
 
-The graph controller publishes two revisions:
+The editor controller publishes two state identifiers:
 
 - `revision` changes for every controller update and drives view subscriptions.
-- `documentRevision` changes only when serialized project content changes.
+- `documentVersion` identifies persistent content states and is restored by undo/redo.
 
-Opening another graph changes the active editor view but not `documentRevision`, so navigation
-does not produce a false unsaved state or an unnecessary autosave.
+Opening another graph changes the active editor view but not `documentVersion`, so navigation does
+not produce a false unsaved state or an unnecessary autosave. Undoing to the saved document version
+returns the project to clean state.

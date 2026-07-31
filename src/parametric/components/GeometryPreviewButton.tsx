@@ -7,7 +7,7 @@ import {
 	TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { useGraphPreview } from '@/parametric/controller/GraphEditorContext'
+import { useGraphPreview } from '@/parametric/editor/react/EditorContext'
 
 export function GeometryPreviewButton({
 	nodeId,

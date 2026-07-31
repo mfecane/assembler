@@ -19,7 +19,8 @@ The application has three coordinated views:
 Graph authors build the graph and decide which values are exposed. Product configurators then change those exposed values without editing graph topology. Graphs can be imported from and exported to JSON.
 
 The node canvas supports zooming from React Flow's default minimum scale up to `4×` for close
-inspection and editing of node controls.
+inspection and editing of node controls. Shift-drag marquee selection includes every node touched
+by the selection rectangle; nodes do not need to be fully enclosed.
 
 ## Main concepts
 
@@ -33,7 +34,10 @@ The built-in graph vocabulary includes nodes for placing a fixed mesh asset, sel
 
 ### Geometry value
 
-A geometry value is a list of evaluated mesh instances. Each instance identifies a primitive or registered mesh asset and carries its size, transformation matrix, and optional material. Graph evaluation does not destructively merge geometry.
+A geometry value is a plain-data scene metadata object containing asset instances. Each instance
+identifies a primitive or registered catalog asset and carries its size, numeric transformation
+matrix, optional material, unique scene identity, and originating node-instance reference. Graph
+evaluation does not destructively merge geometry or create Three.js scene objects.
 
 ### Output
 
@@ -55,24 +59,28 @@ maps those inputs to compatible number field, slider, select, and color-picker c
 ```text
 Persisted JSON
      ↓ deserialize
-Graph model ← commands → Graph controller
-     │                       ↓ revisions
-     ├─ Node/edge hooks → React Flow editor
+GraphState ← commands → EditorController
+     │                       ├─ HistoryController
+     │                       ├─ GraphEvaluator
+     │                       └─ services and repositories
+     ├─ React hooks → React Flow editor
      ├─ Entry input bindings → configurator panel
-     └─ Graph evaluator → evaluated mesh instances
-                              ↓
-                    Three.js scene synchronization
+     └─ scene metadata → Three.js viewport
+
+Editor → EditorController + ReactBridge + viewport lifetime
 ```
 
 The implementation is divided by responsibility:
 
 - `src/parametric/model/` contains framework-independent graph, node, edge, serialization, and value models.
 - `src/parametric/nodes/defaultNodeRegistry.ts` is the source of truth for built-in node construction, ports, persistence, evaluation, and numeric fields.
-- `src/parametric/controller/` is the mutation boundary and publishes graph revisions.
+- `src/parametric/editor/` contains the root editor, graph-state owner, mutation boundary,
+  commands, shared history, React bridge, and React integration.
 - `src/parametric/hooks/` adapts controller snapshots and commands for React.
 - `src/parametric/nodes/` and `src/parametric/components/` implement node and editor UI.
-- `src/parametric/evaluation/` evaluates only the branches needed by an output.
-- `src/parametric/three/` registers assets and synchronizes evaluated instances with the scene.
+- `src/parametric/evaluation/` evaluates only the branches needed by an output and defines the
+  scene metadata intermediate representation.
+- `src/parametric/three/` registers assets and constructs or synchronizes the scene from metadata.
 
 UI code does not directly own graph state. An interaction invokes a controller command, the controller updates the model and publishes a revision, and subscribed views derive new bindings or evaluated geometry.
 
@@ -86,13 +94,13 @@ Unconnected inputs may have node-defined local fallbacks. Array uses its stored 
 
 The graph document contains an entry graph ID, saved entry input values, every document-local
 graph definition, and configuration-panel controls. Each definition owns its interface, nodes,
-and edges. Runtime-only values such as Three.js matrices, evaluated mesh instances,
+and edges. Runtime-only values such as scene metadata and evaluated asset instances,
 subscriptions, controller revisions, selection, and graph-tree state are not persisted.
 
 Graph instances reference definitions only by IDs resolved inside the current document.
 
-See [Graph persistence](./graph-persistence.md) for format rules and
-[graph.schema.json](./graph.schema.json) for the machine-readable schema.
+See [Graph persistence](./reference/graph-persistence.md) for format rules and
+[graph.schema.json](./reference/graph.schema.json) for the machine-readable schema.
 
 To remain straightforward for both conventional tooling and LLMs, the persistence model uses:
 
@@ -112,7 +120,8 @@ A built-in node type normally requires:
 1. A node data class in `src/parametric/model/GraphNode.ts`.
 2. A definition in `src/parametric/nodes/defaultNodeRegistry.ts`.
 3. A React view registered in `src/parametric/nodes/nodeViewRegistry.ts`.
-4. A new node variant in `docs/graph.schema.json` and an entry in [the node reference](./nodes.md).
+4. A new node variant in `docs/reference/graph.schema.json` and an entry in
+   [the node reference](./reference/nodes.md).
 
 The shared node registry makes creation menus, connection validation, persistence, evaluation, and configuration discovery consume the same definition.
 
@@ -120,6 +129,7 @@ The shared node registry makes creation menus, connection validation, persistenc
 
 - Import performs structural and graph-reference checks before constructing the document.
 - Recursive graph references are rejected.
-- There is no undo/redo or collaboration.
+- Graph document changes and Three.js transform edits share undo/redo history. Collaboration is
+  not supported.
 - Mesh references depend on assets registered by the running application.
 - JSON Schema can validate document shape, but reference integrity and port compatibility require graph-aware validation.

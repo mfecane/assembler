@@ -1,27 +1,26 @@
-import type { GraphController } from '@/parametric/controller/GraphController'
-import type { GraphEvaluator } from '@/parametric/evaluation/GraphEvaluator'
+import type { EditorController } from '@/parametric/editor/EditorController'
+import type { ReactBridge } from '@/parametric/editor/ReactBridge'
+import { emptySceneMetadata } from '@/parametric/evaluation/SceneMetadata'
 import { TransformGraphNode } from '@/parametric/model/GraphNode'
 import { ViewportEditorController } from '@/parametric/three/editor/ViewportEditorController'
-import { ViewportReactBridge } from '@/parametric/three/editor/ViewportReactBridge'
 import { ViewportScene } from '@/parametric/three/editor/ViewportScene'
 
 export class ViewportEditor {
-	public readonly bridge = new ViewportReactBridge()
 	public readonly controller: ViewportEditorController
 	private scene: ViewportScene | null = null
 	private resizeObserver: ResizeObserver | null = null
 	private readonly unsubscribeGraph: () => void
 
 	public constructor(
-		private readonly graphController: GraphController,
-		private readonly evaluator: GraphEvaluator
+		private readonly editorController: EditorController,
+		public readonly bridge: ReactBridge
 	) {
 		this.controller = new ViewportEditorController(
-			graphController,
+			editorController,
 			this.bridge,
 			() => this.syncScene()
 		)
-		this.unsubscribeGraph = graphController.subscribe(() => {
+		this.unsubscribeGraph = editorController.subscribe(() => {
 			this.controller.handleGraphChange()
 		})
 	}
@@ -65,30 +64,46 @@ export class ViewportEditor {
 
 	private syncScene(): void {
 		if (!this.scene) return
-		const graphSnapshot = this.graphController.getSnapshot()
+		const graphSnapshot = this.editorController.getSnapshot()
 		const bridgeSnapshot = this.bridge.getSnapshot()
-		const graphOutputMeshes = this.evaluator.evaluateGraphOutput(
-			graphSnapshot.document,
-			graphSnapshot.activeGraphId
-		)
-		const evaluatedMeshes = bridgeSnapshot.previewNodeId
-			? this.evaluator.evaluateGeometryOutput(
-				graphSnapshot.document,
-				graphSnapshot.activeGraphId,
-				bridgeSnapshot.previewNodeId
+		try {
+			const graphOutputMetadata = this.editorController.evaluateGraphOutput(
+				graphSnapshot.activeGraphId
 			)
-			: graphOutputMeshes
-		const transformNode = bridgeSnapshot.transformNodeId
-			? graphSnapshot.model.getNode(bridgeSnapshot.transformNodeId)
-			: null
+			const metadata = bridgeSnapshot.previewNodeId
+				? this.editorController.evaluateGeometryOutput(
+					graphSnapshot.activeGraphId,
+					bridgeSnapshot.previewNodeId
+				)
+				: graphOutputMetadata
+			const transformNode = bridgeSnapshot.transformNodeId
+				? graphSnapshot.model.getNode(bridgeSnapshot.transformNodeId)
+				: null
 
-		this.scene.sync(
-			evaluatedMeshes,
-			bridgeSnapshot.previewNodeId ? graphOutputMeshes : [],
-			bridgeSnapshot.selectedMeshInstanceId,
-			transformNode instanceof TransformGraphNode ? transformNode : null,
-			bridgeSnapshot.transformMode
-		)
+			this.scene.sync(
+				metadata,
+				bridgeSnapshot.previewNodeId ? graphOutputMetadata : emptySceneMetadata(),
+				bridgeSnapshot.selectedMeshInstanceId,
+				transformNode instanceof TransformGraphNode ? transformNode : null,
+				bridgeSnapshot.transformMode
+			)
+			if (bridgeSnapshot.error) this.bridge.update({ error: null })
+		} catch (cause) {
+			const error = [
+				'Failed to evaluate graph metadata or synchronize the 3D scene.',
+				`Active graph: "${graphSnapshot.activeGraphId}".`,
+				`Preview node: "${bridgeSnapshot.previewNodeId ?? 'none'}".`,
+				`Transform node: "${bridgeSnapshot.transformNodeId ?? 'none'}".`,
+				describeError(cause),
+			].join(' ')
+			console.error(error, {
+				cause,
+				activeGraphId: graphSnapshot.activeGraphId,
+				previewNodeId: bridgeSnapshot.previewNodeId,
+				transformNodeId: bridgeSnapshot.transformNodeId,
+			})
+			this.bridge.update({ error })
+		}
 	}
 }
 

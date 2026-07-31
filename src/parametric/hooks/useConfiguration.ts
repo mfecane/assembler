@@ -1,10 +1,10 @@
 import { useCallback } from 'react'
-import { useGraphController } from '@/parametric/controller/GraphEditorContext'
+import { useEditorController } from '@/parametric/editor/react/EditorContext'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
 import type { ConfigurationField } from '@/parametric/model/GraphDocumentModel'
 
 export function useConfiguration() {
-	const controller = useGraphController()
+	const controller = useEditorController()
 	const { document } = useGraphSnapshot()
 	const entry = document.getEntryGraph()
 	const values = document.getConfigurationControls().reduce<ConfigurationField[]>((fields, control) => {

@@ -3,9 +3,9 @@ import { ArrowLeft, Move3d, Rotate3d, Scaling } from 'lucide-react'
 import type { TransformControlsMode } from 'three/examples/jsm/controls/TransformControls.js'
 import { Button } from '@/components/ui/button'
 import {
-	useViewportBridgeSnapshot,
-	useViewportEditor,
-} from '@/parametric/controller/GraphEditorContext'
+	useReactBridgeSnapshot,
+	useEditor,
+} from '@/parametric/editor/react/EditorContext'
 import { ConfiguratorPanel } from '@/parametric/components/ConfiguratorPanel'
 import { cn } from '@/lib/utils'
 
@@ -22,16 +22,17 @@ const transformTools: ReadonlyArray<{
 export function ThreeViewport() {
 	const canvasRef = useRef<HTMLCanvasElement>(null)
 	const containerRef = useRef<HTMLDivElement>(null)
-	const editor = useViewportEditor()
-	const snapshot = useViewportBridgeSnapshot()
+	const editor = useEditor()
+	const viewport = editor.viewport
+	const snapshot = useReactBridgeSnapshot()
 
 	useEffect(() => {
 		const canvas = canvasRef.current
 		const container = containerRef.current
 		if (!canvas || !container) return
-		editor.attach(canvas, container)
-		return () => editor.detach()
-	}, [editor])
+		viewport.attach(canvas, container)
+		return () => viewport.detach()
+	}, [viewport])
 
 	return (
 		<div
@@ -50,7 +51,7 @@ export function ThreeViewport() {
 					role="alert"
 					className="absolute inset-x-3 top-3 z-20 rounded-md border border-danger/40 bg-surface p-3 text-danger shadow-md"
 				>
-					<div className="text-sm font-semibold">3D editor could not be initialized</div>
+					<div className="text-sm font-semibold">Editor error</div>
 					<pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap text-xs text-foreground">
 						{snapshot.error}
 					</pre>
@@ -72,7 +73,7 @@ export function ThreeViewport() {
 							size="sm"
 							className="text-xs"
 							aria-pressed={snapshot.transformMode === mode}
-							onClick={() => editor.controller.setTransformMode(mode)}
+							onClick={() => viewport.controller.setTransformMode(mode)}
 						>
 							<Icon />
 							{label}
@@ -87,7 +88,7 @@ export function ThreeViewport() {
 					variant="outline"
 					size="sm"
 					className="absolute right-3 top-3 bg-surface text-xs shadow-md"
-					onClick={() => editor.controller.showGraphOutput()}
+					onClick={() => viewport.controller.showGraphOutput()}
 				>
 					<ArrowLeft />
 					Back to assembly output
@@ -115,7 +116,7 @@ export function ThreeViewport() {
 						variant="ghost"
 						className="w-full justify-start px-2 font-normal"
 						role="menuitem"
-						onClick={() => editor.controller.goToOriginalAssetNode()}
+						onClick={() => viewport.controller.goToOriginalAssetNode()}
 					>
 						Go to original asset node
 					</Button>

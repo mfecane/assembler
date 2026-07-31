@@ -5,12 +5,12 @@ import { NodeDeleteButton } from '@/parametric/components/NodeDeleteButton'
 import { GeometryPreviewButton } from '@/parametric/components/GeometryPreviewButton'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
-import { useGraphController } from '@/parametric/controller/GraphEditorContext'
+import { useEditorController } from '@/parametric/editor/react/EditorContext'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
 import { GraphInstanceGraphNode } from '@/parametric/model/GraphNode'
 
 export function GraphInstanceNode({ id }: NodeProps<ParametricFlowNode>) {
-	const controller = useGraphController()
+	const controller = useEditorController()
 	const { document, model } = useGraphSnapshot()
 	const node = model.getNode(id)
 	if (!(node instanceof GraphInstanceGraphNode)) return null

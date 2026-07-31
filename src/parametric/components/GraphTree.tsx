@@ -13,9 +13,9 @@ import {
 	TooltipTrigger,
 } from '@/components/ui/tooltip'
 import type {
-	GraphController,
-	GraphControllerSnapshot,
-} from '@/parametric/controller/GraphController'
+	EditorController,
+	EditorControllerSnapshot,
+} from '@/parametric/editor/EditorController'
 import { GraphInstanceGraphNode } from '@/parametric/model/GraphNode'
 
 interface GraphTreeItem {
@@ -26,7 +26,7 @@ interface GraphTreeItem {
 	children: GraphTreeItem[]
 }
 
-export function GraphTree({ controller }: { controller: GraphController }) {
+export function GraphTree({ controller }: { controller: EditorController }) {
 	const { document, activeGraphId, revision } = useSyncExternalStore(
 		controller.subscribe,
 		controller.getSnapshot
@@ -148,7 +148,7 @@ function TreeRow({
 	)
 }
 
-function createGraphTree(document: GraphControllerSnapshot['document']): {
+function createGraphTree(document: EditorControllerSnapshot['document']): {
 	root: GraphTreeItem
 	unused: GraphTreeItem[]
 } {

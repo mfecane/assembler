@@ -1,187 +1,62 @@
-# Nested graphs implementation plan
+# Nested graphs
 
-## Goal
+## Model
 
-Rebuild the graph document around reusable, nested graph definitions.
+Each project document owns a flat collection of reusable graph definitions. `entryGraphId`
+selects the definition rendered as the product. A Graph Instance node references another
+definition by its document-local ID; there is no external graph address or loading mechanism.
 
-Every graph definition belongs to the current document. A graph instance references another
-definition by its local graph ID. The application has no document ID, URI, repository lookup,
-or other mechanism for resolving a graph outside the current document.
+Entry and child graphs share the same model:
 
-The entry graph and child graphs use the same graph definition, input boundary, output
-boundary, editing, and evaluation behavior.
+- a label and document-local ID;
+- public input declarations;
+- one geometry output declaration;
+- one Graph Input boundary node per public input;
+- exactly one Graph Output boundary node;
+- graph-local nodes and edges.
 
-## Product rules
-
-- The document contains one entry graph ID and a flat collection of graph definitions.
-- Every definition contains its label, public inputs, geometry output, nodes, and edges.
-- A graph instance stores only the referenced graph ID.
-- A graph input node exposes one declared public input inside its containing graph.
-- Every graph contains exactly one graph output node.
-- Graph references must resolve inside the current document.
-- Direct and indirect recursive graph references are rejected.
-- Configuration-panel controls may bind only to public inputs of the entry graph.
-- Inner nodes, child graph inputs, graph instance ports, and instance paths are not UI-binding
-  targets.
-- Entry input values are stored separately from configuration-panel presentation.
-- Number, enum, and color constants do not implicitly appear in the configuration panel.
-
-## Persistent document
-
-```json
-{
-  "entryGraphId": "main",
-  "entryInputValues": {
-    "width": 1200
-  },
-  "graphs": [
-    {
-      "id": "main",
-      "label": "Product",
-      "inputs": [
-        {
-          "id": "width",
-          "label": "Width",
-          "valueType": "number",
-          "defaultValue": 1000
-        }
-      ],
-      "output": {
-        "id": "geometry",
-        "label": "Product",
-        "valueType": "geometry"
-      },
-      "nodes": [],
-      "edges": []
-    }
-  ],
-  "configurationPanel": {
-    "controls": [
-      {
-        "id": "width-control",
-        "inputId": "width",
-        "label": "Width",
-        "type": "slider",
-        "min": 400,
-        "max": 2000,
-        "step": 10
-      }
-    ]
-  }
-}
-```
-
-## Model and serialization
-
-- [x] Add a document model that owns graph definitions, entry values, and configuration
-  controls.
-- [x] Add public graph input and output declarations.
-- [x] Replace the persisted root node/edge collections with a graph-definition collection.
-- [x] Remove external graph-reference shapes from the data model.
-- [x] Deserialize all graph instances against an interface index built from the current
-  document.
-- [x] Reject unresolved and recursive graph references.
-- [x] Validate node IDs, edge IDs, boundary-node cardinality, interface values, and UI controls
-  without silently accepting invalid document data.
-- [x] Replace the JSON Schema with the implemented document shape.
-
-## Node boundaries and ports
-
-- [x] Add `graphInput`, `graphOutput`, and `graphInstance` model nodes.
-- [x] Derive graph-input ports from the containing graph interface.
-- [x] Derive graph-instance ports from the referenced local graph interface.
-- [x] Make port resolution aware of the containing document and graph.
-- [x] Add React Flow views for graph input, graph output, and graph instance nodes.
-- [x] Show public port labels and value types on boundary and instance nodes.
-- [x] Open a graph definition when its instance node is activated.
+Direct and indirect recursive references are rejected.
 
 ## Evaluation
 
-- [x] Add evaluation frames containing a graph definition, supplied inputs, node cache, and
-  connection index.
-- [x] Evaluate entry values through graph input boundary nodes.
-- [x] Recursively evaluate graph instances using connected values and declared defaults.
-- [x] Prefix evaluated instance identity with the containing graph-instance path.
-- [x] Cover repeated instances, nested instances, disconnected inputs, and enum option flow in
-  the evaluator implementation.
-- [x] Keep graph preview behavior scoped to the graph currently open in React Flow.
+Evaluation uses frames containing the active definition, supplied inputs, connection index, node
+cache, and graph-instance path. Graph Input nodes resolve supplied values or declaration defaults.
+Graph Instance nodes evaluate their referenced definitions recursively and scope both rendered
+asset identity and origin-node instance identity, keeping repeated instances distinct in scene
+metadata.
 
-## React Flow graph editing
+Only the graph open in React Flow is used for node previews. The entry graph remains the product
+result shown by the normal viewport.
 
-- [x] Project only the active graph's nodes and edges into React Flow.
-- [x] Route all React Flow mutations to the active graph.
-- [x] Add graph instances through the existing node menu.
-- [x] Prevent adding an instance that would create a recursive graph dependency.
-- [x] Keep selection and preview state valid when switching graphs.
-- [x] Display the active graph name above the canvas.
+## Editing and navigation
 
-## Document graph tree
+React Flow projects only the open definition. The graph tree is rooted at the entry graph, derives
+children from Graph Instance nodes, and lists unreachable definitions under **Unused definitions**.
+Repeated instances appear as separate tree rows while opening their shared definition.
 
-The graph tree is a persistent side panel beside the React Flow canvas.
+Definitions can be created, selected, and removed from the tree, and the active definition can be
+renamed by double-clicking its name in the graph toolbar. A definition cannot be
+removed while another definition references it, and an instance cannot be added if it would create
+a recursive dependency.
 
-It represents definitions and their instance relationships:
+## Public inputs
 
-```text
-Product
-├─ Shelf assembly
-│  ├─ Upright
-│  └─ Shelf
-└─ Base assembly
+Number, enum, color, and geometry inputs are created as Graph Input nodes. Their labels, defaults,
+and enum options are edited on the node. Removing the node also removes its declaration, affected
+instance edges, saved entry value, and configuration control.
 
-Unused definitions
-└─ Experimental bracket
-```
+Configuration controls bind only to compatible public inputs of the entry graph. Inner nodes,
+child inputs, instance ports, and instance paths are not binding targets. See
+[Editor UI](./editor-ui.md) for panel behavior.
 
-- [x] Root the primary tree at the entry graph.
-- [x] Derive children from `graphInstance` nodes.
-- [x] Show repeated instances as separate tree rows while opening their shared definition.
-- [x] Prevent infinite rendering when invalid input is inspected.
-- [x] Show definitions not reachable from the entry graph in an `Unused definitions` section.
-- [x] Select a graph definition by clicking a tree row.
-- [x] Highlight the graph currently open in React Flow.
-- [x] Add a document-local graph definition from the tree.
-- [x] Rename and remove definitions from the tree.
-- [x] Prevent removing a definition while local instances reference it.
+## Persistence
 
-## Graph inputs and configuration-panel editor
-
-- [x] Add number, enum, color, and geometry inputs from the node menu.
-- [x] Create the public declaration when its graph input node is placed.
-- [x] Edit input labels, defaults, and enum options directly on graph input nodes.
-- [x] Remove the declaration and dependent bindings when its graph input node is deleted.
-- [x] Show the configuration-panel editor only for the entry graph.
-- [x] Map entry inputs to compatible number field, slider, select, and color controls.
-- [x] Configure control labels, ordering, and numeric element settings independently.
-- [x] Do not offer UI binding for geometry inputs.
-- [x] Do not display inner graphs, nodes, instance ports, or paths as binding targets.
-- [x] Render the normal configuration panel from explicit controls and entry values.
-
-## Bundled document and storage
-
-- [x] Replace the bundled graph document with a small nested-graph example.
-- [x] Update the project storage constraint to accept the implemented document keys.
-- [x] Ensure project create, load, save, and JSON import/export use the same document shape.
+The bundled MaxShelf fixture, JSON Schema, project creation, load/save, and JSON import/export all
+use the same nested document shape. See the
+[graph document specification](../reference/graph-persistence.md) for the authoritative format.
 
 ## Verification
 
-- [x] Pass TypeScript static analysis.
-- [ ] Smoke-test import and export in the running application.
-- [ ] Smoke-test two instances of one definition with independent inputs.
-- [ ] Smoke-test nested geometry and mesh identity in the viewport.
-- [ ] Smoke-test graph-tree navigation and React Flow scope changes.
-- [ ] Smoke-test entry configuration controls.
-- [ ] Smoke-test invalid reference rejection through JSON import.
-
-Runtime smoke testing is intentionally left to the project owner.
-
-## Implementation log
-
-- Added the document-level graph model and local graph interface index.
-- Added document-local reference and dependency-cycle checks.
-- Added graph boundary and graph instance model nodes with context-derived ports.
-- Reworked evaluation around recursive graph frames and instance-scoped mesh identity.
-- Added scoped React Flow navigation, document graph tree, and graph instance creation.
-- Moved public input creation and editing onto Graph Input nodes.
-- Rebuilt the root-only configuration-panel editor around explicit typed UI controls.
-- Replaced the bundled document, schema, storage constraint, and persistence documentation.
-- Completed TypeScript static analysis; runtime smoke testing remains external.
+Static TypeScript validation covers the implementation. The project owner still needs to verify
+import/export, independent repeated instances, nested mesh identity, tree navigation, entry
+controls, and invalid-reference errors in the running application.

@@ -1,11 +1,15 @@
 import { Euler, Matrix4, Quaternion, Vector3 } from 'three'
 import type {
-	EvaluatedInstance,
 	GeometryValue,
 	NumberValue,
 	EnumValue,
 	ColorValue,
 } from '@/parametric/evaluation/EvaluationTypes'
+import {
+	isSceneMetadata,
+	type Matrix4Snapshot,
+	type SceneAssetInstanceMetadata,
+} from '@/parametric/evaluation/SceneMetadata'
 import {
 	NodeRegistry,
 	type NumericFieldDefinition,
@@ -115,8 +119,8 @@ function vectorNumericFields<TNode extends GraphNode>(
 	]))
 }
 
-function geometry(value: EvaluatedInstance[]): GeometryValue {
-	return { valueType: 'geometry', value }
+function geometry(assetInstances: SceneAssetInstanceMetadata[]): GeometryValue {
+	return { valueType: 'geometry', value: { assetInstances } }
 }
 
 function number(value: number): NumberValue {
@@ -131,7 +135,14 @@ function colorValue(value: string): ColorValue {
 	return { valueType: 'color', value }
 }
 
-function createTransformMatrix(node: TransformGraphNode, size: Vector3Snapshot): Matrix4 {
+function matrixSnapshot(matrix: Matrix4): Matrix4Snapshot {
+	return matrix.elements.slice() as unknown as Matrix4Snapshot
+}
+
+function createTransformMatrix(
+	node: TransformGraphNode,
+	size: Vector3Snapshot
+): Matrix4Snapshot {
 	const rotation = node.getRotation().toSnapshot()
 	const translation = node.getTranslation().toSnapshot()
 	const scale = node.getScale().toSnapshot()
@@ -152,11 +163,11 @@ function createTransformMatrix(node: TransformGraphNode, size: Vector3Snapshot):
 		new Vector3(scale.x, scale.y, scale.z)
 	)
 
-	return new Matrix4()
+	return matrixSnapshot(new Matrix4()
 		.makeTranslation(translation.x, translation.y, translation.z)
 		.multiply(new Matrix4().makeTranslation(pivot.x, pivot.y, pivot.z))
 		.multiply(transform)
-		.multiply(new Matrix4().makeTranslation(-pivot.x, -pivot.y, -pivot.z))
+		.multiply(new Matrix4().makeTranslation(-pivot.x, -pivot.y, -pivot.z)))
 }
 
 function getOriginOffset(origin: 'min' | 'middle' | 'max', size: number): number {
@@ -188,12 +199,14 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			const value = data as PrimitiveData
 			return new PrimitiveGraphNode(id, position, value.primitive, Vector3Value.from(value.size))
 		},
-		evaluate: (node) => new Map([
+		evaluate: (node, context) => new Map([
 			['geometry', geometry([{
 				instanceId: node.id,
-				meshId: `primitive:${node.getPrimitive()}`,
+				assetId: `primitive:${node.getPrimitive()}`,
+				assetKind: 'primitive',
 				size: node.getSize().toSnapshot(),
-				matrix: new Matrix4(),
+				transform: matrixSnapshot(new Matrix4()),
+				originNode: context.getNodeInstanceReference(node.id),
 			}])],
 		]),
 	})
@@ -282,10 +295,11 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			return new Map([
 				['geometry', geometry([{
 					instanceId: node.id,
-					meshId,
+					assetId: meshId,
+					assetKind: 'catalog',
 					size,
-					matrix: new Matrix4(),
-					assetSource: { graphId: context.graphId, nodeId: node.id },
+					transform: matrixSnapshot(new Matrix4()),
+					originNode: context.getNodeInstanceReference(node.id),
 				}])],
 			])
 		},
@@ -310,10 +324,11 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			return new Map([
 				['geometry', geometry([{
 					instanceId: node.id,
-					meshId,
+					assetId: meshId,
+					assetKind: 'catalog',
 					size,
-					matrix: new Matrix4(),
-					assetSource: { graphId: context.graphId, nodeId: node.id },
+					transform: matrixSnapshot(new Matrix4()),
+					originNode: context.getNodeInstanceReference(node.id),
 				}])],
 			])
 		},
@@ -376,12 +391,16 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		},
 		evaluate: (node, context) => {
 			const input = context.resolveInput(node, 'geometry')
-			if (input?.valueType !== 'geometry' || !Array.isArray(input.value)) return new Map()
-			const instances = input.value as EvaluatedInstance[]
+			if (input?.valueType !== 'geometry' || !isSceneMetadata(input.value)) return new Map()
+			const instances = input.value.assetInstances
 			const transformed = instances.map((instance) => ({
 				...instance,
 				instanceId: `${node.id}/transformed/${instance.instanceId}`,
-				matrix: createTransformMatrix(node, instance.size).multiply(instance.matrix),
+				transform: matrixSnapshot(
+					new Matrix4()
+						.fromArray(createTransformMatrix(node, instance.size))
+						.multiply(new Matrix4().fromArray(instance.transform))
+				),
 			}))
 			const output = node.getCopy()
 				? [
@@ -420,13 +439,13 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			const color = context.resolveInput(node, 'color')
 			if (
 				input?.valueType !== 'geometry'
-				|| !Array.isArray(input.value)
+				|| !isSceneMetadata(input.value)
 				|| color?.valueType !== 'color'
 				|| typeof color.value !== 'string'
 			) return new Map()
 
 			return new Map([
-				['geometry', geometry((input.value as EvaluatedInstance[]).map((instance) => ({
+				['geometry', geometry(input.value.assetInstances.map((instance) => ({
 					...instance,
 					instanceId: `${node.id}/${instance.instanceId}`,
 					material: { type: 'standard', color: color.value as string },
@@ -473,7 +492,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			const count = context.resolveInput(node, 'count')
 			if (
 				input?.valueType !== 'geometry'
-				|| !Array.isArray(input.value)
+				|| !isSceneMetadata(input.value)
 				|| count?.valueType !== 'number'
 				|| typeof count.value !== 'number'
 			) return new Map()
@@ -483,15 +502,15 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 				: node.getAxis() === 'y'
 					? new Vector3(0, node.getOffset(), 0)
 					: new Vector3(0, 0, node.getOffset())
-			const instances = input.value as EvaluatedInstance[]
+			const instances = input.value.assetInstances
 			return new Map([
 				['geometry', geometry(instances.flatMap((instance) =>
 					Array.from({ length: Math.max(1, Math.floor(count.value as number)) }, (_, index) => ({
 						...instance,
 						instanceId: `${node.id}/${index}/${instance.instanceId}`,
-						matrix: new Matrix4()
+						transform: matrixSnapshot(new Matrix4()
 							.makeTranslation(translation.x * index, translation.y * index, translation.z * index)
-							.multiply(instance.matrix),
+							.multiply(new Matrix4().fromArray(instance.transform))),
 					}))
 				))],
 			])
@@ -514,8 +533,8 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		evaluate: (node, context) => {
 			const instances = node.getInputPortIds().flatMap((portId) => {
 				const input = context.resolveInput(node, portId)
-				if (input?.valueType !== 'geometry' || !Array.isArray(input.value)) return []
-				return (input.value as EvaluatedInstance[]).map((instance) => ({
+				if (input?.valueType !== 'geometry' || !isSceneMetadata(input.value)) return []
+				return input.value.assetInstances.map((instance) => ({
 					...instance,
 					instanceId: `${node.id}/${portId}/${instance.instanceId}`,
 				}))

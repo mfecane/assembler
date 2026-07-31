@@ -1,5 +1,4 @@
 import { Position, type NodeProps } from '@xyflow/react'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { NumericInput } from '@/parametric/components/NumericInput'
@@ -19,7 +18,10 @@ export function TransformNode({ id }: NodeProps<ParametricFlowNode>) {
 	if (!binding) return null
 
 	return (
-		<div className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md">
+		<div
+			data-id="transform-node"
+			className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
+		>
 			<TypedHandle id="geometry" type="target" position={Position.Left} valueType="geometry" />
 			<div className="mb-2 flex items-center justify-between gap-2">
 				<div className="text-sm font-semibold text-foreground">Transform</div>
@@ -61,15 +63,17 @@ export function TransformNode({ id }: NodeProps<ParametricFlowNode>) {
 						</div>
 					)}
 				</div>
-				<div className="nodrag flex items-center gap-2">
-					<Checkbox
-						id={`${id}-copy`}
-						checked={binding.copy}
-						onCheckedChange={(checked) => binding.setCopy(checked === true)}
-					/>
+				<div className="nodrag flex items-center justify-between gap-3">
 					<Label htmlFor={`${id}-copy`} className="text-xs text-muted-foreground">
 						Clone input
 					</Label>
+					<Switch
+						data-id="clone-input-switch"
+						id={`${id}-copy`}
+						checked={binding.copy}
+						onCheckedChange={binding.setCopy}
+						aria-label="Clone input"
+					/>
 				</div>
 				<TransformOriginField value={binding.origin} onChange={binding.setOrigin} />
 			</div>

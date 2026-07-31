@@ -1,6 +1,8 @@
 # MaxShelf Configurator (v24.4) — Logic Reference
 
-Source: `maxshelf_configurator_v24.4.html` — a single-file HTML/CSS/JS app (no build step, no backend calls except an optional Zoho CRM push). This document reverse-engineers the construction rules encoded in the JavaScript so the shelving logic can be reused, audited, or re-implemented outside the vibe-coded prototype.
+Source: [`maxshelf-configurator-v24.4.html`](./maxshelf-configurator-v24.4.html), a retained
+single-file HTML/CSS/JS prototype. This document reverse-engineers its construction rules so the
+shelving logic can be reused, audited, or reimplemented independently.
 
 ## 1. Product Model
 

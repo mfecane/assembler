@@ -14,30 +14,19 @@ import { NodeDeleteButton } from '@/parametric/components/NodeDeleteButton'
 import { GeometryPreviewButton } from '@/parametric/components/GeometryPreviewButton'
 import { PresetColorSelect } from '@/parametric/components/PresetColorSelect'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
-import { useGraphController } from '@/parametric/controller/GraphEditorContext'
+import { useEditorController } from '@/parametric/editor/react/EditorContext'
 import { GraphInputGraphNode } from '@/parametric/model/GraphNode'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
 
 export function GraphInputNode({ id }: NodeProps<ParametricFlowNode>) {
-	const controller = useGraphController()
+	const controller = useEditorController()
 	const { document, activeGraphId, model } = useGraphSnapshot()
 	const node = model.getNode(id)
 	if (!(node instanceof GraphInputGraphNode)) return null
 	const graph = document.requireGraph(activeGraphId)
 	const input = graph.inputs.find((candidate) => candidate.id === node.getInputId())
 	if (!input) return null
-
-	const updateOptions = (options: string[]) => {
-		const normalized = [...new Set(options.map((option) => option.trim()).filter(Boolean))]
-		if (normalized.length === 0) return
-		controller.updateGraphInput(input.id, {
-			options: normalized,
-			defaultValue: normalized.includes(String(input.defaultValue))
-				? input.defaultValue
-				: normalized[0],
-		})
-	}
 
 	return (
 		<div
@@ -99,16 +88,7 @@ export function GraphInputNode({ id }: NodeProps<ParametricFlowNode>) {
 								variant="ghost"
 								size="icon"
 								className="nodrag h-6 w-6"
-								onClick={() => {
-									const options = input.options ?? []
-									let sequence = options.length + 1
-									let option = `Option ${sequence}`
-									while (options.includes(option)) {
-										sequence += 1
-										option = `Option ${sequence}`
-									}
-									updateOptions([...options, option])
-								}}
+									onClick={() => controller.addGraphInputOption(input.id)}
 								aria-label="Add enum option"
 							>
 								<Plus />
@@ -120,10 +100,10 @@ export function GraphInputNode({ id }: NodeProps<ParametricFlowNode>) {
 									data-id={`graph-input-option-${input.id}-${index}`}
 									className="nodrag h-7 px-2 text-xs"
 									defaultValue={option}
-									onBlur={(event) => updateOptions(
-										(input.options ?? []).map((candidate, candidateIndex) =>
-											candidateIndex === index ? event.currentTarget.value : candidate
-										)
+									onBlur={(event) => controller.updateGraphInputOption(
+										input.id,
+										index,
+										event.currentTarget.value
 									)}
 									onKeyDown={(event) => {
 										if (event.key === 'Enter') event.currentTarget.blur()
@@ -136,11 +116,7 @@ export function GraphInputNode({ id }: NodeProps<ParametricFlowNode>) {
 									size="icon"
 									className="nodrag h-7 w-7 text-muted-foreground hover:text-destructive"
 									disabled={(input.options?.length ?? 0) <= 1}
-									onClick={() => updateOptions(
-										(input.options ?? []).filter((_, candidateIndex) =>
-											candidateIndex !== index
-										)
-									)}
+									onClick={() => controller.removeGraphInputOption(input.id, index)}
 									aria-label={`Remove enum option ${index + 1}`}
 								>
 									<Trash2 />

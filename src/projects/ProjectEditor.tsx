@@ -2,17 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { Button } from '@/components/ui/button'
 import { ParametricEditor } from '@/parametric/ParametricEditor'
-import {
-	createGraphEditorServices,
-} from '@/parametric/controller/createDefaultGraphController'
-import type { GraphEditorServices } from '@/parametric/controller/GraphEditorContext'
+import type { Editor } from '@/parametric/editor/Editor'
+import { createEditor } from '@/parametric/editor/createEditor'
 import type { ProjectRepository } from '@/projects/ProjectRepository'
 import { ProjectToolbar, type SaveState } from '@/projects/ProjectToolbar'
 import type { Project } from '@/projects/projectTypes'
 
 interface LoadedEditor {
 	project: Project
-	services: GraphEditorServices
+	editor: Editor
 }
 
 const AUTOSAVE_DELAY_MS = 800
@@ -36,8 +34,8 @@ export function ProjectEditor({
 	const [loaded, setLoaded] = useState<LoadedEditor | null>(null)
 	const [loadError, setLoadError] = useState<string | null>(null)
 	const [isLoading, setIsLoading] = useState(true)
-	const [documentRevision, setDocumentRevision] = useState(0)
-	const [savedDocumentRevision, setSavedDocumentRevision] = useState(0)
+	const [documentVersion, setDocumentVersion] = useState(0)
+	const [savedDocumentVersion, setSavedDocumentVersion] = useState(0)
 	const [isSaving, setIsSaving] = useState(false)
 	const [saveError, setSaveError] = useState<string | null>(null)
 	const [isRenamingProject, setIsRenamingProject] = useState(false)
@@ -54,11 +52,11 @@ export function ProjectEditor({
 		setLoadError(null)
 		try {
 			const project = await repository.get(projectId)
-			const services = createGraphEditorServices(project.graphDocument)
-			const initialDocumentRevision = services.controller.getSnapshot().documentRevision
-			setLoaded({ project, services })
-			setDocumentRevision(initialDocumentRevision)
-			setSavedDocumentRevision(initialDocumentRevision)
+			const editor = createEditor(project.graphDocument)
+			const initialDocumentVersion = editor.controller.getSnapshot().documentVersion
+			setLoaded({ project, editor })
+			setDocumentVersion(initialDocumentVersion)
+			setSavedDocumentVersion(initialDocumentVersion)
 			setSaveError(null)
 			setProjectRenameError(null)
 			setSaveAsError(null)
@@ -80,20 +78,18 @@ export function ProjectEditor({
 
 	useEffect(() => {
 		if (!loaded) return
-		let observedDocumentRevision =
-			loaded.services.controller.getSnapshot().documentRevision
-		return loaded.services.controller.subscribe(() => {
-			const nextDocumentRevision =
-				loaded.services.controller.getSnapshot().documentRevision
-			if (nextDocumentRevision === observedDocumentRevision) return
-			observedDocumentRevision = nextDocumentRevision
-			setDocumentRevision(nextDocumentRevision)
+		let observedDocumentVersion = loaded.editor.controller.getSnapshot().documentVersion
+		return loaded.editor.controller.subscribe(() => {
+			const nextDocumentVersion = loaded.editor.controller.getSnapshot().documentVersion
+			if (nextDocumentVersion === observedDocumentVersion) return
+			observedDocumentVersion = nextDocumentVersion
+			setDocumentVersion(nextDocumentVersion)
 			setSaveError(null)
 			setShowSavedConfirmation(false)
 		})
 	}, [loaded])
 
-	const isDirty = documentRevision !== savedDocumentRevision
+	const isDirty = documentVersion !== savedDocumentVersion
 
 	useEffect(() => {
 		if (!isDirty) return
@@ -114,9 +110,8 @@ export function ProjectEditor({
 
 	const save = useCallback(async () => {
 		if (!loaded || saveInFlight.current || renameInFlight.current) return
-		const documentRevisionBeingSaved =
-			loaded.services.controller.getSnapshot().documentRevision
-		const document = loaded.services.controller.exportGraph()
+		const documentVersionBeingSaved = loaded.editor.controller.getSnapshot().documentVersion
+		const document = loaded.editor.controller.exportGraph()
 		saveInFlight.current = true
 		setIsSaving(true)
 		setSaveError(null)
@@ -126,19 +121,19 @@ export function ProjectEditor({
 			setLoaded((current) =>
 				current?.project.id === project.id ? { ...current, project } : current
 			)
-			setSavedDocumentRevision(documentRevisionBeingSaved)
+			setSavedDocumentVersion(documentVersionBeingSaved)
 			setShowSavedConfirmation(true)
 		} catch (cause) {
 			const error = [
 				`Failed to save project "${loaded.project.name}"`,
-				`(project ID: ${loaded.project.id}, document revision: ${documentRevisionBeingSaved}).`,
+				`(project ID: ${loaded.project.id}, document version: ${documentVersionBeingSaved}).`,
 				describeError(cause),
 			].join(' ')
 			console.error(error, {
 				cause,
 				projectId: loaded.project.id,
 				projectName: loaded.project.name,
-				documentRevision: documentRevisionBeingSaved,
+				documentVersion: documentVersionBeingSaved,
 			})
 			setSaveError(error)
 		} finally {
@@ -151,7 +146,7 @@ export function ProjectEditor({
 		if (!isDirty || isSaving || isRenamingProject || saveError) return
 		const timeout = window.setTimeout(() => void save(), AUTOSAVE_DELAY_MS)
 		return () => window.clearTimeout(timeout)
-	}, [documentRevision, isDirty, isRenamingProject, isSaving, save, saveError])
+	}, [documentVersion, isDirty, isRenamingProject, isSaving, save, saveError])
 
 	const renameProject = useCallback(async (name: string) => {
 		if (!loaded || saveInFlight.current || renameInFlight.current) return
@@ -186,9 +181,8 @@ export function ProjectEditor({
 
 	const saveAs = useCallback(async (name: string) => {
 		if (!loaded || saveAsInFlight.current) return
-		const documentRevisionBeingCopied =
-			loaded.services.controller.getSnapshot().documentRevision
-		const document = loaded.services.controller.exportGraph()
+		const documentVersionBeingCopied = loaded.editor.controller.getSnapshot().documentVersion
+		const document = loaded.editor.controller.exportGraph()
 		saveAsInFlight.current = true
 		setIsSavingAs(true)
 		setSaveAsError(null)
@@ -198,7 +192,7 @@ export function ProjectEditor({
 		} catch (cause) {
 			const error = [
 				`Failed to save project "${loaded.project.name}" as "${name}"`,
-				`(source project ID: ${loaded.project.id}, user ID: ${user.id}, document revision: ${documentRevisionBeingCopied}).`,
+				`(source project ID: ${loaded.project.id}, user ID: ${user.id}, document version: ${documentVersionBeingCopied}).`,
 				describeError(cause),
 			].join(' ')
 			console.error(error, {
@@ -207,7 +201,7 @@ export function ProjectEditor({
 				sourceProjectName: loaded.project.name,
 				requestedProjectName: name,
 				userId: user.id,
-				documentRevision: documentRevisionBeingCopied,
+				documentVersion: documentVersionBeingCopied,
 			})
 			setSaveAsError(error)
 		} finally {
@@ -272,7 +266,7 @@ export function ProjectEditor({
 				user={user}
 				saveState={saveState}
 				saveError={saveError}
-				controller={loaded.services.controller}
+				controller={loaded.editor.controller}
 				projectRenamePending={isRenamingProject}
 				projectRenameError={projectRenameError}
 				saveAsPending={isSavingAs}
@@ -287,7 +281,7 @@ export function ProjectEditor({
 			/>
 			<ParametricEditor
 				key={loaded.project.id}
-				services={loaded.services}
+				editor={loaded.editor}
 				className="h-auto w-full min-h-0 flex-1"
 			/>
 		</div>

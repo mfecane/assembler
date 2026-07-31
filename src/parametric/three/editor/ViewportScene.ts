@@ -13,13 +13,13 @@ import {
 	type TransformControlsMode,
 } from 'three/examples/jsm/controls/TransformControls.js'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import type { EvaluatedMesh } from '@/parametric/evaluation/GraphEvaluator'
+import type { SceneMetadata } from '@/parametric/evaluation/SceneMetadata'
 import { TransformGraphNode } from '@/parametric/model/GraphNode'
 import { createSceneSetup } from '@/parametric/three/SceneSetup'
-import { syncMeshes } from '@/parametric/three/syncMeshes'
+import { syncSceneMetadata } from '@/parametric/three/syncMeshes'
 import type { ViewportEditorController } from '@/parametric/three/editor/ViewportEditorController'
 import { CanvasEventHandler } from '@/parametric/three/editor/InteractionSystem'
-import type { TransformNodeValues } from '@/parametric/three/editor/EditorCommands'
+import type { TransformNodeValues } from '@/parametric/editor/EditorController'
 
 export class ViewportScene {
 	private readonly scene: Scene
@@ -35,6 +35,8 @@ export class ViewportScene {
 	private selectionHelper: BoxHelper | null = null
 	private attachedTransformNodeId: string | null = null
 	private transformStart: TransformNodeValues | null = null
+	private transformHistoryGroup = 'idle'
+	private transformSequence = 0
 	private syncingTransform = false
 
 	public constructor(
@@ -79,14 +81,14 @@ export class ViewportScene {
 	}
 
 	public sync(
-		evaluatedMeshes: EvaluatedMesh[],
-		ghostMeshes: EvaluatedMesh[],
+		metadata: SceneMetadata,
+		ghostMetadata: SceneMetadata,
 		selectedMeshInstanceId: string | null,
 		transformNode: TransformGraphNode | null,
 		transformMode: TransformControlsMode
 	): void {
-		syncMeshes(this.scene, this.meshesById, evaluatedMeshes)
-		syncMeshes(this.scene, this.ghostMeshesById, ghostMeshes, { ghost: true })
+		syncSceneMetadata(this.scene, this.meshesById, metadata)
+		syncSceneMetadata(this.scene, this.ghostMeshesById, ghostMetadata, { ghost: true })
 		this.syncSelection(selectedMeshInstanceId)
 		this.syncTransform(transformNode, transformMode)
 	}
@@ -173,6 +175,8 @@ export class ViewportScene {
 
 	private readonly onTransformStart = () => {
 		this.transformStart = this.readTargetValues()
+		this.transformSequence += 1
+		this.transformHistoryGroup = String(this.transformSequence)
 	}
 
 	private readonly onTransformChange = () => {
@@ -180,7 +184,8 @@ export class ViewportScene {
 		this.controller.applyTransform(
 			this.attachedTransformNodeId,
 			this.transformStart,
-			this.readTargetValues()
+			this.readTargetValues(),
+			this.transformHistoryGroup
 		)
 		this.transformStart = this.readTargetValues()
 	}

@@ -1,4 +1,5 @@
 import { Mesh, PerspectiveCamera, Raycaster, Vector2 } from 'three'
+import type { SceneAssetInstanceMetadata } from '@/parametric/evaluation/SceneMetadata'
 import type { ViewportEditorController } from '@/parametric/three/editor/ViewportEditorController'
 
 export type CanvasEventType = 'click'
@@ -86,16 +87,23 @@ export class MeshSelectionInteractionHandler implements InteractionHandler {
 	}
 
 	public async onEvent(event: InteractionEvent): Promise<InteractionHandlerResult> {
-		const assetSource = event.context.mesh?.userData.assetSource
-		const meshInstanceId = event.context.mesh?.userData.evaluatedMeshId
+		const sceneInstance = event.context.mesh?.userData.sceneInstance as
+			| SceneAssetInstanceMetadata
+			| undefined
 		if (
 			event.context.mesh
-			&& typeof meshInstanceId === 'string'
-			&& assetSource
-			&& typeof assetSource.graphId === 'string'
-			&& typeof assetSource.nodeId === 'string'
+			&& sceneInstance?.assetKind === 'catalog'
+			&& typeof sceneInstance.instanceId === 'string'
+			&& typeof sceneInstance.originNode?.graphId === 'string'
+			&& typeof sceneInstance.originNode.nodeId === 'string'
+			&& typeof sceneInstance.originNode.nodeInstanceId === 'string'
 		) {
-			this.controller.selectMesh(meshInstanceId, assetSource, event.x, event.y)
+			this.controller.selectMesh(
+				sceneInstance.instanceId,
+				sceneInstance.originNode,
+				event.x,
+				event.y
+			)
 		} else {
 			this.controller.clearMeshSelection()
 		}

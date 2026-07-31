@@ -1,11 +1,11 @@
 import type { TransformControlsMode } from 'three/examples/jsm/controls/TransformControls.js'
-import type { EvaluatedAssetSource } from '@/parametric/evaluation/EvaluationTypes'
+import type { SceneNodeInstanceReference } from '@/parametric/evaluation/SceneMetadata'
 
 export interface ViewportContextMenu {
 	x: number
 	y: number
 	meshInstanceId: string
-	assetSource: EvaluatedAssetSource
+	originNode: SceneNodeInstanceReference
 }
 
 export interface GraphNodeFocusRequest {
@@ -13,8 +13,10 @@ export interface GraphNodeFocusRequest {
 	nodeId: string
 }
 
-export interface ViewportBridgeSnapshot {
+export interface ReactBridgeSnapshot {
 	revision: number
+	canUndo: boolean
+	canRedo: boolean
 	previewNodeId: string | null
 	transformNodeId: string | null
 	transformMode: TransformControlsMode
@@ -24,10 +26,12 @@ export interface ViewportBridgeSnapshot {
 	error: string | null
 }
 
-type ViewportBridgeListener = () => void
+type ReactBridgeListener = () => void
 
-const initialSnapshot: ViewportBridgeSnapshot = {
+const initialSnapshot: ReactBridgeSnapshot = {
 	revision: 0,
+	canUndo: false,
+	canRedo: false,
 	previewNodeId: null,
 	transformNodeId: null,
 	transformMode: 'translate',
@@ -37,18 +41,18 @@ const initialSnapshot: ViewportBridgeSnapshot = {
 	error: null,
 }
 
-export class ViewportReactBridge {
-	private readonly listeners = new Set<ViewportBridgeListener>()
+export class ReactBridge {
+	private readonly listeners = new Set<ReactBridgeListener>()
 	private snapshot = initialSnapshot
 
-	public readonly getSnapshot = (): ViewportBridgeSnapshot => this.snapshot
+	public readonly getSnapshot = (): ReactBridgeSnapshot => this.snapshot
 
-	public readonly subscribe = (listener: ViewportBridgeListener): (() => void) => {
+	public readonly subscribe = (listener: ReactBridgeListener): (() => void) => {
 		this.listeners.add(listener)
 		return () => this.listeners.delete(listener)
 	}
 
-	public update(update: Partial<Omit<ViewportBridgeSnapshot, 'revision'>>): void {
+	public update(update: Partial<Omit<ReactBridgeSnapshot, 'revision'>>): void {
 		this.snapshot = {
 			...this.snapshot,
 			...update,

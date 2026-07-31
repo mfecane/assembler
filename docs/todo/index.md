@@ -1,2 +1,9 @@
-This folder represents the implemetation queue.
-Remove doc from thi folder, when completed.
+# Implementation queue
+
+Only unimplemented proposals belong in this folder. Move completed work into `docs/implementation/`
+or the appropriate reference and remove abandoned proposals.
+
+- [Composable node capabilities](./node-capabilities.md) — evaluate reusable transform and
+  multi-input behavior before changing the node model.
+- [LLM graph editing](./mcp.md) — define the minimum context and tool surface needed to edit graph
+  documents reliably.

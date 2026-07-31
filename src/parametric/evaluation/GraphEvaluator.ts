@@ -1,11 +1,13 @@
-import type { Matrix4 } from 'three'
 import type {
-	EvaluatedInstance,
-	EvaluatedAssetSource,
-	EvaluatedMaterial,
 	EvaluatedNodeOutputs,
 	GraphValue,
 } from '@/parametric/evaluation/EvaluationTypes'
+import {
+	emptySceneMetadata,
+	isSceneMetadata,
+	type SceneMetadata,
+	type SceneNodeInstanceReference,
+} from '@/parametric/evaluation/SceneMetadata'
 import type { GraphEdge } from '@/parametric/model/GraphEdge'
 import {
 	type GraphDefinition,
@@ -19,16 +21,6 @@ import {
 } from '@/parametric/model/GraphNode'
 import type { MeshCatalog } from '@/parametric/model/MeshCatalog'
 import type { NodeRegistry } from '@/parametric/model/NodeDefinition'
-import type { Vector3Snapshot } from '@/parametric/model/Vector3Value'
-
-export interface EvaluatedMesh {
-	nodeId: string
-	meshId: string
-	size: Vector3Snapshot
-	matrix: Matrix4
-	material?: EvaluatedMaterial
-	assetSource?: EvaluatedAssetSource
-}
 
 interface EvaluationFrame {
 	document: GraphDocumentModel
@@ -38,6 +30,7 @@ interface EvaluationFrame {
 	incomingByTargetPort: Map<string, GraphEdge>
 	cache: Map<string, EvaluatedNodeOutputs>
 	evaluating: Set<string>
+	graphInstancePath: readonly string[]
 }
 
 export class GraphEvaluator {
@@ -46,22 +39,23 @@ export class GraphEvaluator {
 		private readonly meshCatalog: MeshCatalog
 	) {}
 
-	public evaluate(document: GraphDocumentModel): EvaluatedMesh[] {
+	public evaluate(document: GraphDocumentModel): SceneMetadata {
 		return this.evaluateGraphOutput(document, document.getEntryGraphId())
 	}
 
 	public evaluateGraphOutput(
 		document: GraphDocumentModel,
 		graphId: string
-	): EvaluatedMesh[] {
+	): SceneMetadata {
 		const graph = document.getGraph(graphId)
-		if (!graph) return []
+		if (!graph) return emptySceneMetadata()
 		const value = this.evaluateGraph(
 			document,
 			graph,
-			this.previewInputs(document, graph)
+			this.previewInputs(document, graph),
+			[graph.id]
 		)
-		return this.toEvaluatedMeshes(graph.id, value)
+		return this.toSceneMetadata(value)
 	}
 
 	public evaluateGeometryOutput(
@@ -69,14 +63,16 @@ export class GraphEvaluator {
 		graphId: string,
 		nodeId: string,
 		outputPort = 'geometry'
-	): EvaluatedMesh[] {
+	): SceneMetadata {
 		const graph = document.getGraph(graphId)
-		if (!graph) return []
-		const frame = this.createFrame(document, graph, this.previewInputs(document, graph))
-		return this.toEvaluatedMeshes(
-			nodeId,
-			this.evaluateNodeOutputs(frame, nodeId).get(outputPort)
+		if (!graph) return emptySceneMetadata()
+		const frame = this.createFrame(
+			document,
+			graph,
+			this.previewInputs(document, graph),
+			[graph.id]
 		)
+		return this.toSceneMetadata(this.evaluateNodeOutputs(frame, nodeId).get(outputPort))
 	}
 
 	public evaluateOutput(
@@ -87,25 +83,32 @@ export class GraphEvaluator {
 	): GraphValue | undefined {
 		const graph = document.getGraph(graphId)
 		if (!graph) return undefined
-		const frame = this.createFrame(document, graph, this.previewInputs(document, graph))
+		const frame = this.createFrame(
+			document,
+			graph,
+			this.previewInputs(document, graph),
+			[graph.id]
+		)
 		return this.evaluateNodeOutputs(frame, nodeId).get(outputPort)
 	}
 
 	private evaluateGraph(
 		document: GraphDocumentModel,
 		graph: GraphDefinition,
-		inputs: Map<string, GraphValue>
+		inputs: Map<string, GraphValue>,
+		graphInstancePath: readonly string[]
 	): GraphValue | undefined {
 		const outputNode = graph.model.getOutputNode()
 		if (!outputNode) return undefined
-		const frame = this.createFrame(document, graph, inputs)
+		const frame = this.createFrame(document, graph, inputs, graphInstancePath)
 		return this.resolveInput(frame, outputNode, graph.output.id)
 	}
 
 	private createFrame(
 		document: GraphDocumentModel,
 		graph: GraphDefinition,
-		inputs: Map<string, GraphValue>
+		inputs: Map<string, GraphValue>,
+		graphInstancePath: readonly string[]
 	): EvaluationFrame {
 		const nodesById = new Map(graph.model.getNodes().map((node) => [node.id, node]))
 		const incomingByTargetPort = new Map<string, GraphEdge>()
@@ -122,6 +125,7 @@ export class GraphEvaluator {
 			incomingByTargetPort,
 			cache: new Map(),
 			evaluating: new Set(),
+			graphInstancePath,
 		}
 	}
 
@@ -142,9 +146,10 @@ export class GraphEvaluator {
 			outputs = this.evaluateInstance(frame, node)
 		} else {
 			outputs = this.nodeRegistry.evaluate(node, {
-				graphId: frame.graph.id,
 				resolveInput: (targetNode, portId) => this.resolveInput(frame, targetNode, portId),
 				getMeshBounds: (meshId) => this.meshCatalog.getBounds(meshId),
+				getNodeInstanceReference: (sourceNodeId) =>
+					this.getNodeInstanceReference(frame, sourceNodeId),
 			})
 		}
 
@@ -167,18 +172,23 @@ export class GraphEvaluator {
 			if (value) inputs.set(input.id, value)
 		}
 
-		const value = this.evaluateGraph(frame.document, targetGraph, inputs)
+		const value = this.evaluateGraph(
+			frame.document,
+			targetGraph,
+			inputs,
+			[...frame.graphInstancePath, node.id]
+		)
 		if (!value) return new Map()
-		if (value.valueType !== 'geometry' || !Array.isArray(value.value)) {
+		if (value.valueType !== 'geometry' || !isSceneMetadata(value.value)) {
 			return new Map([[targetGraph.output.id, value]])
 		}
-		const scopedInstances = (value.value as EvaluatedInstance[]).map((instance) => ({
+		const scopedInstances = value.value.assetInstances.map((instance) => ({
 			...instance,
 			instanceId: `${node.id}/${instance.instanceId}`,
 		}))
 		return new Map([[
 			targetGraph.output.id,
-			{ valueType: 'geometry', value: scopedInstances },
+			{ valueType: 'geometry', value: { assetInstances: scopedInstances } },
 		]])
 	}
 
@@ -226,16 +236,21 @@ export class GraphEvaluator {
 			: { valueType: input.valueType, value: input.defaultValue }
 	}
 
-	private toEvaluatedMeshes(nodeId: string, value: GraphValue | undefined): EvaluatedMesh[] {
-		if (value?.valueType !== 'geometry' || !Array.isArray(value.value)) return []
-		return (value.value as EvaluatedInstance[]).map((instance) => ({
-			nodeId: `${nodeId}/${instance.instanceId}`,
-			meshId: instance.meshId,
-			size: instance.size,
-			matrix: instance.matrix,
-			material: instance.material,
-			assetSource: instance.assetSource,
-		}))
+	private toSceneMetadata(value: GraphValue | undefined): SceneMetadata {
+		return value?.valueType === 'geometry' && isSceneMetadata(value.value)
+			? value.value
+			: emptySceneMetadata()
+	}
+
+	private getNodeInstanceReference(
+		frame: EvaluationFrame,
+		nodeId: string
+	): SceneNodeInstanceReference {
+		return {
+			graphId: frame.graph.id,
+			nodeId,
+			nodeInstanceId: [...frame.graphInstancePath, nodeId].join('/'),
+		}
 	}
 
 	private portKey(nodeId: string, portId: string): string {

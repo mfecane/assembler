@@ -67,8 +67,10 @@ valid:
 - Color inputs support `color`.
 - Geometry inputs cannot be mapped to the configuration panel.
 
-The configuration-panel editor is available only while the entry graph is open. Public inputs
-for all graphs are created, configured, and removed as nodes on the canvas.
+The configuration-panel editor is available only while the entry graph is open. It lists every
+compatible entry input, and an input's switch adds or removes its configuration control. Enabled
+inputs expose their compatible control type and presentation settings inline. Public inputs for
+all graphs are created, configured, and removed as nodes on the canvas.
 
 ## Semantic validation
 

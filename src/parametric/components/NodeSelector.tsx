@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { type Edge, useReactFlow } from '@xyflow/react'
 import { ChevronDown, Circle, Hash, ListFilter, Network, Palette, Plus, Shapes } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import {
 	Popover,
 	PopoverContent,
@@ -83,7 +84,11 @@ export function NodeSelector({ selectedEdges }: { selectedEdges: Edge[] }) {
 				<PopoverContent
 					data-id="add-node-menu"
 					align="start"
-					className="nodrag nopan w-72 p-2"
+					collisionPadding={8}
+					className={cn(
+						'nodrag nopan w-72 max-w-[var(--radix-popover-content-available-width)] p-2',
+						'max-h-[var(--radix-popover-content-available-height)] overflow-y-auto'
+					)}
 				>
 					<div className="mb-2 border-b border-border pb-2" data-id="graph-input-node-options">
 						<div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">

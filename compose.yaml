@@ -4,6 +4,7 @@ services:
         build:
             context: .
             dockerfile: Dockerfile.prison
+        profiles: ['tools']
         working_dir: /workspace
         volumes:
             - .:/workspace

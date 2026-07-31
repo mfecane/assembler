@@ -26,7 +26,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { useGraphController } from '@/parametric/controller/GraphEditorContext'
+import { useEditorController } from '@/parametric/editor/react/EditorContext'
 import type { MeshDescriptor } from '@/parametric/model/MeshCatalog'
 
 type PreviewResult =
@@ -35,7 +35,7 @@ type PreviewResult =
 
 export function AssetHelperDialog() {
 	const [open, setOpen] = useState(false)
-	const controller = useGraphController()
+	const controller = useEditorController()
 	const { getNodes, screenToFlowPosition } = useReactFlow()
 	const assets = useMemo(() => controller.getSelectableMeshes(), [controller])
 	const previews = useAssetPreviews(open, assets)
@@ -161,7 +161,7 @@ function useAssetPreviews(
 	enabled: boolean,
 	assets: readonly MeshDescriptor[]
 ): ReadonlyMap<string, PreviewResult> {
-	const controller = useGraphController()
+	const controller = useEditorController()
 	const [previews, setPreviews] = useState<ReadonlyMap<string, PreviewResult>>(new Map())
 
 	useEffect(() => {

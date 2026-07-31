@@ -7,7 +7,7 @@ testing the cloud workflow.
 
 1. Create a Supabase project.
 2. Open its SQL Editor and run
-   [`supabase/schema.sql`](../supabase/schema.sql).
+   [`supabase/schema.sql`](../../supabase/schema.sql).
 3. In Project Settings, copy the project URL and publishable key. Do not use a secret or
    service-role key.
 4. Create `.env.local` from `.env.example` and fill in:
@@ -61,7 +61,7 @@ users.
 Do not run `supabase db reset --linked` for this repository. The repository deliberately has no
 `supabase/migrations/` history, so the CLI would have no migration from which to reconstruct the
 application schema. The authoritative schema is
-[`supabase/schema.sql`](../supabase/schema.sql).
+[`supabase/schema.sql`](../../supabase/schema.sql).
 
 1. Confirm that the Supabase dashboard is open on the intended production project.
 2. Open the SQL Editor and create a new query.
@@ -85,7 +85,7 @@ The transaction deletes all rows in `public.projects`, then recreates the table,
 trigger, RLS policies, and grants from the current source tree. If any schema statement fails,
 the transaction is rolled back instead of leaving a partially rebuilt application schema.
 
-Do not run [`scripts/seed-local-supabase.mjs`](../scripts/seed-local-supabase.mjs) against
+Do not run [`scripts/seed-local-supabase.mjs`](../../scripts/seed-local-supabase.mjs) against
 production. It is local-development tooling that creates a fixed developer account and seeded
 project.
 

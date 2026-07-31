@@ -1,19 +1,18 @@
-import { Background, Controls, ReactFlow } from '@xyflow/react'
+import { Background, Controls, ReactFlow, SelectionMode } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { ResizableSplitView } from '@/components/ResizableSplitView'
 import { GraphToolbar } from '@/parametric/components/GraphToolbar'
 import { useFlowGraph } from '@/parametric/hooks/useFlowGraph'
 import { ThreeViewport } from '@/parametric/three/ThreeViewport'
-import {
-	GraphEditorProvider,
-	type GraphEditorServices,
-} from '@/parametric/controller/GraphEditorContext'
-import { defaultGraphEditorServices } from '@/parametric/controller/createDefaultGraphController'
+import type { Editor } from '@/parametric/editor/Editor'
+import { EditorProvider } from '@/parametric/editor/react/EditorContext'
 import { nodeViewTypes } from '@/parametric/nodes/nodeViewRegistry'
 import { cn } from '@/lib/utils'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
+import { useEditorShortcuts } from '@/parametric/editor/react/useEditorShortcuts'
 
 function ParametricEditorContent() {
+	useEditorShortcuts()
 	const { selectedEdges, ...flowGraph } = useFlowGraph()
 	const { activeGraphId } = useGraphSnapshot()
 
@@ -30,6 +29,7 @@ function ParametricEditorContent() {
 					fitView
 					maxZoom={4}
 					minZoom={0.2}
+					selectionMode={SelectionMode.Partial}
 				>
 					<GraphToolbar selectedEdges={selectedEdges} />
 					<Background />
@@ -46,17 +46,17 @@ function ParametricEditorContent() {
 }
 
 export function ParametricEditor({
-	services = defaultGraphEditorServices,
+	editor,
 	className,
 }: {
-	services?: GraphEditorServices
+	editor: Editor
 	className?: string
 }) {
 	return (
-		<div className={cn('h-screen w-screen', className)}>
-			<GraphEditorProvider services={services}>
+		<div data-id="parametric-editor" className={cn('h-screen w-screen', className)}>
+			<EditorProvider editor={editor}>
 				<ParametricEditorContent />
-			</GraphEditorProvider>
+			</EditorProvider>
 		</div>
 	)
 }

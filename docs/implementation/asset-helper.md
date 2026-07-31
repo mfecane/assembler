@@ -32,7 +32,7 @@ existing Add node menu.
 
 - `AssetHelperDialog.tsx` owns the toolbar trigger, dialog, asset cards, preview
   rendering, and React Flow insertion-position calculation.
-- `GraphController.addMeshAsset` creates a configured `MeshAssetGraphNode` in
+- `EditorController.addMeshAsset` creates a configured `MeshAssetGraphNode` in
   the active graph and rejects IDs that are not selectable catalog assets.
 - `MeshCatalog.createGeometry` lets the helper obtain disposable geometry
   clones without coupling the UI to the default mesh-repository singleton.
