@@ -2,7 +2,8 @@
   "entryGraphId": "main",
   "entryInputValues": {
     "number-1": 5,
-    "number-2": 4
+    "number-2": 4,
+    "include-last-support": true
   },
   "graphs": [
     {
@@ -20,6 +21,12 @@
           "label": "Number",
           "valueType": "number",
           "defaultValue": 1
+        },
+        {
+          "id": "include-last-support",
+          "label": "Include last post and base",
+          "valueType": "boolean",
+          "defaultValue": true
         }
       ],
       "output": {
@@ -29,20 +36,20 @@
       },
       "nodes": [
         {
-         "id": "output",
+          "id": "output",
           "name": "Configured shelving",
-         "position": {
-           "x": 1794.0083163143997,
+          "position": {
+            "x": 1794.0083163143997,
             "y": 187.94032904254072
           },
           "type": "graphOutput",
           "data": {}
         },
         {
-         "id": "graphInstance-1",
+          "id": "graphInstance-1",
           "name": "Section",
-         "position": {
-           "x": 1331.8016185152185,
+          "position": {
+            "x": 1331.8016185152185,
             "y": 164.79864046489234
           },
           "type": "graphInstance",
@@ -51,10 +58,10 @@
           }
         },
         {
-         "id": "graphInput-1",
+          "id": "graphInput-1",
           "name": "Number",
-         "position": {
-           "x": 922.6191081263679,
+          "position": {
+            "x": 922.6191081263679,
             "y": 135.73518296029178
           },
           "type": "graphInput",
@@ -63,15 +70,27 @@
           }
         },
         {
-         "id": "graphInput-2",
+          "id": "graphInput-2",
           "name": "Number",
-         "position": {
-           "x": 920.7350155178768,
+          "position": {
+            "x": 920.7350155178768,
             "y": 375.24111337815094
           },
           "type": "graphInput",
           "data": {
             "inputId": "number-2"
+          }
+        },
+        {
+          "id": "graphInput-3",
+          "name": "Include last post and base",
+          "position": {
+            "x": 920,
+            "y": 555
+          },
+          "type": "graphInput",
+          "data": {
+            "inputId": "include-last-support"
           }
         }
       ],
@@ -96,6 +115,13 @@
           "targetNodeId": "graphInstance-1",
           "sourcePort": "number-2",
           "targetPort": "number-2"
+        },
+        {
+          "id": "graphInput-3:include-last-support->graphInstance-1:include-last-support",
+          "sourceNodeId": "graphInput-3",
+          "targetNodeId": "graphInstance-1",
+          "sourcePort": "include-last-support",
+          "targetPort": "include-last-support"
         }
       ]
     },
@@ -114,6 +140,12 @@
           "label": "Number",
           "valueType": "number",
           "defaultValue": 2
+        },
+        {
+          "id": "include-last-support",
+          "label": "Include last post and base",
+          "valueType": "boolean",
+          "defaultValue": true
         }
       ],
       "output": {
@@ -123,35 +155,36 @@
       },
       "nodes": [
         {
-         "id": "graph-1-output",
+          "id": "graph-1-output",
           "name": "Geometry",
-         "position": {
-           "x": 500,
+          "position": {
+            "x": 500,
             "y": 120
           },
           "type": "graphOutput",
           "data": {}
         },
         {
-         "id": "group-1",
-          "name": "Group",
-         "position": {
-           "x": 99.12377659678634,
+          "id": "group-1",
+		  "name": "Shelf run",
+          "position": {
+            "x": 99.12377659678634,
             "y": -107.25654256429297
           },
           "type": "group",
           "data": {
             "inputPorts": [
               "input-1",
-              "input-4"
+              "input-4",
+              "input-5"
             ]
           }
         },
         {
-         "id": "meshAsset-4",
+          "id": "meshAsset-4",
           "name": "Mesh Asset",
-         "position": {
-           "x": -1688.699484292999,
+          "position": {
+            "x": -1688.699484292999,
             "y": -1073.6708521833716
           },
           "type": "meshAsset",
@@ -160,10 +193,10 @@
           }
         },
         {
-         "id": "meshAsset-5",
+          "id": "meshAsset-5",
           "name": "Mesh Asset",
-         "position": {
-           "x": -1691.0990601168749,
+          "position": {
+            "x": -1691.0990601168749,
             "y": -1484.668964900689
           },
           "type": "meshAsset",
@@ -172,10 +205,10 @@
           }
         },
         {
-         "id": "transform-1",
+          "id": "transform-1",
           "name": "Transform",
-         "position": {
-           "x": -1399.3152746247852,
+          "position": {
+            "x": -1399.3152746247852,
             "y": -1628.3969231499602
           },
           "type": "transform",
@@ -205,10 +238,10 @@
           }
         },
         {
-         "id": "transform-2",
+          "id": "transform-2",
           "name": "Transform",
-         "position": {
-           "x": -1396.67157693116,
+          "position": {
+            "x": -1396.67157693116,
             "y": -1209.5927827909486
           },
           "type": "transform",
@@ -238,10 +271,10 @@
           }
         },
         {
-         "id": "meshAsset-6",
+          "id": "meshAsset-6",
           "name": "Mesh Asset",
-         "position": {
-           "x": -2571.9552976987316,
+          "position": {
+            "x": -2571.9552976987316,
             "y": -61.61780043819658
           },
           "type": "meshAsset",
@@ -250,10 +283,10 @@
           }
         },
         {
-         "id": "transform-3",
+          "id": "transform-3",
           "name": "Transform",
-         "position": {
-           "x": -2286.689623322089,
+          "position": {
+            "x": -2286.689623322089,
             "y": -211.00887250162646
           },
           "type": "transform",
@@ -283,10 +316,10 @@
           }
         },
         {
-         "id": "meshAsset-7",
+          "id": "meshAsset-7",
           "name": "Mesh Asset",
-         "position": {
-           "x": -2844.7276878162224,
+          "position": {
+            "x": -2844.7276878162224,
             "y": 416.2816849684194
           },
           "type": "meshAsset",
@@ -295,10 +328,10 @@
           }
         },
         {
-         "id": "transform-4",
+          "id": "transform-4",
           "name": "Transform",
-         "position": {
-           "x": -2552.806746153994,
+          "position": {
+            "x": -2552.806746153994,
             "y": 279.5779251389703
           },
           "type": "transform",
@@ -328,10 +361,10 @@
           }
         },
         {
-         "id": "array-1",
-          "name": "Array",
-         "position": {
-           "x": -274.9907606303131,
+          "id": "array-1",
+		  "name": "Supports",
+          "position": {
+            "x": -274.9907606303131,
             "y": -233.24091901444598
           },
           "type": "array",
@@ -342,10 +375,10 @@
           }
         },
         {
-         "id": "group-2",
-          "name": "Group",
-         "position": {
-           "x": -622.3464251174536,
+          "id": "group-2",
+		  "name": "Post and base",
+          "position": {
+            "x": -622.3464251174536,
             "y": -203.69275740651952
           },
           "type": "group",
@@ -353,16 +386,15 @@
             "inputPorts": [
               "input-1",
               "input-3",
-              "input-4",
-              "input-7"
+              "input-4"
             ]
           }
         },
         {
-         "id": "graphInput-1",
+          "id": "graphInput-1",
           "name": "Number",
-         "position": {
-           "x": -1347.5375390720383,
+          "position": {
+            "x": -1347.5375390720383,
             "y": -755.7774759069309
           },
           "type": "graphInput",
@@ -371,10 +403,10 @@
           }
         },
         {
-         "id": "group-3",
+          "id": "group-3",
           "name": "Group",
-         "position": {
-           "x": -1881.9754716587677,
+          "position": {
+            "x": -1881.9754716587677,
             "y": 95.03153433177738
           },
           "type": "group",
@@ -388,10 +420,10 @@
           }
         },
         {
-         "id": "array-2",
+          "id": "array-2",
           "name": "Array",
-         "position": {
-           "x": -988.4395252276774,
+          "position": {
+            "x": -988.4395252276774,
             "y": -136.69018264443082
           },
           "type": "array",
@@ -402,10 +434,10 @@
           }
         },
         {
-         "id": "graphInput-2",
+          "id": "graphInput-2",
           "name": "Number",
-         "position": {
-           "x": -1928.1394901200822,
+          "position": {
+            "x": -1928.1394901200822,
             "y": -580.4160296436875
           },
           "type": "graphInput",
@@ -414,10 +446,10 @@
           }
         },
         {
-         "id": "transform-5",
+          "id": "transform-5",
           "name": "Transform",
-         "position": {
-           "x": -2226.6525890917574,
+          "position": {
+            "x": -2226.6525890917574,
             "y": 342.4739177527098
           },
           "type": "transform",
@@ -447,10 +479,10 @@
           }
         },
         {
-         "id": "transform-6",
+          "id": "transform-6",
           "name": "Transform",
-         "position": {
-           "x": -1474.0193189262425,
+          "position": {
+            "x": -1474.0193189262425,
             "y": -82.470433609045
           },
           "type": "transform",
@@ -477,6 +509,49 @@
             },
             "copy": false,
             "uniformScale": true
+          }
+        },
+        {
+          "id": "array-3",
+          "name": "Shelf Sections",
+          "position": {
+            "x": -610,
+            "y": 105
+          },
+          "type": "array",
+          "data": {
+            "count": 3,
+            "axis": "x",
+            "offset": 1.26
+          }
+        },
+        {
+          "id": "sum-1",
+          "name": "Optional last support",
+          "position": {
+            "x": -735,
+            "y": -510
+          },
+          "type": "sum",
+          "data": {
+            "constant": 1,
+            "enabled": true,
+            "inputPorts": [
+              "input-1",
+              "input-2"
+            ]
+          }
+        },
+        {
+          "id": "graphInput-3",
+          "name": "Include last post and base",
+          "position": {
+            "x": -1080,
+            "y": -525
+          },
+          "type": "graphInput",
+          "data": {
+            "inputId": "include-last-support"
           }
         }
       ],
@@ -531,11 +606,25 @@
           "targetPort": "input-1"
         },
         {
-          "id": "graphInput-1:number-1->array-1:count",
-          "sourceNodeId": "graphInput-1",
+          "id": "sum-1:number->array-1:count",
+          "sourceNodeId": "sum-1",
           "targetNodeId": "array-1",
-          "sourcePort": "number-1",
+          "sourcePort": "number",
           "targetPort": "count"
+        },
+        {
+          "id": "graphInput-1:number-1->sum-1:input-1",
+          "sourceNodeId": "graphInput-1",
+          "targetNodeId": "sum-1",
+          "sourcePort": "number-1",
+          "targetPort": "input-1"
+        },
+        {
+          "id": "graphInput-3:include-last-support->sum-1:enabled",
+          "sourceNodeId": "graphInput-3",
+          "targetNodeId": "sum-1",
+          "sourcePort": "include-last-support",
+          "targetPort": "enabled"
         },
         {
           "id": "transform-2:geometry->group-2:input-3",
@@ -566,11 +655,25 @@
           "targetPort": "input-2"
         },
         {
-          "id": "array-2:geometry->group-2:input-1",
+          "id": "array-2:geometry->array-3:geometry",
           "sourceNodeId": "array-2",
-          "targetNodeId": "group-2",
+          "targetNodeId": "array-3",
           "sourcePort": "geometry",
-          "targetPort": "input-1"
+          "targetPort": "geometry"
+        },
+        {
+          "id": "graphInput-1:number-1->array-3:count",
+          "sourceNodeId": "graphInput-1",
+          "targetNodeId": "array-3",
+          "sourcePort": "number-1",
+          "targetPort": "count"
+        },
+        {
+          "id": "array-3:geometry->group-1:input-4",
+          "sourceNodeId": "array-3",
+          "targetNodeId": "group-1",
+          "sourcePort": "geometry",
+          "targetPort": "input-4"
         },
         {
           "id": "graphInput-2:number-2->array-2:count",
@@ -629,6 +732,12 @@
         "type": "slider",
         "label": "Shelves count",
         "inputId": "number-2"
+      },
+      {
+        "id": "include-last-support-control",
+        "type": "switch",
+        "label": "Include last post and base",
+        "inputId": "include-last-support"
       }
     ]
   }

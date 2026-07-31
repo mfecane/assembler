@@ -89,6 +89,7 @@ interface GroupData {
 
 interface SumData {
 	constant: number
+	enabled: boolean
 	inputPorts: string[]
 }
 
@@ -543,10 +544,15 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		type: 'sum',
 		label: 'Sum',
 		creatable: true,
-		create: (id, position) => new SumGraphNode(id, position, 0),
+		create: (id, position) => new SumGraphNode(id, position, 0, true),
 		ports: {
-			inputs: (node) => node.getInputPortIds().map((id) => ({ id, valueType: 'number' })),
+			inputs: (node) => [
+				{ id: 'enabled', valueType: 'boolean' },
+				...node.getInputPortIds().map((id) => ({ id, valueType: 'number' as const })),
+			],
 			outputs: [{ id: 'number', valueType: 'number' }],
+			getInputDefault: (node, portId) =>
+				portId === 'enabled' ? { valueType: 'boolean', value: node.getEnabled() } : undefined,
 		},
 		syncInputPorts: (node, connectedPortIds) => node.syncInputPorts(connectedPortIds),
 		numericFields: {
@@ -557,19 +563,24 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		},
 		serialize: (node) => ({
 			constant: node.getConstant(),
+			enabled: node.getEnabled(),
 			inputPorts: node.getInputPortIds(),
 		}),
 		deserialize: (id, position, data) => {
 			const value = data as SumData
-			return new SumGraphNode(id, position, value.constant, value.inputPorts)
+			return new SumGraphNode(id, position, value.constant, value.enabled, value.inputPorts)
 		},
 		evaluate: (node, context) => {
+			const enabled = context.resolveInput(node, 'enabled')
+			const initialValue = enabled?.valueType === 'boolean' && enabled.value === true
+				? node.getConstant()
+				: 0
 			const total = node.getInputPortIds().reduce((sum, portId) => {
 				const input = context.resolveInput(node, portId)
 				return input?.valueType === 'number' && typeof input.value === 'number'
 					? sum + input.value
 					: sum
-			}, node.getConstant())
+			}, initialValue)
 			return new Map([['number', number(total)]])
 		},
 	})

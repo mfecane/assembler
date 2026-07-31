@@ -279,16 +279,23 @@ export function useGroupNode(nodeId: string): GroupNodeBinding | undefined {
 
 export interface SumNodeBinding {
 	constant: number
+	enabled: boolean
+	enabledConnected: boolean
 	inputPorts: Array<{ id: string; connected: boolean }>
 	setConstant: (value: number) => void
+	setEnabled: (value: boolean) => void
 }
 
 export function useSumNode(nodeId: string): SumNodeBinding | undefined {
 	const controller = useEditorController()
-	const { model } = useGraphSnapshot()
+	const { activeGraphId, model } = useGraphSnapshot()
 	const node = model.getNode(nodeId)
 	const setConstant = useCallback(
 		(value: number) => controller.setNumericValue(nodeId, 'constant', value),
+		[controller, nodeId]
+	)
+	const setEnabled = useCallback(
+		(value: boolean) => controller.setSumEnabled(nodeId, value),
 		[controller, nodeId]
 	)
 
@@ -299,14 +306,27 @@ export function useSumNode(nodeId: string): SumNodeBinding | undefined {
 			.filter((edge) => edge.targetNodeId === nodeId && edge.targetPort)
 			.map((edge) => edge.targetPort as string)
 	)
+	const enabledEdge = model.getEdges().find(
+		(edge) => edge.targetNodeId === nodeId && edge.targetPort === 'enabled'
+	)
+	const connectedValue = enabledEdge?.sourcePort
+		? controller.evaluateOutput(activeGraphId, enabledEdge.sourceNodeId, enabledEdge.sourcePort)
+		: undefined
+	const connectedEnabled = connectedValue?.valueType === 'boolean'
+		&& typeof connectedValue.value === 'boolean'
+		? connectedValue.value
+		: undefined
 
 	return {
 		constant: node.getConstant(),
+		enabled: connectedEnabled ?? node.getEnabled(),
+		enabledConnected: connectedEnabled !== undefined,
 		inputPorts: node.getInputPortIds().map((id) => ({
 			id,
 			connected: connectedPortIds.has(id),
 		})),
 		setConstant,
+		setEnabled,
 	}
 }
 

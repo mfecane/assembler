@@ -418,6 +418,7 @@ export class SumGraphNode extends GraphNode {
 		id: string,
 		position: GraphPoint,
 		private constant: number,
+		private enabled: boolean,
 		inputPorts: string[] = ['input-1']
 	) {
 		super(id, position)
@@ -430,6 +431,14 @@ export class SumGraphNode extends GraphNode {
 
 	public setConstant(constant: number): void {
 		this.constant = Number.isFinite(constant) ? constant : 0
+	}
+
+	public getEnabled(): boolean {
+		return this.enabled
+	}
+
+	public setEnabled(enabled: boolean): void {
+		this.enabled = enabled
 	}
 
 	public getInputPortIds(): string[] {

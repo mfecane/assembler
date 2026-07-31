@@ -1,4 +1,6 @@
 import { Position, type NodeProps } from '@xyflow/react'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { NumericInput } from '@/parametric/components/NumericInput'
 import { NodeDeleteButton } from '@/parametric/components/NodeDeleteButton'
 import { NodeHeader } from '@/parametric/components/NodeHeader'
@@ -11,9 +13,32 @@ export function SumNode({ id }: NodeProps<ParametricFlowNode>) {
 	if (!binding) return null
 
 	return (
-		<div data-id={`sum-node-${id}`} className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md">
+		<div
+			data-id={`sum-node-${id}`}
+			className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
+		>
 			<NodeHeader nodeId={id} actions={<NodeDeleteButton nodeId={id} nodeLabel="Sum" />} />
 			<div className="flex flex-col gap-2 text-xs">
+				<div className="nodrag relative flex h-7 items-center justify-between gap-3">
+					<TypedHandle
+						id="enabled"
+						type="target"
+						position={Position.Left}
+						valueType="boolean"
+						style={{ top: '50%' }}
+					/>
+					<Label htmlFor={`${id}-enabled`} className="text-xs text-muted-foreground">
+						Enabled
+					</Label>
+					<Switch
+						data-id="sum-enabled-switch"
+						id={`${id}-enabled`}
+						checked={binding.enabled}
+						disabled={binding.enabledConnected}
+						onCheckedChange={binding.setEnabled}
+						aria-label="Enable constant"
+					/>
+				</div>
 				<div className="nodrag flex items-center justify-between gap-2">
 					<span className="text-muted-foreground">Constant</span>
 					<NumericInput

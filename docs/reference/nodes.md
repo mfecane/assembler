@@ -139,13 +139,16 @@ Groups may be nested and may feed Transform, Material, Array, another Group, or 
 
 ### Sum (`sum`)
 
-Adds any number of numeric inputs to a stored constant.
+Adds any number of numeric inputs to an optionally enabled stored constant.
 
-- Inputs: dynamic `input-N: number` ports.
+- Inputs: `enabled: boolean`; dynamic `input-N: number` ports.
 - Outputs: `number: number`.
-- Data: `constant` number; `inputPorts`, a unique non-empty array of `input-N` IDs.
-- Default: constant `0`, ports `["input-1"]`.
-- Evaluation: starts with the constant and adds each valid connected numeric value. Missing inputs contribute zero.
+- Data: `constant` number; `enabled` boolean; `inputPorts`, a unique non-empty array of `input-N` IDs.
+- Default: constant `0`, enabled, ports `["input-1"]`.
+- Fallback: when `enabled` is unconnected, the stored enabled value is used.
+- Evaluation: starts with the constant when enabled or zero when disabled, then adds each valid
+  connected numeric value. Disabling the node suppresses only its stored constant; numeric inputs
+  continue to be summed. Missing numeric inputs contribute zero.
 
 ## Graph boundaries and instances
 

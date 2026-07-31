@@ -22,6 +22,7 @@ import {
 	OutputGraphNode,
 	PrimitiveGraphNode,
 	SelectorGraphNode,
+	SumGraphNode,
 	TransformGraphNode,
 	type Axis,
 	type GraphNode,
@@ -452,6 +453,15 @@ export class EditorController {
 			'material',
 			`Set material color on node "${nodeId}"`,
 			(node) => node.setColor(color)
+		)
+	}
+
+	public setSumEnabled(nodeId: string, value: boolean): void {
+		this.updateNode<SumGraphNode>(
+			nodeId,
+			'sum',
+			`Set enabled on sum node "${nodeId}"`,
+			(node) => node.setEnabled(value)
 		)
 	}
 

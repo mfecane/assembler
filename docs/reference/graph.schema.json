@@ -4,32 +4,51 @@
   "title": "3D Node Editor Document",
   "type": "object",
   "additionalProperties": false,
-  "required": ["entryGraphId", "entryInputValues", "graphs", "configurationPanel"],
+  "required": [
+    "entryGraphId",
+    "entryInputValues",
+    "graphs",
+    "configurationPanel"
+  ],
   "properties": {
-    "entryGraphId": { "$ref": "#/$defs/id" },
+    "entryGraphId": {
+      "$ref": "#/$defs/id"
+    },
     "entryInputValues": {
       "type": "object",
       "additionalProperties": {
         "oneOf": [
-          { "type": "number" },
-          { "type": "string" },
-          { "type": "boolean" }
+          {
+            "type": "number"
+          },
+          {
+            "type": "string"
+          },
+          {
+            "type": "boolean"
+          }
         ]
       }
     },
     "graphs": {
       "type": "array",
       "minItems": 1,
-      "items": { "$ref": "#/$defs/graph" }
+      "items": {
+        "$ref": "#/$defs/graph"
+      }
     },
     "configurationPanel": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["controls"],
+      "required": [
+        "controls"
+      ],
       "properties": {
         "controls": {
           "type": "array",
-          "items": { "$ref": "#/$defs/configurationControl" }
+          "items": {
+            "$ref": "#/$defs/configurationControl"
+          }
         }
       }
     }
@@ -42,10 +61,17 @@
     "point": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["x", "y"],
+      "required": [
+        "x",
+        "y"
+      ],
       "properties": {
-        "x": { "type": "number" },
-        "y": { "type": "number" }
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
       }
     },
     "inputDefinition": {
@@ -53,61 +79,127 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["id", "label", "valueType", "defaultValue"],
+          "required": [
+            "id",
+            "label",
+            "valueType",
+            "defaultValue"
+          ],
           "properties": {
-            "id": { "$ref": "#/$defs/id" },
-            "label": { "type": "string" },
-            "valueType": { "const": "number" },
-            "defaultValue": { "type": "number" }
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "label": {
+              "type": "string"
+            },
+            "valueType": {
+              "const": "number"
+            },
+            "defaultValue": {
+              "type": "number"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["id", "label", "valueType", "options", "defaultValue"],
+          "required": [
+            "id",
+            "label",
+            "valueType",
+            "options",
+            "defaultValue"
+          ],
           "properties": {
-            "id": { "$ref": "#/$defs/id" },
-            "label": { "type": "string" },
-            "valueType": { "const": "enum" },
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "label": {
+              "type": "string"
+            },
+            "valueType": {
+              "const": "enum"
+            },
             "options": {
               "type": "array",
               "minItems": 1,
               "uniqueItems": true,
-              "items": { "type": "string", "minLength": 1 }
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
             },
-            "defaultValue": { "type": "string" }
+            "defaultValue": {
+              "type": "string"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["id", "label", "valueType", "defaultValue"],
+          "required": [
+            "id",
+            "label",
+            "valueType",
+            "defaultValue"
+          ],
           "properties": {
-            "id": { "$ref": "#/$defs/id" },
-            "label": { "type": "string" },
-            "valueType": { "const": "color" },
-            "defaultValue": { "type": "string" }
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "label": {
+              "type": "string"
+            },
+            "valueType": {
+              "const": "color"
+            },
+            "defaultValue": {
+              "type": "string"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["id", "label", "valueType", "defaultValue"],
+          "required": [
+            "id",
+            "label",
+            "valueType",
+            "defaultValue"
+          ],
           "properties": {
-            "id": { "$ref": "#/$defs/id" },
-            "label": { "type": "string" },
-            "valueType": { "const": "boolean" },
-            "defaultValue": { "type": "boolean" }
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "label": {
+              "type": "string"
+            },
+            "valueType": {
+              "const": "boolean"
+            },
+            "defaultValue": {
+              "type": "boolean"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["id", "label", "valueType"],
+          "required": [
+            "id",
+            "label",
+            "valueType"
+          ],
           "properties": {
-            "id": { "$ref": "#/$defs/id" },
-            "label": { "type": "string" },
-            "valueType": { "const": "geometry" }
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "label": {
+              "type": "string"
+            },
+            "valueType": {
+              "const": "geometry"
+            }
           }
         }
       ]
@@ -115,49 +207,95 @@
     "graph": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "label", "inputs", "output", "nodes", "edges"],
+      "required": [
+        "id",
+        "label",
+        "inputs",
+        "output",
+        "nodes",
+        "edges"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/id" },
-        "label": { "type": "string" },
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "label": {
+          "type": "string"
+        },
         "inputs": {
           "type": "array",
-          "items": { "$ref": "#/$defs/inputDefinition" }
+          "items": {
+            "$ref": "#/$defs/inputDefinition"
+          }
         },
         "output": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["id", "label", "valueType"],
+          "required": [
+            "id",
+            "label",
+            "valueType"
+          ],
           "properties": {
-            "id": { "$ref": "#/$defs/id" },
-            "label": { "type": "string" },
-            "valueType": { "const": "geometry" }
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "label": {
+              "type": "string"
+            },
+            "valueType": {
+              "const": "geometry"
+            }
           }
         },
         "nodes": {
           "type": "array",
-          "items": { "$ref": "#/$defs/node" },
+          "items": {
+            "$ref": "#/$defs/node"
+          },
           "contains": {
             "type": "object",
-            "required": ["type"],
-            "properties": { "type": { "const": "graphOutput" } }
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "const": "graphOutput"
+              }
+            }
           },
           "minContains": 1,
           "maxContains": 1
         },
         "edges": {
           "type": "array",
-          "items": { "$ref": "#/$defs/edge" }
+          "items": {
+            "$ref": "#/$defs/edge"
+          }
         }
       }
     },
     "node": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "type", "position", "data"],
+      "required": [
+        "id",
+        "name",
+        "type",
+        "position",
+        "data"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/id" },
-        "name": { "type": "string", "minLength": 1 },
-        "position": { "$ref": "#/$defs/point" },
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "position": {
+          "$ref": "#/$defs/point"
+        },
         "type": {
           "enum": [
             "primitive",
@@ -176,37 +314,107 @@
             "graphInstance"
           ]
         },
-        "data": { "type": "object" }
+        "data": {
+          "type": "object"
+        }
       },
       "allOf": [
         {
-          "if": { "properties": { "type": { "const": "graphInput" } } },
+          "if": {
+            "properties": {
+              "type": {
+                "const": "sum"
+              }
+            }
+          },
           "then": {
             "properties": {
               "data": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["inputId"],
-                "properties": { "inputId": { "$ref": "#/$defs/id" } }
+                "required": [
+                  "constant",
+                  "enabled",
+                  "inputPorts"
+                ],
+                "properties": {
+                  "constant": {
+                    "type": "number"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "inputPorts": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "$ref": "#/$defs/id"
+                    }
+                  }
+                }
               }
             }
           }
         },
         {
-          "if": { "properties": { "type": { "const": "graphInstance" } } },
+          "if": {
+            "properties": {
+              "type": {
+                "const": "graphInput"
+              }
+            }
+          },
           "then": {
             "properties": {
               "data": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["graphId"],
-                "properties": { "graphId": { "$ref": "#/$defs/id" } }
+                "required": [
+                  "inputId"
+                ],
+                "properties": {
+                  "inputId": {
+                    "$ref": "#/$defs/id"
+                  }
+                }
               }
             }
           }
         },
         {
-          "if": { "properties": { "type": { "const": "graphOutput" } } },
+          "if": {
+            "properties": {
+              "type": {
+                "const": "graphInstance"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "data": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "graphId"
+                ],
+                "properties": {
+                  "graphId": {
+                    "$ref": "#/$defs/id"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "graphOutput"
+              }
+            }
+          },
           "then": {
             "properties": {
               "data": {
@@ -230,11 +438,21 @@
         "targetPort"
       ],
       "properties": {
-        "id": { "$ref": "#/$defs/id" },
-        "sourceNodeId": { "$ref": "#/$defs/id" },
-        "targetNodeId": { "$ref": "#/$defs/id" },
-        "sourcePort": { "$ref": "#/$defs/id" },
-        "targetPort": { "$ref": "#/$defs/id" }
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "sourceNodeId": {
+          "$ref": "#/$defs/id"
+        },
+        "targetNodeId": {
+          "$ref": "#/$defs/id"
+        },
+        "sourcePort": {
+          "$ref": "#/$defs/id"
+        },
+        "targetPort": {
+          "$ref": "#/$defs/id"
+        }
       }
     },
     "configurationControl": {
@@ -242,60 +460,139 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["id", "inputId", "label", "type", "step"],
+          "required": [
+            "id",
+            "inputId",
+            "label",
+            "type",
+            "step"
+          ],
           "properties": {
-            "id": { "$ref": "#/$defs/id" },
-            "inputId": { "$ref": "#/$defs/id" },
-            "label": { "type": "string" },
-            "type": { "const": "number" },
-            "step": { "type": "number", "exclusiveMinimum": 0 }
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "inputId": {
+              "$ref": "#/$defs/id"
+            },
+            "label": {
+              "type": "string"
+            },
+            "type": {
+              "const": "number"
+            },
+            "step": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["id", "inputId", "label", "type", "min", "max", "step"],
+          "required": [
+            "id",
+            "inputId",
+            "label",
+            "type",
+            "min",
+            "max",
+            "step"
+          ],
           "properties": {
-            "id": { "$ref": "#/$defs/id" },
-            "inputId": { "$ref": "#/$defs/id" },
-            "label": { "type": "string" },
-            "type": { "const": "slider" },
-            "min": { "type": "number" },
-            "max": { "type": "number" },
-            "step": { "type": "number", "exclusiveMinimum": 0 }
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "inputId": {
+              "$ref": "#/$defs/id"
+            },
+            "label": {
+              "type": "string"
+            },
+            "type": {
+              "const": "slider"
+            },
+            "min": {
+              "type": "number"
+            },
+            "max": {
+              "type": "number"
+            },
+            "step": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["id", "inputId", "label", "type"],
+          "required": [
+            "id",
+            "inputId",
+            "label",
+            "type"
+          ],
           "properties": {
-            "id": { "$ref": "#/$defs/id" },
-            "inputId": { "$ref": "#/$defs/id" },
-            "label": { "type": "string" },
-            "type": { "const": "select" }
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "inputId": {
+              "$ref": "#/$defs/id"
+            },
+            "label": {
+              "type": "string"
+            },
+            "type": {
+              "const": "select"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["id", "inputId", "label", "type"],
+          "required": [
+            "id",
+            "inputId",
+            "label",
+            "type"
+          ],
           "properties": {
-            "id": { "$ref": "#/$defs/id" },
-            "inputId": { "$ref": "#/$defs/id" },
-            "label": { "type": "string" },
-            "type": { "const": "color" }
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "inputId": {
+              "$ref": "#/$defs/id"
+            },
+            "label": {
+              "type": "string"
+            },
+            "type": {
+              "const": "color"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["id", "inputId", "label", "type"],
+          "required": [
+            "id",
+            "inputId",
+            "label",
+            "type"
+          ],
           "properties": {
-            "id": { "$ref": "#/$defs/id" },
-            "inputId": { "$ref": "#/$defs/id" },
-            "label": { "type": "string" },
-            "type": { "const": "switch" }
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "inputId": {
+              "$ref": "#/$defs/id"
+            },
+            "label": {
+              "type": "string"
+            },
+            "type": {
+              "const": "switch"
+            }
           }
         }
       ]
