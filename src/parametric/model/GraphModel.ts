@@ -5,7 +5,6 @@ import type { NodePortContext, NodeRegistry } from '@/parametric/model/NodeDefin
 export class GraphModel {
 	private readonly nodes = new Map<string, GraphNode>()
 	private readonly edges = new Map<string, GraphEdge>()
-	private isRestoring = false
 
 	public constructor(
 		private readonly nodeRegistry: NodeRegistry,
@@ -14,12 +13,7 @@ export class GraphModel {
 		private portContext?: NodePortContext
 	) {
 		for (const node of nodes) this.nodes.set(node.id, node)
-		this.isRestoring = true
 		for (const edge of edges) this.connect(edge)
-		this.isRestoring = false
-		for (const node of nodes) {
-			this.syncDynamicInputs(node.id)
-		}
 	}
 
 	public getNodes(): GraphNode[] {
@@ -50,14 +44,14 @@ export class GraphModel {
 		]
 	}
 
-	public getNumericValue(nodeId: string, field: string): number | undefined {
+	public getFieldValue(nodeId: string, field: string): unknown {
 		const node = this.nodes.get(nodeId)
-		return node ? this.nodeRegistry.getNumericValue(node, field) : undefined
+		return node ? this.nodeRegistry.getFieldValue(node, field) : undefined
 	}
 
-	public setNumericValue(nodeId: string, field: string, value: number): boolean {
+	public setFieldValue(nodeId: string, field: string, value: unknown): boolean {
 		const node = this.nodes.get(nodeId)
-		return node ? this.nodeRegistry.setNumericValue(node, field, value) : false
+		return node ? this.nodeRegistry.setFieldValue(node, field, value) : false
 	}
 
 	public addNode(node: GraphNode): void {
@@ -68,15 +62,12 @@ export class GraphModel {
 	public removeNode(nodeId: string): void {
 		const node = this.nodes.get(nodeId)
 		if (!node || this.nodeRegistry.isOutput(node)) return
-		const affectedTargetIds = new Set<string>()
 		this.nodes.delete(nodeId)
 		for (const edge of this.edges.values()) {
 			if (edge.sourceNodeId === nodeId || edge.targetNodeId === nodeId) {
-				affectedTargetIds.add(edge.targetNodeId)
 				this.edges.delete(edge.id)
 			}
 		}
-		for (const targetId of affectedTargetIds) this.syncDynamicInputs(targetId)
 	}
 
 	public clearExceptOutput(): void {
@@ -94,10 +85,17 @@ export class GraphModel {
 		for (const existing of this.edges.values()) {
 			const targetsSamePort =
 				existing.targetNodeId === normalizedEdge.targetNodeId && existing.targetPort === normalizedEdge.targetPort
-			if (targetsSamePort) this.edges.delete(existing.id)
+			if (
+				targetsSamePort
+				&& targetNode
+				&& !this.nodeRegistry.isMultiInput(
+					targetNode,
+					normalizedEdge.targetPort ?? '',
+					this.portContext
+				)
+			) this.edges.delete(existing.id)
 		}
 		this.edges.set(normalizedEdge.id, normalizedEdge)
-		if (!this.isRestoring && targetNode) this.syncDynamicInputs(targetNode.id)
 	}
 
 	public canConnect(edge: GraphEdge): boolean {
@@ -122,7 +120,6 @@ export class GraphModel {
 		const edge = this.edges.get(edgeId)
 		if (!edge) return
 		this.edges.delete(edgeId)
-		this.syncDynamicInputs(edge.targetNodeId)
 	}
 
 	public getOutputNode(): GraphNode | undefined {
@@ -132,17 +129,6 @@ export class GraphModel {
 	public isNodeRemovable(nodeId: string): boolean {
 		const node = this.nodes.get(nodeId)
 		return Boolean(node && !this.nodeRegistry.isOutput(node))
-	}
-
-	private syncDynamicInputs(nodeId: string): void {
-		const node = this.nodes.get(nodeId)
-		if (!node || !this.nodeRegistry.hasDynamicInputPorts(node)) return
-		const connectedPortIds = new Set(
-			[...this.edges.values()]
-				.filter((edge) => edge.targetNodeId === nodeId && edge.targetPort)
-				.map((edge) => edge.targetPort as string)
-		)
-		this.nodeRegistry.syncInputPorts(node, connectedPortIds)
 	}
 
 	private normalizeEdge(edge: GraphEdge): GraphEdge | undefined {

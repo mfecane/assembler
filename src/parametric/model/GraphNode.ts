@@ -1,6 +1,9 @@
 import { Vector3Value } from '@/parametric/model/Vector3Value'
-import { DynamicInputPorts } from '@/parametric/model/DynamicInputPorts'
-import { normalizePresetColor } from '@/parametric/model/ColorPalette'
+import { BooleanField } from '@/parametric/model/fields/BooleanField'
+import { ColorField } from '@/parametric/model/fields/ColorField'
+import { EnumField } from '@/parametric/model/fields/EnumField'
+import { NumberField } from '@/parametric/model/fields/NumberField'
+import { TransformField } from '@/parametric/model/fields/TransformField'
 
 export interface GraphPoint {
 	x: number
@@ -16,6 +19,7 @@ export type GraphValueType = 'geometry' | 'number' | 'enum' | 'color' | 'boolean
 export interface GraphInputPort {
 	id: string
 	valueType: GraphValueType
+	multiple?: boolean
 }
 
 export interface GraphOutputPort {
@@ -66,24 +70,36 @@ export abstract class GraphNode {
 
 }
 
+export interface TransformableGraphNode extends GraphNode {
+	getTransform(): TransformField
+}
+
+export function isTransformableGraphNode(
+	node: GraphNode | undefined | null
+): node is TransformableGraphNode {
+	return Boolean(node && 'getTransform' in node && typeof node.getTransform === 'function')
+}
+
 export class PrimitiveGraphNode extends GraphNode {
 	public readonly type = 'primitive'
+	private readonly primitiveField: EnumField<PrimitiveKind>
 
 	public constructor(
 		id: string,
 		position: GraphPoint,
-		private primitive: PrimitiveKind,
+		primitive: PrimitiveKind,
 		private size: Vector3Value
 	) {
 		super(id, position)
+		this.primitiveField = new EnumField(primitive, ['box', 'sphere', 'cylinder', 'cone'])
 	}
 
 	public getPrimitive(): PrimitiveKind {
-		return this.primitive
+		return this.primitiveField.get()
 	}
 
 	public setPrimitive(primitive: PrimitiveKind): void {
-		this.primitive = primitive
+		this.primitiveField.set(primitive)
 	}
 
 	public getSize(): Vector3Value {
@@ -98,29 +114,30 @@ export class PrimitiveGraphNode extends GraphNode {
 
 export class NumberInputGraphNode extends GraphNode {
 	public readonly type = 'numberInput'
+	private readonly valueField: NumberField
 
 	public constructor(
 		id: string,
 		position: GraphPoint,
-		private value: number
+		value: number
 	) {
 		super(id, position)
+		this.valueField = new NumberField(value)
 	}
 
 	public getValue(): number {
-		return this.value
+		return this.valueField.get()
 	}
 
 	public setValue(value: number): void {
-		this.value = Number.isFinite(value) ? value : 0
+		this.valueField.set(value)
 	}
 
 }
 
 export class SelectorGraphNode extends GraphNode {
 	public readonly type = 'selector'
-	private options: string[]
-	private value: string
+	private readonly valueField: EnumField
 
 	public constructor(
 		id: string,
@@ -129,63 +146,60 @@ export class SelectorGraphNode extends GraphNode {
 		value: string
 	) {
 		super(id, position)
-		this.options = this.normalizeOptions(options)
-		this.value = this.options.includes(value) ? value : this.options[0]
+		this.valueField = new EnumField(value, options)
 	}
 
 	public getOptions(): string[] {
-		return [...this.options]
+		return this.valueField.getOptions()
 	}
 
 	public setOptions(options: string[]): void {
-		this.options = this.normalizeOptions(options)
-		if (!this.options.includes(this.value)) this.value = this.options[0]
+		this.valueField.setOptions(options)
 	}
 
 	public getValue(): string {
-		return this.value
+		return this.valueField.get()
 	}
 
 	public setValue(value: string): void {
-		if (this.options.includes(value)) this.value = value
-	}
-
-	private normalizeOptions(options: string[]): string[] {
-		const normalized = [...new Set(options.map((option) => option.trim()).filter(Boolean))]
-		return normalized.length > 0 ? normalized : ['Option']
+		this.valueField.set(value)
 	}
 }
 
 export class ColorGraphNode extends GraphNode {
 	public readonly type = 'color'
+	private readonly colorField: ColorField
 
 	public constructor(
 		id: string,
 		position: GraphPoint,
-		private color: string
+		color: string
 	) {
 		super(id, position)
-		this.color = normalizePresetColor(color)
+		this.colorField = new ColorField(color)
 	}
 
 	public getColor(): string {
-		return this.color
+		return this.colorField.get()
 	}
 
 	public setColor(color: string): void {
-		this.color = normalizePresetColor(color)
+		this.colorField.set(color)
 	}
 }
 
 export class MeshSelectorGraphNode extends GraphNode {
 	public readonly type = 'meshSelector'
+	private readonly transform: TransformField
 
 	public constructor(
 		id: string,
 		position: GraphPoint,
-		private selections: MeshSelection[]
+		private selections: MeshSelection[],
+		transform = new TransformField()
 	) {
 		super(id, position)
+		this.transform = transform
 	}
 
 	public getSelections(): MeshSelection[] {
@@ -200,153 +214,190 @@ export class MeshSelectorGraphNode extends GraphNode {
 		return this.selections.find((selection) => selection.enumValue === enumValue)?.meshId
 	}
 
+	public getTransform(): TransformField { return this.transform }
+
 }
 
 export class MeshAssetGraphNode extends GraphNode {
 	public readonly type = 'meshAsset'
+	private readonly meshIdField: EnumField
+	private readonly transform: TransformField
 
 	public constructor(
 		id: string,
 		position: GraphPoint,
-		private meshId: string
+		meshId: string,
+		transform = new TransformField()
 	) {
 		super(id, position)
+		this.meshIdField = new EnumField(meshId, [meshId], '')
+		this.transform = transform
 	}
 
 	public getMeshId(): string {
-		return this.meshId
+		return this.meshIdField.get()
 	}
 
 	public setMeshId(meshId: string): void {
-		this.meshId = meshId
+		this.meshIdField.setOptions([...this.meshIdField.getOptions(), meshId])
+		this.meshIdField.set(meshId)
 	}
+
+	public getTransform(): TransformField { return this.transform }
 }
 
 export class TransformGraphNode extends GraphNode {
 	public readonly type = 'transform'
+	private readonly transform: TransformField
+	private readonly copyField: BooleanField
+	private readonly uniformScaleField: BooleanField
+	private readonly enabledField: BooleanField
 
 	public constructor(
 		id: string,
 		position: GraphPoint,
-		private translation: Vector3Value,
-		private rotation: Vector3Value,
-		private scale: Vector3Value,
-		private origin: TransformOrigin,
-		private copy: boolean,
-		private uniformScale: boolean
+		translation: Vector3Value,
+		rotation: Vector3Value,
+		scale: Vector3Value,
+		origin: TransformOrigin,
+		copy: boolean,
+		uniformScale: boolean,
+		enabled = true
 	) {
 		super(id, position)
+		this.transform = new TransformField({
+			translation: translation.toSnapshot(),
+			rotation: rotation.toSnapshot(),
+			scale: scale.toSnapshot(),
+			origin,
+		})
+		this.copyField = new BooleanField(copy)
+		this.uniformScaleField = new BooleanField(uniformScale)
+		this.enabledField = new BooleanField(enabled)
 	}
 
 	public getTranslation(): Vector3Value {
-		return this.translation
+		return this.transform.getTranslation()
 	}
 
 	public setTranslation(translation: Vector3Value): void {
-		this.translation = translation
+		this.transform.setTranslation(translation)
 	}
 
 	public getRotation(): Vector3Value {
-		return this.rotation
+		return this.transform.getRotation()
 	}
 
 	public setRotation(rotation: Vector3Value): void {
-		this.rotation = rotation
+		this.transform.setRotation(rotation)
 	}
 
 	public getScale(): Vector3Value {
-		return this.scale
+		return this.transform.getScale()
 	}
 
 	public setScale(scale: Vector3Value): void {
-		this.scale = scale
+		this.transform.setScale(scale)
 	}
 
 	public getOrigin(): TransformOrigin {
-		return { ...this.origin }
+		return this.transform.getOrigin()
 	}
 
 	public setOrigin(origin: TransformOrigin): void {
-		this.origin = { ...origin }
+		this.transform.setOrigin(origin)
 	}
 
 	public getCopy(): boolean {
-		return this.copy
+		return this.copyField.get()
 	}
 
 	public setCopy(copy: boolean): void {
-		this.copy = copy
+		this.copyField.set(copy)
 	}
 
 	public getUniformScale(): boolean {
-		return this.uniformScale
+		return this.uniformScaleField.get()
 	}
 
 	public setUniformScale(uniformScale: boolean): void {
-		this.uniformScale = uniformScale
+		this.uniformScaleField.set(uniformScale)
 		if (uniformScale) {
-			this.scale = new Vector3Value(this.scale.x, this.scale.x, this.scale.x)
+			const scale = this.transform.getScale()
+			this.transform.setScale(new Vector3Value(scale.x, scale.x, scale.x))
 		}
 	}
+
+	public getEnabled(): boolean { return this.enabledField.get() }
+	public setEnabled(enabled: boolean): void { this.enabledField.set(enabled) }
+	public getTransform(): TransformField { return this.transform }
 
 }
 
 export class MaterialGraphNode extends GraphNode {
 	public readonly type = 'material'
+	private readonly colorField: ColorField
 
 	public constructor(
 		id: string,
 		position: GraphPoint,
-		private color: string
+		color: string
 	) {
 		super(id, position)
-		this.color = normalizePresetColor(color)
+		this.colorField = new ColorField(color)
 	}
 
 	public getColor(): string {
-		return this.color
+		return this.colorField.get()
 	}
 
 	public setColor(color: string): void {
-		this.color = normalizePresetColor(color)
+		this.colorField.set(color)
 	}
 }
 
 export class ArrayGraphNode extends GraphNode {
 	public readonly type = 'array'
+	private readonly countField: NumberField
+	private readonly axisField: EnumField<Axis>
+	private readonly offsetField: NumberField
 
 	public constructor(
 		id: string,
 		position: GraphPoint,
-		private count: number,
-		private axis: Axis,
-		private offset: number
+		count: number,
+		axis: Axis,
+		offset: number
 	) {
 		super(id, position)
+		this.countField = new NumberField(count, (value) =>
+			Number.isFinite(value) ? Math.max(1, Math.floor(value)) : 1)
+		this.axisField = new EnumField(axis, ['x', 'y', 'z'])
+		this.offsetField = new NumberField(offset)
 	}
 
 	public getCount(): number {
-		return this.count
+		return this.countField.get()
 	}
 
 	public setCount(count: number): void {
-		this.count = Number.isFinite(count) ? Math.max(1, Math.floor(count)) : 1
+		this.countField.set(count)
 	}
 
 	public getAxis(): Axis {
-		return this.axis
+		return this.axisField.get()
 	}
 
 	public setAxis(axis: Axis): void {
-		this.axis = axis
+		this.axisField.set(axis)
 	}
 
 	public getOffset(): number {
-		return this.offset
+		return this.offsetField.get()
 	}
 
 	public setOffset(offset: number): void {
-		this.offset = offset
+		this.offsetField.set(offset)
 	}
 
 }
@@ -378,74 +429,59 @@ export class GraphInputGraphNode extends GraphNode {
 
 export class GraphInstanceGraphNode extends GraphNode {
 	public readonly type = 'graphInstance'
+	private readonly transform: TransformField
 
 	public constructor(
 		id: string,
 		position: GraphPoint,
-		private readonly graphId: string
+		private readonly graphId: string,
+		transform = new TransformField()
 	) {
 		super(id, position)
+		this.transform = transform
 	}
 
 	public getGraphId(): string {
 		return this.graphId
 	}
+
+	public getTransform(): TransformField { return this.transform }
 }
 
 export class GroupGraphNode extends GraphNode {
 	public readonly type = 'group'
-	private readonly inputPorts: DynamicInputPorts
-
-	public constructor(id: string, position: GraphPoint, inputPorts: string[] = ['input-1']) {
-		super(id, position)
-		this.inputPorts = new DynamicInputPorts(inputPorts)
-	}
-
-	public getInputPortIds(): string[] {
-		return this.inputPorts.getIds()
-	}
-
-	public syncInputPorts(connectedPortIds: ReadonlySet<string>): void {
-		this.inputPorts.sync(connectedPortIds)
-	}
+	public constructor(id: string, position: GraphPoint) { super(id, position) }
 }
 
 export class SumGraphNode extends GraphNode {
 	public readonly type = 'sum'
-	private readonly inputPorts: DynamicInputPorts
+	private readonly constantField: NumberField
+	private readonly enabledField: BooleanField
 
 	public constructor(
 		id: string,
 		position: GraphPoint,
-		private constant: number,
-		private enabled: boolean,
-		inputPorts: string[] = ['input-1']
+		constant: number,
+		enabled: boolean
 	) {
 		super(id, position)
-		this.inputPorts = new DynamicInputPorts(inputPorts)
+		this.constantField = new NumberField(constant)
+		this.enabledField = new BooleanField(enabled)
 	}
 
 	public getConstant(): number {
-		return this.constant
+		return this.constantField.get()
 	}
 
 	public setConstant(constant: number): void {
-		this.constant = Number.isFinite(constant) ? constant : 0
+		this.constantField.set(constant)
 	}
 
 	public getEnabled(): boolean {
-		return this.enabled
+		return this.enabledField.get()
 	}
 
 	public setEnabled(enabled: boolean): void {
-		this.enabled = enabled
-	}
-
-	public getInputPortIds(): string[] {
-		return this.inputPorts.getIds()
-	}
-
-	public syncInputPorts(connectedPortIds: ReadonlySet<string>): void {
-		this.inputPorts.sync(connectedPortIds)
+		this.enabledField.set(enabled)
 	}
 }

@@ -26,6 +26,16 @@ export function TransformNode({ id }: NodeProps<ParametricFlowNode>) {
 			<TypedHandle id="geometry" type="target" position={Position.Left} valueType="geometry" />
 			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} />} />
 			<div className="flex flex-col gap-2">
+				<div className="nodrag flex items-center justify-between gap-3">
+					<Label htmlFor={`${id}-enabled`} className="text-xs text-muted-foreground">Enabled</Label>
+					<Switch
+						data-id="transform-enabled-switch"
+						id={`${id}-enabled`}
+						checked={binding.enabled}
+						onCheckedChange={binding.setEnabled}
+						aria-label="Enable transform"
+					/>
+				</div>
 				<Vec3Field label="Position" fields={translation} />
 				<Vec3Field label="Rotation" fields={rotation} step={1} />
 				<div className="nodrag flex flex-col gap-1 text-xs">

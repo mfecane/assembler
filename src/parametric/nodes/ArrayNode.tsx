@@ -1,5 +1,6 @@
 import { Position, type NodeProps } from '@xyflow/react'
 import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
 import {
 	Select,
 	SelectContent,
@@ -12,17 +13,22 @@ import { NumericInput } from '@/parametric/components/NumericInput'
 import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
-import { useArrayNode, useNumericField } from '@/parametric/hooks/useGraphNode'
+import { useField, useNumericField } from '@/parametric/hooks/useGraphNode'
 import type { Axis } from '@/parametric/model/GraphNode'
 
 export function ArrayNode({ id }: NodeProps<ParametricFlowNode>) {
-	const binding = useArrayNode(id)
+	const axis = useField<Axis>(id, 'axis', 'x')
 	const count = useNumericField(id, 'count', 'Count')
-	const offset = useNumericField(id, 'offset', 'Offset')
-	if (!binding) return null
+	const offset = useNumericField(id, 'offset', 'Duplication distance')
 
 	return (
-		<div data-id={`array-node-${id}`} className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md">
+		<div
+			data-id={`array-node-${id}`}
+			className={cn(
+				'min-w-48 rounded-md border border-border bg-surface',
+				'px-3 py-2 shadow-md'
+			)}
+		>
 			<TypedHandle id="geometry" type="target" position={Position.Left} valueType="geometry" />
 			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} />} />
 			<div className="flex flex-col gap-2 text-xs">
@@ -33,7 +39,7 @@ export function ArrayNode({ id }: NodeProps<ParametricFlowNode>) {
 				</div>
 				<div className="nodrag flex items-center justify-between gap-2 text-muted-foreground">
 					<Label htmlFor={`${id}-axis`} className="text-xs text-muted-foreground">Axis</Label>
-					<Select value={binding.axis} onValueChange={(next) => binding.setAxis(next as Axis)}>
+					<Select value={axis.value} onValueChange={(next) => axis.setValue(next as Axis)}>
 						<SelectTrigger id={`${id}-axis`} className="h-7 w-16 px-2 text-xs">
 							<SelectValue />
 						</SelectTrigger>
@@ -45,8 +51,10 @@ export function ArrayNode({ id }: NodeProps<ParametricFlowNode>) {
 					</Select>
 				</div>
 				<div className="nodrag flex items-center justify-between gap-2 text-muted-foreground">
-					<span>Offset</span>
-					<NumericInput field={offset} />
+					<Label htmlFor={`${id}-duplication-distance`} className="text-xs text-muted-foreground">
+						Distance
+					</Label>
+					<NumericInput id={`${id}-duplication-distance`} field={offset} />
 				</div>
 			</div>
 			<TypedHandle id="geometry" type="source" position={Position.Right} valueType="geometry" />

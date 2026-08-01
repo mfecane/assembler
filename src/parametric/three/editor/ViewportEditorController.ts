@@ -5,7 +5,7 @@ import type {
 } from '@/parametric/editor/EditorController'
 import type { ReactBridge } from '@/parametric/editor/ReactBridge'
 import type { SceneNodeInstanceReference } from '@/parametric/evaluation/SceneMetadata'
-import { TransformGraphNode } from '@/parametric/model/GraphNode'
+import { ArrayGraphNode, isTransformableGraphNode } from '@/parametric/model/GraphNode'
 import {
 	InteractionHandlerRouter,
 	MeshSelectionInteractionHandler,
@@ -30,7 +30,8 @@ export class ViewportEditorController {
 		if (!node) return
 		this.bridge.update({
 			previewNodeId: nodeId,
-			transformNodeId: node instanceof TransformGraphNode ? nodeId : null,
+			transformNodeId: isTransformableGraphNode(node) ? nodeId : null,
+			arrayDistanceNodeId: node instanceof ArrayGraphNode ? nodeId : null,
 			selectedMeshInstanceId: null,
 			contextMenu: null,
 		})
@@ -41,6 +42,7 @@ export class ViewportEditorController {
 		this.bridge.update({
 			previewNodeId: null,
 			transformNodeId: null,
+			arrayDistanceNodeId: null,
 			selectedMeshInstanceId: null,
 			contextMenu: null,
 		})
@@ -52,8 +54,9 @@ export class ViewportEditorController {
 		this.requestRenderSync()
 	}
 
-	public isTransformModeActive(): boolean {
-		return this.bridge.getSnapshot().transformNodeId !== null
+	public isGizmoActive(): boolean {
+		const snapshot = this.bridge.getSnapshot()
+		return snapshot.transformNodeId !== null || snapshot.arrayDistanceNodeId !== null
 	}
 
 	public selectMesh(
@@ -82,6 +85,7 @@ export class ViewportEditorController {
 		this.bridge.update({
 			previewNodeId: null,
 			transformNodeId: null,
+			arrayDistanceNodeId: null,
 			selectedMeshInstanceId: null,
 			contextMenu: null,
 			graphNodeFocusRequest: source,
@@ -112,6 +116,11 @@ export class ViewportEditorController {
 		)
 	}
 
+	public applyArrayDistance(nodeId: string, value: number, historyGroup: string): void {
+		const graphId = this.editorController.getSnapshot().activeGraphId
+		this.editorController.setArrayDistance(graphId, nodeId, value, historyGroup)
+	}
+
 	public handleGraphChange(): void {
 		const bridgeSnapshot = this.bridge.getSnapshot()
 		const graphSnapshot = this.editorController.getSnapshot()
@@ -120,6 +129,7 @@ export class ViewportEditorController {
 			this.bridge.update({
 				previewNodeId: null,
 				transformNodeId: null,
+				arrayDistanceNodeId: null,
 				selectedMeshInstanceId: null,
 				contextMenu: null,
 			})
@@ -130,12 +140,20 @@ export class ViewportEditorController {
 			? Boolean(graphSnapshot.model.getNode(bridgeSnapshot.previewNodeId))
 			: true
 		const transformExists = bridgeSnapshot.transformNodeId
-			? graphSnapshot.model.getNode(bridgeSnapshot.transformNodeId) instanceof TransformGraphNode
+			? isTransformableGraphNode(
+				graphSnapshot.model.getNode(bridgeSnapshot.transformNodeId)
+			)
 			: true
-		if (!previewExists || !transformExists) {
+		const arrayDistanceExists = bridgeSnapshot.arrayDistanceNodeId
+			? graphSnapshot.model.getNode(bridgeSnapshot.arrayDistanceNodeId) instanceof ArrayGraphNode
+			: true
+		if (!previewExists || !transformExists || !arrayDistanceExists) {
 			this.bridge.update({
 				previewNodeId: previewExists ? bridgeSnapshot.previewNodeId : null,
 				transformNodeId: transformExists ? bridgeSnapshot.transformNodeId : null,
+				arrayDistanceNodeId: arrayDistanceExists
+					? bridgeSnapshot.arrayDistanceNodeId
+					: null,
 				selectedMeshInstanceId: null,
 				contextMenu: null,
 			})

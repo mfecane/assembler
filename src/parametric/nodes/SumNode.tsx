@@ -44,24 +44,17 @@ export function SumNode({ id }: NodeProps<ParametricFlowNode>) {
 						field={{ value: binding.constant, setValue: binding.setConstant }}
 					/>
 				</div>
-				<div className="flex flex-col gap-1">
-					{binding.inputPorts.map((port, index) => (
-						<div
-							key={port.id}
-							className="relative flex h-7 items-center rounded border border-border bg-input px-2"
-						>
-							<TypedHandle
-								id={port.id}
-								type="target"
-								position={Position.Left}
-								valueType="number"
-								style={{ top: '50%' }}
-							/>
-							<span className={port.connected ? 'text-foreground' : 'text-muted-foreground'}>
-								Input {index + 1}
-							</span>
-						</div>
-					))}
+				<div className="relative flex h-7 items-center rounded border border-border bg-input px-2">
+					<TypedHandle
+						id="number"
+						type="target"
+						position={Position.Left}
+						valueType="number"
+						style={{ top: '50%' }}
+					/>
+					<span className={binding.inputConnected ? 'text-foreground' : 'text-muted-foreground'}>
+						Numbers
+					</span>
 				</div>
 			</div>
 			<TypedHandle id="number" type="source" position={Position.Right} valueType="number" />

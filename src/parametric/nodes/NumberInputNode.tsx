@@ -3,11 +3,10 @@ import { DraftNumberInput } from '@/parametric/components/DraftNumberInput'
 import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
-import { useNumberInputNode } from '@/parametric/hooks/useGraphNode'
+import { useNumericField } from '@/parametric/hooks/useGraphNode'
 
 export function NumberInputNode({ id }: NodeProps<ParametricFlowNode>) {
-	const binding = useNumberInputNode(id)
-	if (!binding) return null
+	const value = useNumericField(id, 'value')
 
 	return (
 		<div
@@ -17,8 +16,8 @@ export function NumberInputNode({ id }: NodeProps<ParametricFlowNode>) {
 			<NodeHeader nodeId={id} />
 			<div className="flex flex-col gap-2 text-xs">
 				<DraftNumberInput
-					value={binding.value}
-					onValueChange={binding.setValue}
+					value={value.value}
+					onValueChange={value.setValue}
 					step={0.1}
 					className="nodrag h-8 px-2 text-xs"
 				/>

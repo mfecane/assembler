@@ -32,6 +32,8 @@ behavior; only files under **Planned work** are pending.
 - [Mesh asset helper](./implementation/asset-helper.md) — asset browsing, previews, and insertion.
 - [Application shell](./implementation/application-shell.md) — routing, authenticated user menu,
   and shared component conventions.
+- [Node fields and capabilities](./implementation/node-field-capabilities.md) — generic scalar
+  fields, embedded transforms, multi-connect inputs, and node bypass behavior.
 
 ## Reviews
 

@@ -12,10 +12,11 @@ import {
 import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
-import { useSelectorNode } from '@/parametric/hooks/useGraphNode'
+import { useField, useSelectorNode } from '@/parametric/hooks/useGraphNode'
 
 export function SelectorNode({ id }: NodeProps<ParametricFlowNode>) {
 	const binding = useSelectorNode(id)
+	const value = useField(id, 'value', 'Option')
 	if (!binding) return null
 
 	const updateOption = (index: number, value: string) => {
@@ -85,7 +86,7 @@ export function SelectorNode({ id }: NodeProps<ParametricFlowNode>) {
 						</div>
 					))}
 				</div>
-				<Select value={binding.value} onValueChange={binding.setValue}>
+				<Select value={value.value} onValueChange={value.setValue}>
 					<SelectTrigger className="nodrag h-8 px-2 text-xs">
 						<SelectValue />
 					</SelectTrigger>

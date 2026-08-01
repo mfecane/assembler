@@ -18,6 +18,7 @@ export type BooleanValue = GraphValue<boolean> & { valueType: 'boolean' }
 
 export interface NodeEvaluationContext {
 	resolveInput(node: GraphNode, portId: string): GraphValue | undefined
+	resolveInputs(node: GraphNode, portId: string): GraphValue[]
 	getMeshBounds(meshId: string): MeshBounds | undefined
 	getNodeInstanceReference(nodeId: string): SceneNodeInstanceReference
 }

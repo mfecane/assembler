@@ -83,7 +83,7 @@ export class MeshSelectionInteractionHandler implements InteractionHandler {
 	public constructor(private readonly controller: ViewportEditorController) {}
 
 	public isEnabled(): boolean {
-		return !this.controller.isTransformModeActive()
+		return !this.controller.isGizmoActive()
 	}
 
 	public async onEvent(event: InteractionEvent): Promise<InteractionHandlerResult> {

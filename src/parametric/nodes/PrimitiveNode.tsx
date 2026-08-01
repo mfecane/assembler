@@ -11,7 +11,7 @@ import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import { Vec3Field } from '@/parametric/components/Vec3Field'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
-import { usePrimitiveNode, useVectorNumericFields } from '@/parametric/hooks/useGraphNode'
+import { useField, useVectorNumericFields } from '@/parametric/hooks/useGraphNode'
 import type { PrimitiveKind } from '@/parametric/model/GraphNode'
 
 const primitiveOptions: ReadonlyArray<{ value: PrimitiveKind; label: string }> = [
@@ -22,9 +22,8 @@ const primitiveOptions: ReadonlyArray<{ value: PrimitiveKind; label: string }> =
 ]
 
 export function PrimitiveNode({ id }: NodeProps<ParametricFlowNode>) {
-	const binding = usePrimitiveNode(id)
+	const primitive = useField<PrimitiveKind>(id, 'primitive', 'box')
 	const size = useVectorNumericFields(id, 'size', 'Size')
-	if (!binding) return null
 
 	return (
 		<div
@@ -34,8 +33,8 @@ export function PrimitiveNode({ id }: NodeProps<ParametricFlowNode>) {
 			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} />} />
 			<div className="flex flex-col gap-2">
 				<Select
-					value={binding.primitive}
-					onValueChange={(next) => binding.setPrimitive(next as PrimitiveKind)}
+					value={primitive.value}
+					onValueChange={(next) => primitive.setValue(next as PrimitiveKind)}
 				>
 					<SelectTrigger className="nodrag h-8 text-xs">
 						<SelectValue />

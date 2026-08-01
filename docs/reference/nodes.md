@@ -10,11 +10,16 @@ Ports are written as `port-id: value-type`. Built-in value types are:
 - `color` — a preset color string.
 - `boolean` — a JavaScript boolean.
 
-Connections require exact value-type equality. An input accepts at most one incoming edge. Group and Sum maintain dynamic `input-N` ports: connected ports are retained and one empty port is kept available.
+Connections require exact value-type equality. Geometry inputs accept any number of incoming edges
+and concatenate their scene instances before evaluation. Other inputs accept one edge unless the
+port explicitly declares multi-connect behavior; Sum's `number` input does so.
 
 All nodes persist the common fields `id`, non-empty `name`, `type`, `position: { x, y }`, and
 type-specific `data`. Every node header displays a Lucide icon for its type. Double-click the node
 name to edit it; Enter or leaving the field saves the trimmed name, while Escape cancels.
+
+Geometry nodes with embedded transform capability can be opened in the 3D editor and edited with
+the same move, rotate, and scale widgets as a standalone Transform node.
 
 ## Geometry sources
 
@@ -34,9 +39,10 @@ Emits one registered catalog mesh.
 
 - Inputs: none.
 - Outputs: `geometry: geometry`.
-- Data: `meshId` string.
+- Data: `meshId` string and an embedded `transform` (translation, rotation, scale, and origin).
 - Default: the first selectable mesh in the injected catalog, or an empty ID.
-- Evaluation: emits one instance using catalog bounds. An unknown asset ID produces no output.
+- Evaluation: emits one instance using catalog bounds and applies the embedded transform. An
+  unknown asset ID produces no output.
 
 ### Mesh Selector (`meshSelector`)
 
@@ -44,9 +50,10 @@ Maps an enum value to a registered mesh.
 
 - Inputs: `enum: enum`.
 - Outputs: `geometry: geometry`.
-- Data: `selections`, an array of `{ enumValue, meshId }` mappings.
+- Data: `selections`, an array of `{ enumValue, meshId }` mappings, and an embedded `transform`.
 - Default: one mapping per selectable mesh, using the mesh label as the enum value.
-- Evaluation: looks up the incoming enum value and emits the matching mesh. A missing input, mapping, or catalog asset produces no output.
+- Evaluation: looks up the incoming enum value, emits the matching mesh, and applies the embedded
+  transform. A missing input, mapping, or catalog asset produces no output.
 
 ## Constant value sources
 
@@ -96,9 +103,12 @@ Applies translation, rotation, scale, and a selectable pivot to every incoming i
   - `origin`, with `x`, `y`, and `z` each set to `min`, `middle`, or `max`.
   - `copy` boolean.
   - `uniformScale` boolean.
-- Default: zero translation and rotation, unit scale, middle origin, `copy: false`, and `uniformScale: true`.
+  - `enabled` boolean.
+- Default: zero translation and rotation, unit scale, middle origin, `copy: false`,
+  `uniformScale: true`, and `enabled: true`.
 - Units: rotation values are degrees. Translation uses scene units.
 - Evaluation: transforms all instances. When `copy` is true, both original and transformed instances are emitted.
+- Toggle: when disabled, the geometry input is passed through without running transform evaluation.
 - Compatibility: missing `copy` defaults to false. Missing `uniformScale` is inferred by checking whether all persisted scale components are equal.
 
 ### Material (`material`)
@@ -118,19 +128,22 @@ Repeats incoming geometry along one axis.
 
 - Inputs: `geometry: geometry`; `count: number`.
 - Outputs: `geometry: geometry`.
-- Data: `count` integer of at least 1; `axis` (`x`, `y`, or `z`); `offset` number.
+- Data: `count` integer of at least 1; `axis` (`x`, `y`, or `z`); and `offset`, the editable
+  duplication distance.
 - Default: count `2`, x-axis, offset `1`.
 - Fallback: when `count` is unconnected, the stored count is used.
-- Evaluation: floors the effective count, clamps it to at least one, and emits copies at `index × offset` along the selected axis. The first copy remains at the input position.
+- Evaluation: floors the effective count, clamps it to at least one, and emits copies at
+  `index × offset` along the selected axis.
+- 3D editing: opening the node attaches a single-axis gizmo to the final duplicate. Dragging it
+  changes the per-copy duplication distance and is recorded as one undoable history action.
 
 ### Group (`group`)
 
 Combines any number of geometry values.
 
-- Inputs: dynamic `input-N: geometry` ports.
+- Inputs: one multi-connect `geometry: geometry` port.
 - Outputs: `geometry: geometry`.
-- Data: `inputPorts`, a unique non-empty array of `input-N` IDs.
-- Default: `["input-1"]`.
+- Data: empty object.
 - Evaluation: concatenates all valid connected geometry inputs. Empty or invalid inputs contribute nothing.
 
 Groups may be nested and may feed Transform, Material, Array, another Group, or Output.
@@ -141,10 +154,10 @@ Groups may be nested and may feed Transform, Material, Array, another Group, or 
 
 Adds any number of numeric inputs to an optionally enabled stored constant.
 
-- Inputs: `enabled: boolean`; dynamic `input-N: number` ports.
+- Inputs: `enabled: boolean`; one multi-connect `number: number` port.
 - Outputs: `number: number`.
-- Data: `constant` number; `enabled` boolean; `inputPorts`, a unique non-empty array of `input-N` IDs.
-- Default: constant `0`, enabled, ports `["input-1"]`.
+- Data: `constant` number; `enabled` boolean.
+- Default: constant `0`, enabled.
 - Fallback: when `enabled` is unconnected, the stored enabled value is used.
 - Evaluation: starts with the constant when enabled or zero when disabled, then adds each valid
   connected numeric value. Disabling the node suppresses only its stored constant; numeric inputs
@@ -182,10 +195,12 @@ viewport; child graph results are returned through graph instances.
 
 Creates one independently evaluated instance of another graph definition in the same document.
 
-- Data: `graphId`, referencing a document-local graph definition.
+- Data: `graphId`, referencing a document-local graph definition, and an embedded `transform`.
 - Inputs: derived from the referenced definition's public inputs.
 - Output: derived from the referenced definition's geometry output.
 - Creation: choose a graph from the node menu.
 - Navigation: activate the instance to open its shared definition.
+- Evaluation: independently evaluates the referenced assembly, scopes its instance IDs, then applies
+  the embedded transform to the complete result.
 
 Instances may be nested. Recursive definition dependencies are rejected.

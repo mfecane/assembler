@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { Connection, Edge, EdgeChange, Node, NodeChange } from '@xyflow/react'
+import {
+	applyNodeChanges,
+	type Connection,
+	type Edge,
+	type EdgeChange,
+	type Node,
+	type NodeChange,
+} from '@xyflow/react'
+import type { NodePositionUpdate } from '@/parametric/editor/EditorController'
 import {
 	useEditor,
 	useEditorController,
@@ -62,16 +70,16 @@ export function useFlowGraph(): FlowGraphBinding {
 		return () => window.clearTimeout(timeout)
 	}, [focusedNodeId])
 
-	const nodes = useMemo<ParametricFlowNode[]>(
+	const modelNodes = useMemo<ParametricFlowNode[]>(
 		() =>
-				model.getNodes().map((node) => ({
-					id: node.id,
-					type:
-						node.type === 'group'
-							? 'parametricGroup'
-							: node.type === 'graphOutput'
-								? 'parametricOutput'
-								: node.type,
+			model.getNodes().map((node) => ({
+				id: node.id,
+				type:
+					node.type === 'group'
+						? 'parametricGroup'
+						: node.type === 'graphOutput'
+							? 'parametricOutput'
+							: node.type,
 				position: node.getPosition(),
 				data: {},
 				selected: selectedNodeIds.has(node.id),
@@ -80,6 +88,9 @@ export function useFlowGraph(): FlowGraphBinding {
 			})),
 		[focusedNodeId, model, revision, selectedNodeIds]
 	)
+	const [nodes, setNodes] = useState(modelNodes)
+
+	useEffect(() => setNodes(modelNodes), [modelNodes])
 
 	const edges = useMemo<Edge[]>(
 		() =>
@@ -90,7 +101,6 @@ export function useFlowGraph(): FlowGraphBinding {
 				sourceHandle: edge.sourcePort,
 				targetHandle: edge.targetPort,
 				selected: selectedEdgeIds.has(edge.id),
-
 			})),
 		[model, revision, selectedEdgeIds]
 	)
@@ -101,11 +111,15 @@ export function useFlowGraph(): FlowGraphBinding {
 	)
 
 	const onNodesChange = useCallback((changes: NodeChange<ParametricFlowNode>[]) => {
+		setNodes((current) => applyNodeChanges(changes, current))
 		const nextSelectedNodeIds = new Set(selectedNodeIdsRef.current)
+		const finalPositions = new Map<string, NodePositionUpdate>()
 		let selectionChanged = false
 		for (const change of changes) {
 			if (change.type === 'position' && change.position) {
-				controller.setNodePosition(change.id, change.position)
+				if (change.dragging !== true) {
+					finalPositions.set(change.id, { nodeId: change.id, position: change.position })
+				}
 			} else if (change.type === 'remove') {
 				controller.removeNode(change.id)
 			} else if (change.type === 'select') {
@@ -117,6 +131,7 @@ export function useFlowGraph(): FlowGraphBinding {
 				}
 			}
 		}
+		controller.setNodePositions([...finalPositions.values()])
 		if (!selectionChanged) return
 		selectedNodeIdsRef.current = nextSelectedNodeIds
 		setSelectedNodeIds(nextSelectedNodeIds)

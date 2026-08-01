@@ -74,6 +74,58 @@
         }
       }
     },
+    "transformField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "translation",
+        "rotation",
+        "scale",
+        "origin"
+      ],
+      "properties": {
+        "translation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y", "z"],
+          "properties": {
+            "x": { "type": "number" },
+            "y": { "type": "number" },
+            "z": { "type": "number" }
+          }
+        },
+        "rotation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y", "z"],
+          "properties": {
+            "x": { "type": "number" },
+            "y": { "type": "number" },
+            "z": { "type": "number" }
+          }
+        },
+        "scale": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y", "z"],
+          "properties": {
+            "x": { "type": "number" },
+            "y": { "type": "number" },
+            "z": { "type": "number" }
+          }
+        },
+        "origin": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y", "z"],
+          "properties": {
+            "x": { "enum": ["min", "middle", "max"] },
+            "y": { "enum": ["min", "middle", "max"] },
+            "z": { "enum": ["min", "middle", "max"] }
+          }
+        }
+      }
+    },
     "inputDefinition": {
       "oneOf": [
         {
@@ -334,8 +386,7 @@
                 "additionalProperties": false,
                 "required": [
                   "constant",
-                  "enabled",
-                  "inputPorts"
+                  "enabled"
                 ],
                 "properties": {
                   "constant": {
@@ -343,14 +394,6 @@
                   },
                   "enabled": {
                     "type": "boolean"
-                  },
-                  "inputPorts": {
-                    "type": "array",
-                    "minItems": 1,
-                    "uniqueItems": true,
-                    "items": {
-                      "$ref": "#/$defs/id"
-                    }
                   }
                 }
               }
@@ -396,11 +439,15 @@
                 "type": "object",
                 "additionalProperties": false,
                 "required": [
-                  "graphId"
+                  "graphId",
+                  "transform"
                 ],
                 "properties": {
                   "graphId": {
                     "$ref": "#/$defs/id"
+                  },
+                  "transform": {
+                    "$ref": "#/$defs/transformField"
                   }
                 }
               }

@@ -1,6 +1,7 @@
 import { Position, type NodeProps } from '@xyflow/react'
 import { ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { EmbeddedTransformSection } from '@/parametric/components/EmbeddedTransformSection'
 import { GeometryPreviewButton } from '@/parametric/components/GeometryPreviewButton'
 import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
@@ -60,6 +61,7 @@ export function GraphInstanceNode({ id }: NodeProps<ParametricFlowNode>) {
 					</div>
 				))}
 			</div>
+			<EmbeddedTransformSection nodeId={id} />
 			<TypedHandle
 				id={graph.output.id}
 				type="source"

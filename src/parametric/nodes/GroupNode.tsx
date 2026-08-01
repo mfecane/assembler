@@ -7,23 +7,12 @@ import { useGroupNode } from '@/parametric/hooks/useGraphNode'
 
 export function GroupNode({ id }: NodeProps<ParametricFlowNode>) {
 	const binding = useGroupNode(id)
-	if (!binding) return null
-
 	return (
 		<div data-id={`group-node-${id}`} className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md">
 			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} />} />
-			<div className="flex flex-col gap-2">
-				{binding.inputPorts.map((port) => (
-					<div key={port.id} className="relative h-6 rounded border border-border bg-input">
-						<TypedHandle
-							id={port.id}
-							type="target"
-							position={Position.Left}
-							valueType="geometry"
-							style={{ top: '50%' }}
-						/>
-					</div>
-				))}
+			<div className="relative h-7 rounded border border-border bg-input px-2 text-xs text-muted-foreground">
+				<TypedHandle id="geometry" type="target" position={Position.Left} valueType="geometry" />
+				<span className="flex h-full items-center">{binding.connectedInputCount} connected</span>
 			</div>
 			<TypedHandle id="geometry" type="source" position={Position.Right} valueType="geometry" />
 		</div>

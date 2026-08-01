@@ -37,7 +37,7 @@ numeric fields to everything else."
   holding an instance, not by inheriting from a shared base. Both are proof the pattern the user is
   asking for already works in this codebase in miniature — it just stops at "numeric fields" and
   "dynamic ports" instead of covering every field kind and every cross-cutting behavior.
-- **`docs/todo/node-capabilities.md` already asks the right question** (capability composition for
+- **`docs/implementation/node-capabilities-proposal.md` already asks the right question** (capability composition for
   embeddable transforms / multi-input ports) and correctly refuses to implement until the
   abstraction is proven. Findings 1–3 below are the general-purpose version of exactly that
   proposal — solve them first and the transform/multi-input capability becomes a two-line addition
@@ -100,7 +100,7 @@ type-specific code.
 optional/required keys on one interface. `numericFields` is visibly a later addition bolted onto
 the side of the original shape rather than a first-class capability the interface was designed
 around, and it will not be the last such addition (Finding 1's field system, Finding 6's future
-transform-embedding capability from `node-capabilities.md`, and whatever "wacky" per-node behavior
+transform-embedding capability from `node-capabilities-proposal.md`, and whatever "wacky" per-node behavior
 shows up next will all want the same treatment: a new optional key on this one interface).
 
 **Why this breaks at hundreds of types:** this is the literal opposite of interface segregation —
@@ -247,6 +247,6 @@ doesn't need a capability system, just entries.
    it, leaving `useMaterialNode`/`useSumNode`-style connected-value resolution as hand-written.
 4. Tighten `NodeRegistry.register`'s type erasure (Finding 5) — cheap, do any time, no dependency on
    1–3.
-5. Only then revisit `docs/todo/node-capabilities.md`'s embeddable-transform / multi-input-port
+5. Only then revisit `docs/implementation/node-capabilities-proposal.md`'s embeddable-transform / multi-input-port
    proposal — it should fall out of the field/capability system almost for free instead of needing
    its own parallel mechanism.

@@ -9,6 +9,7 @@ import type { NodeRegistry } from '@/parametric/model/NodeDefinition'
 
 export interface GraphStateSnapshot {
 	revision: number
+	evaluationRevision: number
 	documentVersion: number
 	document: GraphDocumentModel
 	activeGraphId: string
@@ -26,6 +27,7 @@ type GraphStateListener = () => void
 export class GraphState {
 	private readonly listeners = new Set<GraphStateListener>()
 	private revision = 0
+	private evaluationRevision = 0
 	private documentVersion = 0
 	private nextDocumentVersion = 1
 	private activeGraphId: string
@@ -102,8 +104,9 @@ export class GraphState {
 		return version
 	}
 
-	public publish(): void {
+	public publish(affectsEvaluation = true): void {
 		this.revision += 1
+		if (affectsEvaluation) this.evaluationRevision += 1
 		this.snapshot = this.createSnapshot()
 		for (const listener of this.listeners) listener()
 	}
@@ -111,6 +114,7 @@ export class GraphState {
 	private createSnapshot(): GraphStateSnapshot {
 		return {
 			revision: this.revision,
+			evaluationRevision: this.evaluationRevision,
 			documentVersion: this.documentVersion,
 			document: this.document,
 			activeGraphId: this.activeGraphId,

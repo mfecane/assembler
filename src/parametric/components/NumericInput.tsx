@@ -3,14 +3,16 @@ import type { NumericFieldBinding } from '@/parametric/hooks/useGraphNode'
 
 interface NumericInputProps {
 	field: NumericFieldBinding
+	id?: string
 	step?: number
 	min?: number
 }
 
-export function NumericInput({ field, step = 0.1, min }: NumericInputProps) {
+export function NumericInput({ field, id, step = 0.1, min }: NumericInputProps) {
 	return (
 		<div className="nodrag flex items-center">
 			<DraftNumberInput
+				id={id}
 				value={field.value}
 				onValueChange={field.setValue}
 				min={min}

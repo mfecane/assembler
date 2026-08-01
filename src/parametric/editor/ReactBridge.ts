@@ -19,6 +19,7 @@ export interface ReactBridgeSnapshot {
 	canRedo: boolean
 	previewNodeId: string | null
 	transformNodeId: string | null
+	arrayDistanceNodeId: string | null
 	transformMode: TransformControlsMode
 	selectedMeshInstanceId: string | null
 	contextMenu: ViewportContextMenu | null
@@ -34,6 +35,7 @@ const initialSnapshot: ReactBridgeSnapshot = {
 	canRedo: false,
 	previewNodeId: null,
 	transformNodeId: null,
+	arrayDistanceNodeId: null,
 	transformMode: 'translate',
 	selectedMeshInstanceId: null,
 	contextMenu: null,
@@ -53,6 +55,10 @@ export class ReactBridge {
 	}
 
 	public update(update: Partial<Omit<ReactBridgeSnapshot, 'revision'>>): void {
+		const changed = Object.entries(update).some(
+			([key, value]) => !Object.is(this.snapshot[key as keyof ReactBridgeSnapshot], value)
+		)
+		if (!changed) return
 		this.snapshot = {
 			...this.snapshot,
 			...update,

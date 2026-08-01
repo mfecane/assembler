@@ -41,8 +41,12 @@ JSON import, and transforms performed with the Three.js gizmo.
 
 Commands retain serialized before and after graph checkpoints. This intentionally favors simple,
 exact undo behavior for compound MVP operations over a hierarchy of handwritten inverse commands.
-Repeated field, node-position, and transform updates with the same merge key are coalesced within
-a short interaction window. A fresh command after undo clears redo history.
+Repeated field and transform updates with the same merge key are coalesced within a short
+interaction window. React Flow keeps node positions transient while dragging and commits all final
+positions in one command when the drag ends. Its controlled node state applies React Flow changes
+locally, preserving unchanged node identities, and the graph canvas owns that frequently changing
+state so drag events do not re-render the Three.js viewport. A fresh command after undo clears redo
+history.
 
 Undo and redo restore both the graph document and the active graph captured by the command. Merely
 opening another graph is navigation: it publishes a render revision but does not enter history or
@@ -53,9 +57,11 @@ The bridge publishes `canUndo` and `canRedo` for toolbar controls. Keyboard inte
 
 ## Three.js coordination
 
-The viewport subscribes to `EditorController` state. After a graph command, it evaluates the
-active graph or preview node into plain scene metadata and synchronizes Three.js objects from that
-metadata. Graph evaluation remains independent of Three.js objects.
+The viewport subscribes to the controller's evaluation revision. Content and graph-navigation
+changes advance that revision, evaluate the active graph or preview node into plain scene metadata,
+and synchronize Three.js objects. Layout-only node-position commits advance the general render and
+document revisions without advancing the evaluation revision, because canvas positions cannot
+affect scene geometry. Graph evaluation remains independent of Three.js objects.
 
 Viewport selection, preview, and transform mode update only `ReactBridge`. A transform-control
 drag sends graph ID, node ID, before/after values, and a drag history group to `EditorController`.

@@ -35,11 +35,12 @@ is that `entryGraphId` selects it as the document result.
 
 ## Graph instances
 
-A `graphInstance` node stores one `graphId`. That ID must resolve to a definition in the same
-document. There is no external graph address or loading mechanism.
+A `graphInstance` node stores one `graphId` and an embedded transform. The graph ID must resolve to
+a definition in the same document. There is no external graph address or loading mechanism.
 
-The instance input ports and geometry output port are derived from the referenced definition.
-Its inputs resolve from connected parent values first and declared defaults second.
+The instance input ports and geometry output port are derived from the referenced definition. Its
+inputs resolve from connected parent values first and declared defaults second. Its transform is
+applied to the complete evaluated child assembly.
 
 Definitions may instantiate other definitions. The dependency graph must remain acyclic.
 
@@ -104,18 +105,18 @@ are runtime data and are not serialized.
 ## Checked-in default
 
 `src/parametric/defaultGraph.json` is the canonical new-project and local-seed fixture. It
-preserves the full MaxShelf shelving example—including its mesh selectors, transforms, arrays,
-groups, material, configurable inputs, and connections—rather than a reduced smoke-test graph.
-Schema changes must update this fixture in place while retaining as much of that graph as the
-new shape permits. `scripts/seed-local-supabase.mjs` reads this exact file instead of carrying a
-second embedded copy.
+preserves the full MaxShelf shelving example—including its assets, required copy and assembly
+transforms, arrays, configurable inputs, and connections—rather than a reduced smoke-test graph.
+Placement transforms live on transform-capable nodes, and geometry inputs connect directly where
+their built-in grouping behavior makes standalone Group nodes redundant. Schema changes must update
+this fixture in place while retaining as much of that graph as the new shape permits.
+`scripts/seed-local-supabase.mjs` reads this exact file instead of carrying a second embedded copy.
 
-The fixture uses two graph definitions:
+The fixture uses three graph definitions:
 
-- `main` exposes bay count, shelves per bay, shelf style, back-panel style, finish, and a boolean
-  back-panel flag. Every input has a configuration-panel control. It instantiates one wing, copies
-  and rotates that result into the second side, and combines both sides with the corner infill.
-- `wing` contains one complete straight shelving wing. Its six public inputs replace the
-  former embedded number, selector, and color value nodes while preserving the original wing's
-  mesh, transform, array, grouping, and material topology. The boolean flag is forwarded across
-  the instance boundary to exercise persisted boolean connections without changing that topology.
+- `main` exposes left-section count, shelf count, and right-section count. It places two Wing
+  instances and one Corner instance directly into the configured-shelving output.
+- `graph-1` (`Wing`) builds a complete straight shelving wing from assets, arrays, and the remaining
+  transforms whose multi-object or duplicate-placement behavior cannot be embedded in one source.
+- `graph-2` (`Corner`) builds the corner infill. Copy-enabled transforms create perpendicular asset
+  pairs, and their geometry connects directly to the corner output or shelf-level array.

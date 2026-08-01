@@ -37,9 +37,13 @@ export interface NodePortDefinition<TNode extends GraphNode> {
 	) => readonly string[] | undefined
 }
 
-export interface NumericFieldDefinition<TNode extends GraphNode> {
-	get(node: TNode): number
-	set(node: TNode, value: number): void
+export type FieldKind = 'number' | 'boolean' | 'enum' | 'color'
+
+export interface FieldDefinition<TNode extends GraphNode> {
+	kind: FieldKind
+	get(node: TNode): unknown
+	set(node: TNode, value: unknown): void
+	options?: (node: TNode) => readonly string[]
 }
 
 export interface NodeDefinition<TNode extends GraphNode = GraphNode> {
@@ -49,8 +53,8 @@ export interface NodeDefinition<TNode extends GraphNode = GraphNode> {
 	create?: (id: string, position: GraphPoint, context: NodeCreationContext) => TNode
 	ports: NodePortDefinition<TNode>
 	isOutput?: boolean
-	syncInputPorts?: (node: TNode, connectedPortIds: ReadonlySet<string>) => void
-	numericFields?: Record<string, NumericFieldDefinition<TNode>>
+	fields?: Record<string, FieldDefinition<TNode>>
+	bypass?: { enabledField?: string; input: string; output: string }
 	serialize(node: TNode): unknown
 	deserialize(id: string, position: GraphPoint, data: unknown): TNode
 	evaluate?: (node: TNode, context: NodeEvaluationContext) => EvaluatedNodeOutputs
@@ -62,13 +66,13 @@ export interface CreatableNodeDefinition {
 }
 
 export class NodeRegistry {
-	private readonly definitions = new Map<string, NodeDefinition>()
+	private readonly definitions = new Map<string, NodeDefinition<any>>()
 
 	public register<TNode extends GraphNode>(definition: NodeDefinition<TNode>): this {
 		if (this.definitions.has(definition.type)) {
 			throw new Error(`Node type "${definition.type}" is already registered`)
 		}
-		this.definitions.set(definition.type, definition as unknown as NodeDefinition)
+		this.definitions.set(definition.type, definition)
 		return this
 	}
 
@@ -117,22 +121,33 @@ export class NodeRegistry {
 		return this.requireDefinition(node.type).isOutput ?? false
 	}
 
-	public syncInputPorts(node: GraphNode, connectedPortIds: ReadonlySet<string>): void {
-		this.requireDefinition(node.type).syncInputPorts?.(node, connectedPortIds)
+	public isMultiInput(node: GraphNode, portId: string, context?: NodePortContext): boolean {
+		const port = this.getInputPorts(node, context).find((candidate) => candidate.id === portId)
+		return Boolean(port && (port.multiple || port.valueType === 'geometry'))
 	}
 
-	public hasDynamicInputPorts(node: GraphNode): boolean {
-		return Boolean(this.requireDefinition(node.type).syncInputPorts)
+	public getFieldValue(node: GraphNode, field: string): unknown {
+		return this.requireDefinition(node.type).fields?.[field]?.get(node)
 	}
 
-	public getNumericValue(node: GraphNode, field: string): number | undefined {
-		return this.requireDefinition(node.type).numericFields?.[field]?.get(node)
-	}
-
-	public setNumericValue(node: GraphNode, field: string, value: number): boolean {
-		const numericField = this.requireDefinition(node.type).numericFields?.[field]
-		if (!numericField) return false
-		numericField.set(node, Number.isFinite(value) ? value : 0)
+	public setFieldValue(node: GraphNode, field: string, value: unknown): boolean {
+		const definition = this.requireDefinition(node.type).fields?.[field]
+		if (!definition) return false
+		let normalized: unknown
+		if (definition.kind === 'number') {
+			normalized = typeof value === 'number' && Number.isFinite(value) ? value : 0
+		} else if (definition.kind === 'boolean') {
+			normalized = typeof value === 'boolean' ? value : false
+		} else if (definition.kind === 'enum') {
+			if (typeof value !== 'string') return false
+			const options = definition.options?.(node)
+			if (options && !options.includes(value)) return false
+			normalized = value
+		} else {
+			if (typeof value !== 'string') return false
+			normalized = value
+		}
+		definition.set(node, normalized)
 		return true
 	}
 
@@ -147,7 +162,15 @@ export class NodeRegistry {
 	}
 
 	public evaluate(node: GraphNode, context: NodeEvaluationContext): EvaluatedNodeOutputs {
-		return this.requireDefinition(node.type).evaluate?.(node, context) ?? new Map()
+		const definition = this.requireDefinition(node.type)
+		if (definition.bypass) {
+			const enabled = this.getFieldValue(node, definition.bypass.enabledField ?? 'enabled')
+			if (enabled === false) {
+				const input = context.resolveInput(node, definition.bypass.input)
+				return input ? new Map([[definition.bypass.output, input]]) : new Map()
+			}
+		}
+		return definition.evaluate?.(node, context) ?? new Map()
 	}
 
 	public canConnect(sourceType: GraphValueType, targetType: GraphValueType): boolean {

@@ -7,6 +7,7 @@ import {
 	SelectValue,
 } from '@/components/ui/select'
 import { GeometryNodeActions } from '@/parametric/components/GeometryNodeActions'
+import { EmbeddedTransformSection } from '@/parametric/components/EmbeddedTransformSection'
 import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
@@ -71,6 +72,7 @@ export function MeshSelectorNode({ id }: NodeProps<ParametricFlowNode>) {
 					</div>
 				)}
 			</div>
+			<EmbeddedTransformSection nodeId={id} />
 			<TypedHandle id="geometry" type="source" position={Position.Right} valueType="geometry" />
 		</div>
 	)

@@ -13,35 +13,39 @@ import { useEditorShortcuts } from '@/parametric/editor/react/useEditorShortcuts
 
 function ParametricEditorContent() {
 	useEditorShortcuts()
-	const { selectedEdges, ...flowGraph } = useFlowGraph()
 	const { activeGraphId } = useGraphSnapshot()
 
 	return (
 		<ResizableSplitView
 			className="h-full w-full"
-			first={
-				<ReactFlow
-					key={activeGraphId}
-					{...flowGraph}
-					data-id="graph-view"
-					nodeTypes={nodeViewTypes}
-					deleteKeyCode={null}
-					fitView
-					maxZoom={4}
-					minZoom={0.2}
-					selectionMode={SelectionMode.Partial}
-				>
-					<GraphToolbar selectedEdges={selectedEdges} />
-					<Background />
-					<Controls />
-				</ReactFlow>
-			}
+			first={<GraphCanvas key={activeGraphId} />}
 			second={
-			<div className="h-full">
-				<ThreeViewport />
-			</div>
+				<div className="h-full">
+					<ThreeViewport />
+				</div>
 			}
 		/>
+	)
+}
+
+function GraphCanvas() {
+	const { selectedEdges, ...flowGraph } = useFlowGraph()
+
+	return (
+		<ReactFlow
+			{...flowGraph}
+			data-id="graph-view"
+			nodeTypes={nodeViewTypes}
+			deleteKeyCode={null}
+			fitView
+			maxZoom={4}
+			minZoom={0.2}
+			selectionMode={SelectionMode.Partial}
+		>
+			<GraphToolbar selectedEdges={selectedEdges} />
+			<Background />
+			<Controls />
+		</ReactFlow>
 	)
 }
 

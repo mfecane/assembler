@@ -1,4 +1,4 @@
-import { Euler, Matrix4, Quaternion, Vector3 } from 'three'
+import { Matrix4, Vector3 } from 'three'
 import type {
 	GeometryValue,
 	NumberValue,
@@ -12,7 +12,7 @@ import {
 } from '@/parametric/evaluation/SceneMetadata'
 import {
 	NodeRegistry,
-	type NumericFieldDefinition,
+	type FieldDefinition,
 } from '@/parametric/model/NodeDefinition'
 import {
 	ArrayGraphNode,
@@ -37,6 +37,8 @@ import {
 } from '@/parametric/model/GraphNode'
 import { defaultMaterialColor } from '@/parametric/model/ColorPalette'
 import { Vector3Value, type Vector3Snapshot } from '@/parametric/model/Vector3Value'
+import { applyTransform } from '@/parametric/evaluation/applyTransform'
+import { TransformField, type TransformFieldSnapshot } from '@/parametric/model/fields/TransformField'
 
 interface PrimitiveData {
 	primitive: PrimitiveKind
@@ -58,10 +60,12 @@ interface ColorData {
 
 interface MeshSelectorData {
 	selections: MeshSelection[]
+	transform?: TransformFieldSnapshot
 }
 
 interface MeshAssetData {
 	meshId: string
+	transform?: TransformFieldSnapshot
 }
 
 interface TransformData {
@@ -71,6 +75,7 @@ interface TransformData {
 	origin: TransformOrigin
 	copy?: boolean
 	uniformScale?: boolean
+	enabled?: boolean
 }
 
 interface MaterialData {
@@ -83,14 +88,14 @@ interface ArrayData {
 	offset: number
 }
 
-interface GroupData {
-	inputPorts: string[]
+interface GraphInstanceData {
+	graphId: string
+	transform: TransformFieldSnapshot
 }
 
 interface SumData {
 	constant: number
 	enabled: boolean
-	inputPorts: string[]
 }
 
 const geometryInput = [{ id: 'geometry', valueType: 'geometry' }] as const
@@ -100,21 +105,70 @@ function vectorNumericFields<TNode extends GraphNode>(
 	prefix: string,
 	getValue: (node: TNode) => Vector3Value,
 	setValue: (node: TNode, value: Vector3Value) => void
-): Record<string, NumericFieldDefinition<TNode>> {
+): Record<string, FieldDefinition<TNode>> {
 	return Object.fromEntries((['x', 'y', 'z'] as const).map((axis) => [
 		`${prefix}.${axis}`,
 		{
+			kind: 'number' as const,
 			get: (node: TNode) => getValue(node)[axis],
-			set: (node: TNode, value: number) => {
+			set: (node: TNode, value: unknown) => {
 				const current = getValue(node)
 				setValue(node, new Vector3Value(
-					axis === 'x' ? value : current.x,
-					axis === 'y' ? value : current.y,
-					axis === 'z' ? value : current.z
+					axis === 'x' ? value as number : current.x,
+					axis === 'y' ? value as number : current.y,
+					axis === 'z' ? value as number : current.z
 				))
 			},
 		},
 	]))
+}
+
+const numberField = <TNode extends GraphNode>(
+	get: (node: TNode) => number,
+	set: (node: TNode, value: number) => void
+): FieldDefinition<TNode> => ({ kind: 'number', get, set: (node, value) => set(node, value as number) })
+
+const booleanField = <TNode extends GraphNode>(
+	get: (node: TNode) => boolean,
+	set: (node: TNode, value: boolean) => void
+): FieldDefinition<TNode> => ({ kind: 'boolean', get, set: (node, value) => set(node, value as boolean) })
+
+const enumField = <TNode extends GraphNode, TValue extends string>(
+	get: (node: TNode) => TValue,
+	set: (node: TNode, value: TValue) => void,
+	options?: (node: TNode) => readonly string[]
+): FieldDefinition<TNode> => ({ kind: 'enum', get, set: (node, value) => set(node, value as TValue), options })
+
+const colorField = <TNode extends GraphNode>(
+	get: (node: TNode) => string,
+	set: (node: TNode, value: string) => void
+): FieldDefinition<TNode> => ({ kind: 'color', get, set: (node, value) => set(node, value as string) })
+
+function transformFields<TNode extends GraphNode>(
+	prefix: string,
+	getTransform: (node: TNode) => TransformField
+): Record<string, FieldDefinition<TNode>> {
+	const name = (field: string) => prefix ? `${prefix}.${field}` : field
+	const originOptions = () => ['min', 'middle', 'max']
+	return {
+		...vectorNumericFields(name('translation'), (node) => getTransform(node).getTranslation(),
+			(node, value) => getTransform(node).setTranslation(value)),
+		...vectorNumericFields(name('rotation'), (node) => getTransform(node).getRotation(),
+			(node, value) => getTransform(node).setRotation(value)),
+		...vectorNumericFields(name('scale'), (node) => getTransform(node).getScale(),
+			(node, value) => getTransform(node).setScale(value)),
+		...Object.fromEntries((['x', 'y', 'z'] as const).map((axis) => [
+			name(`origin.${axis}`),
+			enumField(
+				(node: TNode) => getTransform(node).getOrigin()[axis],
+				(node: TNode, value: TransformOrigin[typeof axis]) => getTransform(node).setOrigin({
+					...getTransform(node).getOrigin(),
+					[axis]: value,
+				}),
+				originOptions
+			),
+		])),
+	}
 }
 
 function geometry(assetInstances: SceneAssetInstanceMetadata[]): GeometryValue {
@@ -137,43 +191,6 @@ function matrixSnapshot(matrix: Matrix4): Matrix4Snapshot {
 	return matrix.elements.slice() as unknown as Matrix4Snapshot
 }
 
-function createTransformMatrix(
-	node: TransformGraphNode,
-	size: Vector3Snapshot
-): Matrix4Snapshot {
-	const rotation = node.getRotation().toSnapshot()
-	const translation = node.getTranslation().toSnapshot()
-	const scale = node.getScale().toSnapshot()
-	const origin = node.getOrigin()
-	const pivot = new Vector3(
-		getOriginOffset(origin.x, size.x),
-		getOriginOffset(origin.y, size.y),
-		getOriginOffset(origin.z, size.z)
-	)
-	const transform = new Matrix4().compose(
-		new Vector3(),
-		new Quaternion().setFromEuler(new Euler(
-			(rotation.x * Math.PI) / 180,
-			(rotation.y * Math.PI) / 180,
-			(rotation.z * Math.PI) / 180,
-			'XYZ'
-		)),
-		new Vector3(scale.x, scale.y, scale.z)
-	)
-
-	return matrixSnapshot(new Matrix4()
-		.makeTranslation(translation.x, translation.y, translation.z)
-		.multiply(new Matrix4().makeTranslation(pivot.x, pivot.y, pivot.z))
-		.multiply(transform)
-		.multiply(new Matrix4().makeTranslation(-pivot.x, -pivot.y, -pivot.z)))
-}
-
-function getOriginOffset(origin: 'min' | 'middle' | 'max', size: number): number {
-	if (origin === 'min') return -size / 2
-	if (origin === 'max') return size / 2
-	return 0
-}
-
 export function createDefaultNodeRegistry(): NodeRegistry {
 	const registry = new NodeRegistry()
 
@@ -184,11 +201,15 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		create: (id, position) =>
 			new PrimitiveGraphNode(id, position, 'box', new Vector3Value(1, 1, 1)),
 		ports: { outputs: geometryOutput },
-		numericFields: vectorNumericFields(
-			'size',
-			(node) => node.getSize(),
-			(node, value) => node.setSize(value)
-		),
+		fields: {
+			primitive: enumField(
+				(node) => node.getPrimitive(),
+				(node, value) => node.setPrimitive(value),
+				() => ['box', 'sphere', 'cylinder', 'cone']
+			),
+			...vectorNumericFields('size', (node) => node.getSize(),
+				(node, value) => node.setSize(value)),
+		},
 		serialize: (node) => ({
 			primitive: node.getPrimitive(),
 			size: node.getSize().toSnapshot(),
@@ -215,12 +236,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		creatable: true,
 		create: (id, position) => new NumberInputGraphNode(id, position, 1),
 		ports: { outputs: [{ id: 'number', valueType: 'number' }] },
-		numericFields: {
-			value: {
-				get: (node) => node.getValue(),
-				set: (node, value) => node.setValue(value),
-			},
-		},
+		fields: { value: numberField((node) => node.getValue(), (node, value) => node.setValue(value)) },
 		serialize: (node) => ({ value: node.getValue() }),
 		deserialize: (id, position, data) => {
 			const value = data as NumberInputData
@@ -239,6 +255,13 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			outputs: [{ id: 'enum', valueType: 'enum' }],
 			getOutputOptions: (node, portId) => portId === 'enum' ? node.getOptions() : undefined,
 		},
+		fields: {
+			value: enumField(
+				(node) => node.getValue(),
+				(node, value) => node.setValue(value),
+				(node) => node.getOptions()
+			),
+		},
 		serialize: (node) => ({
 			options: node.getOptions(),
 			value: node.getValue(),
@@ -256,6 +279,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		creatable: true,
 		create: (id, position) => new ColorGraphNode(id, position, defaultMaterialColor),
 		ports: { outputs: [{ id: 'color', valueType: 'color' }] },
+		fields: { color: colorField((node) => node.getColor(), (node, value) => node.setColor(value)) },
 		serialize: (node) => ({ color: node.getColor() }),
 		deserialize: (id, position, data) => {
 			const value = data as ColorData
@@ -280,25 +304,35 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			inputs: [{ id: 'enum', valueType: 'enum' }],
 			outputs: geometryOutput,
 		},
-		serialize: (node) => ({ selections: node.getSelections() }),
+		fields: transformFields('transform', (node) => node.getTransform()),
+		serialize: (node) => ({
+			selections: node.getSelections(),
+			transform: node.getTransform().serialize(),
+		}),
 		deserialize: (id, position, data) =>
-			new MeshSelectorGraphNode(id, position, (data as MeshSelectorData).selections),
+			new MeshSelectorGraphNode(
+				id,
+				position,
+				(data as MeshSelectorData).selections,
+				new TransformField((data as MeshSelectorData).transform)
+			),
 		evaluate: (node, context) => {
 			const input = context.resolveInput(node, 'enum')
 			if (input?.valueType !== 'enum' || typeof input.value !== 'string') return new Map()
 			const meshId = node.getMeshId(input.value)
 			const size = meshId ? context.getMeshBounds(meshId) : undefined
 			if (!meshId || !size) return new Map()
-			return new Map([
-				['geometry', geometry([{
+			const instances = [{
 					instanceId: node.id,
 					assetId: meshId,
-					assetKind: 'catalog',
+					assetKind: 'catalog' as const,
 					size,
 					transform: matrixSnapshot(new Matrix4()),
 					originNode: context.getNodeInstanceReference(node.id),
-				}])],
-			])
+				}]
+			return new Map([['geometry', geometry(applyTransform(
+				node.getTransform(), instances, (instance) => instance.instanceId
+			))]])
 		},
 	})
 
@@ -311,23 +345,36 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			return new MeshAssetGraphNode(id, position, meshId)
 		},
 		ports: { outputs: geometryOutput },
-		serialize: (node) => ({ meshId: node.getMeshId() }),
+		fields: {
+			meshId: enumField((node) => node.getMeshId(), (node, value) => node.setMeshId(value)),
+			...transformFields('transform', (node) => node.getTransform()),
+		},
+		serialize: (node) => ({
+			meshId: node.getMeshId(),
+			transform: node.getTransform().serialize(),
+		}),
 		deserialize: (id, position, data) =>
-			new MeshAssetGraphNode(id, position, (data as MeshAssetData).meshId),
+			new MeshAssetGraphNode(
+				id,
+				position,
+				(data as MeshAssetData).meshId,
+				new TransformField((data as MeshAssetData).transform)
+			),
 		evaluate: (node, context) => {
 			const meshId = node.getMeshId()
 			const size = context.getMeshBounds(meshId)
 			if (!meshId || !size) return new Map()
-			return new Map([
-				['geometry', geometry([{
+			const instances = [{
 					instanceId: node.id,
 					assetId: meshId,
-					assetKind: 'catalog',
+					assetKind: 'catalog' as const,
 					size,
 					transform: matrixSnapshot(new Matrix4()),
 					originNode: context.getNodeInstanceReference(node.id),
-				}])],
-			])
+				}]
+			return new Map([['geometry', geometry(applyTransform(
+				node.getTransform(), instances, (instance) => instance.instanceId
+			))]])
 		},
 	})
 
@@ -346,23 +393,12 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			true
 		),
 		ports: { inputs: geometryInput, outputs: geometryOutput },
-		numericFields: {
-			...vectorNumericFields(
-				'translation',
-				(node) => node.getTranslation(),
-				(node, value) => node.setTranslation(value)
-			),
-			...vectorNumericFields(
-				'rotation',
-				(node) => node.getRotation(),
-				(node, value) => node.setRotation(value)
-			),
-			...vectorNumericFields(
-				'scale',
-				(node) => node.getScale(),
-				(node, value) => node.setScale(value)
-			),
+		fields: {
+			...transformFields('', (node) => node.getTransform()),
+			copy: booleanField((node) => node.getCopy(), (node, value) => node.setCopy(value)),
+			enabled: booleanField((node) => node.getEnabled(), (node, value) => node.setEnabled(value)),
 		},
+		bypass: { input: 'geometry', output: 'geometry' },
 		serialize: (node) => ({
 			translation: node.getTranslation().toSnapshot(),
 			rotation: node.getRotation().toSnapshot(),
@@ -370,6 +406,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			origin: node.getOrigin(),
 			copy: node.getCopy(),
 			uniformScale: node.getUniformScale(),
+			enabled: node.getEnabled(),
 		}),
 		deserialize: (id, position, data) => {
 			const value = data as TransformData
@@ -383,22 +420,19 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 				value.copy ?? false,
 				value.uniformScale ?? (
 					value.scale.x === value.scale.y && value.scale.y === value.scale.z
-				)
+				),
+				value.enabled ?? true
 			)
 		},
 		evaluate: (node, context) => {
 			const input = context.resolveInput(node, 'geometry')
 			if (input?.valueType !== 'geometry' || !isSceneMetadata(input.value)) return new Map()
 			const instances = input.value.assetInstances
-			const transformed = instances.map((instance) => ({
-				...instance,
-				instanceId: `${node.id}/transformed/${instance.instanceId}`,
-				transform: matrixSnapshot(
-					new Matrix4()
-						.fromArray(createTransformMatrix(node, instance.size))
-						.multiply(new Matrix4().fromArray(instance.transform))
-				),
-			}))
+			const transformed = applyTransform(
+				node.getTransform(),
+				instances,
+				(instance) => `${node.id}/transformed/${instance.instanceId}`
+			)
 			const output = node.getCopy()
 				? [
 					...instances.map((instance) => ({
@@ -428,6 +462,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			getInputDefault: (node, portId) =>
 				portId === 'color' ? { valueType: 'color', value: node.getColor() } : undefined,
 		},
+		fields: { color: colorField((node) => node.getColor(), (node, value) => node.setColor(value)) },
 		serialize: (node) => ({ color: node.getColor() }),
 		deserialize: (id, position, data) =>
 			new MaterialGraphNode(id, position, (data as MaterialData).color),
@@ -465,15 +500,14 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			getInputDefault: (node, portId) =>
 				portId === 'count' ? { valueType: 'number', value: node.getCount() } : undefined,
 		},
-		numericFields: {
-			count: {
-				get: (node) => node.getCount(),
-				set: (node, value) => node.setCount(value),
-			},
-			offset: {
-				get: (node) => node.getOffset(),
-				set: (node, value) => node.setOffset(value),
-			},
+		fields: {
+			count: numberField((node) => node.getCount(), (node, value) => node.setCount(value)),
+			offset: numberField((node) => node.getOffset(), (node, value) => node.setOffset(value)),
+			axis: enumField(
+				(node) => node.getAxis(),
+				(node, value) => node.setAxis(value),
+				() => ['x', 'y', 'z']
+			),
 		},
 		serialize: (node) => ({
 			count: node.getCount(),
@@ -500,8 +534,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 					? new Vector3(0, node.getOffset(), 0)
 					: new Vector3(0, 0, node.getOffset())
 			const instances = input.value.assetInstances
-			return new Map([
-				['geometry', geometry(instances.flatMap((instance) =>
+			const arrayInstances = instances.flatMap((instance) =>
 					Array.from({ length: Math.max(1, Math.floor(count.value as number)) }, (_, index) => ({
 						...instance,
 						instanceId: `${node.id}/${index}/${instance.instanceId}`,
@@ -509,8 +542,8 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 							.makeTranslation(translation.x * index, translation.y * index, translation.z * index)
 							.multiply(new Matrix4().fromArray(instance.transform))),
 					}))
-				))],
-			])
+				)
+			return new Map([['geometry', geometry(arrayInstances)]])
 		},
 	})
 
@@ -520,20 +553,17 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		creatable: true,
 		create: (id, position) => new GroupGraphNode(id, position),
 		ports: {
-			inputs: (node) => node.getInputPortIds().map((id) => ({ id, valueType: 'geometry' })),
+			inputs: geometryInput,
 			outputs: geometryOutput,
 		},
-		syncInputPorts: (node, connectedPortIds) => node.syncInputPorts(connectedPortIds),
-		serialize: (node) => ({ inputPorts: node.getInputPortIds() }),
-		deserialize: (id, position, data) =>
-			new GroupGraphNode(id, position, (data as GroupData).inputPorts),
+		serialize: () => ({}),
+		deserialize: (id, position) => new GroupGraphNode(id, position),
 		evaluate: (node, context) => {
-			const instances = node.getInputPortIds().flatMap((portId) => {
-				const input = context.resolveInput(node, portId)
-				if (input?.valueType !== 'geometry' || !isSceneMetadata(input.value)) return []
+			const instances = context.resolveInputs(node, 'geometry').flatMap((input, inputIndex) => {
+				if (input.valueType !== 'geometry' || !isSceneMetadata(input.value)) return []
 				return input.value.assetInstances.map((instance) => ({
 					...instance,
-					instanceId: `${node.id}/${portId}/${instance.instanceId}`,
+					instanceId: `${node.id}/${inputIndex}/${instance.instanceId}`,
 				}))
 			})
 			return new Map([['geometry', geometry(instances)]])
@@ -546,37 +576,32 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		creatable: true,
 		create: (id, position) => new SumGraphNode(id, position, 0, true),
 		ports: {
-			inputs: (node) => [
+			inputs: [
 				{ id: 'enabled', valueType: 'boolean' },
-				...node.getInputPortIds().map((id) => ({ id, valueType: 'number' as const })),
+				{ id: 'number', valueType: 'number', multiple: true },
 			],
 			outputs: [{ id: 'number', valueType: 'number' }],
 			getInputDefault: (node, portId) =>
 				portId === 'enabled' ? { valueType: 'boolean', value: node.getEnabled() } : undefined,
 		},
-		syncInputPorts: (node, connectedPortIds) => node.syncInputPorts(connectedPortIds),
-		numericFields: {
-			constant: {
-				get: (node) => node.getConstant(),
-				set: (node, value) => node.setConstant(value),
-			},
+		fields: {
+			constant: numberField((node) => node.getConstant(), (node, value) => node.setConstant(value)),
+			enabled: booleanField((node) => node.getEnabled(), (node, value) => node.setEnabled(value)),
 		},
 		serialize: (node) => ({
 			constant: node.getConstant(),
 			enabled: node.getEnabled(),
-			inputPorts: node.getInputPortIds(),
 		}),
 		deserialize: (id, position, data) => {
 			const value = data as SumData
-			return new SumGraphNode(id, position, value.constant, value.enabled, value.inputPorts)
+			return new SumGraphNode(id, position, value.constant, value.enabled)
 		},
 		evaluate: (node, context) => {
 			const enabled = context.resolveInput(node, 'enabled')
 			const initialValue = enabled?.valueType === 'boolean' && enabled.value === true
 				? node.getConstant()
 				: 0
-			const total = node.getInputPortIds().reduce((sum, portId) => {
-				const input = context.resolveInput(node, portId)
+			const total = context.resolveInputs(node, 'number').reduce((sum, input) => {
 				return input?.valueType === 'number' && typeof input.value === 'number'
 					? sum + input.value
 					: sum
@@ -636,9 +661,20 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 				return output ? [{ id: output.id, valueType: output.valueType }] : []
 			},
 		},
-		serialize: (node) => ({ graphId: node.getGraphId() }),
-		deserialize: (id, position, data) =>
-			new GraphInstanceGraphNode(id, position, (data as { graphId: string }).graphId),
+		fields: transformFields('transform', (node) => node.getTransform()),
+		serialize: (node) => ({
+			graphId: node.getGraphId(),
+			transform: node.getTransform().serialize(),
+		}),
+		deserialize: (id, position, data) => {
+			const value = data as GraphInstanceData
+			return new GraphInstanceGraphNode(
+				id,
+				position,
+				value.graphId,
+				new TransformField(value.transform)
+			)
+		},
 	})
 
 	return registry

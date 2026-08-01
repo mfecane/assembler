@@ -2,6 +2,7 @@ import type {
 	EvaluatedNodeOutputs,
 	GraphValue,
 } from '@/parametric/evaluation/EvaluationTypes'
+import { applyTransform } from '@/parametric/evaluation/applyTransform'
 import {
 	emptySceneMetadata,
 	isSceneMetadata,
@@ -27,7 +28,7 @@ interface EvaluationFrame {
 	graph: GraphDefinition
 	inputs: Map<string, GraphValue>
 	nodesById: Map<string, GraphNode>
-	incomingByTargetPort: Map<string, GraphEdge>
+	incomingByTargetPort: Map<string, GraphEdge[]>
 	cache: Map<string, EvaluatedNodeOutputs>
 	evaluating: Set<string>
 	graphInstancePath: readonly string[]
@@ -111,10 +112,11 @@ export class GraphEvaluator {
 		graphInstancePath: readonly string[]
 	): EvaluationFrame {
 		const nodesById = new Map(graph.model.getNodes().map((node) => [node.id, node]))
-		const incomingByTargetPort = new Map<string, GraphEdge>()
+		const incomingByTargetPort = new Map<string, GraphEdge[]>()
 		for (const edge of graph.model.getEdges()) {
 			if (edge.targetPort) {
-				incomingByTargetPort.set(this.portKey(edge.targetNodeId, edge.targetPort), edge)
+				const key = this.portKey(edge.targetNodeId, edge.targetPort)
+				incomingByTargetPort.set(key, [...(incomingByTargetPort.get(key) ?? []), edge])
 			}
 		}
 		return {
@@ -147,6 +149,7 @@ export class GraphEvaluator {
 		} else {
 			outputs = this.nodeRegistry.evaluate(node, {
 				resolveInput: (targetNode, portId) => this.resolveInput(frame, targetNode, portId),
+				resolveInputs: (targetNode, portId) => this.resolveInputs(frame, targetNode, portId),
 				getMeshBounds: (meshId) => this.meshCatalog.getBounds(meshId),
 				getNodeInstanceReference: (sourceNodeId) =>
 					this.getNodeInstanceReference(frame, sourceNodeId),
@@ -188,7 +191,16 @@ export class GraphEvaluator {
 		}))
 		return new Map([[
 			targetGraph.output.id,
-			{ valueType: 'geometry', value: { assetInstances: scopedInstances } },
+			{
+				valueType: 'geometry',
+				value: {
+					assetInstances: applyTransform(
+						node.getTransform(),
+						scopedInstances,
+						(instance) => instance.instanceId
+					),
+				},
+			},
 		]])
 	}
 
@@ -197,15 +209,39 @@ export class GraphEvaluator {
 		node: GraphNode,
 		portId: string
 	): GraphValue | undefined {
-		const edge = frame.incomingByTargetPort.get(this.portKey(node.id, portId))
-		if (edge?.sourcePort) {
-			return this.evaluateNodeOutputs(frame, edge.sourceNodeId).get(edge.sourcePort)
+		const values = this.resolveInputs(frame, node, portId)
+		if (values.length === 1) return values[0]
+		if (values.length > 1 && values.every(
+			(value) => value.valueType === 'geometry' && isSceneMetadata(value.value)
+		)) {
+			return {
+				valueType: 'geometry',
+				value: {
+					assetInstances: values.flatMap((value) =>
+						isSceneMetadata(value.value) ? value.value.assetInstances : []
+					),
+				},
+			}
 		}
+		if (values.length > 0) return values[0]
 
 		const fallback = this.nodeRegistry.getInputDefault(node, portId)
 		return fallback
 			? { valueType: fallback.valueType, value: fallback.value }
 			: undefined
+	}
+
+	private resolveInputs(
+		frame: EvaluationFrame,
+		node: GraphNode,
+		portId: string
+	): GraphValue[] {
+		const edges = frame.incomingByTargetPort.get(this.portKey(node.id, portId)) ?? []
+		return edges.flatMap((edge) => {
+			if (!edge.sourcePort) return []
+			const value = this.evaluateNodeOutputs(frame, edge.sourceNodeId).get(edge.sourcePort)
+			return value ? [value] : []
+		})
 	}
 
 	private defaultInputs(graph: GraphDefinition): Map<string, GraphValue> {

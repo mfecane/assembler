@@ -13,7 +13,7 @@ The root `Editor` owns the `ViewportEditor` rather than leaving lifetime to its 
   canvas events.
 
 `ThreeViewport.tsx` attaches the canvas and renders controls from bridge state. Persistent
-transform values remain on graph transform nodes and are updated through `EditorController`.
+transform values remain on transform-capable graph nodes and are updated through `EditorController`.
 Graph evaluation supplies plain scene metadata to `ViewportScene`; its synchronizer resolves the
 assets and builds the corresponding Three.js meshes.
 
@@ -23,8 +23,12 @@ one undo step alongside React Flow graph edits.
 ## Node preview and transforms
 
 - Every geometry-output node exposes **Open in 3D editor**.
-- Opening a Transform node activates translation, rotation, or scale controls.
-- Translation and scale snap to `0.01`; rotation snaps to `15` degrees.
+- Opening a standalone Transform or a transform-capable Mesh Asset, Mesh Selector, or Assembly
+  Instance node activates translation, rotation, or scale controls.
+- Opening an Array activates a dedicated single-axis distance gizmo at its final duplicate. The
+  gizmo follows the Array axis and edits per-copy duplication distance instead of a transform.
+- Translation, scale, and Array duplication distance snap to `0.01`; rotation snaps to `15`
+  degrees.
 - The opened node output is opaque and the active graph output is a transparent context ghost.
 - Preview evaluation is scoped to the graph open in React Flow; parent graph output is ignored.
 - Selecting a React Flow node alone does not open or close a viewport preview.

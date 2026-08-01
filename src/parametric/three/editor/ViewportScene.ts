@@ -1,9 +1,11 @@
 import {
+	Box3,
 	BoxHelper,
 	Euler,
 	MathUtils,
 	Mesh,
 	Object3D,
+	Vector3,
 	type PerspectiveCamera,
 	type Scene,
 	type WebGLRenderer,
@@ -14,12 +16,19 @@ import {
 } from 'three/examples/jsm/controls/TransformControls.js'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import type { SceneMetadata } from '@/parametric/evaluation/SceneMetadata'
-import { TransformGraphNode } from '@/parametric/model/GraphNode'
+import type {
+	ArrayGraphNode,
+	Axis,
+	TransformableGraphNode,
+} from '@/parametric/model/GraphNode'
 import { createSceneSetup } from '@/parametric/three/SceneSetup'
 import { syncSceneMetadata } from '@/parametric/three/syncMeshes'
 import type { ViewportEditorController } from '@/parametric/three/editor/ViewportEditorController'
 import { CanvasEventHandler } from '@/parametric/three/editor/InteractionSystem'
-import type { TransformNodeValues } from '@/parametric/editor/EditorController'
+import {
+	ARRAY_DISTANCE_SNAP,
+	type TransformNodeValues,
+} from '@/parametric/editor/EditorController'
 
 export class ViewportScene {
 	private readonly scene: Scene
@@ -34,10 +43,14 @@ export class ViewportScene {
 	private readonly canvasEvents: CanvasEventHandler
 	private selectionHelper: BoxHelper | null = null
 	private attachedTransformNodeId: string | null = null
+	private attachedArrayDistanceNodeId: string | null = null
 	private transformStart: TransformNodeValues | null = null
-	private transformHistoryGroup = 'idle'
-	private transformSequence = 0
-	private syncingTransform = false
+	private arrayDistanceStart: number | null = null
+	private arrayDistanceAnchor: Vector3 | null = null
+	private arrayDistanceSteps = 1
+	private gizmoHistoryGroup = 'idle'
+	private gizmoSequence = 0
+	private syncingGizmo = false
 
 	public constructor(
 		canvas: HTMLCanvasElement,
@@ -53,7 +66,7 @@ export class ViewportScene {
 
 		this.scene.add(this.transformTarget)
 		this.transformControls = new TransformControls(this.camera, canvas)
-		this.transformControls.setTranslationSnap(0.01)
+		this.transformControls.setTranslationSnap(ARRAY_DISTANCE_SNAP)
 		this.transformControls.setRotationSnap(MathUtils.degToRad(15))
 		this.transformControls.setScaleSnap(0.01)
 		this.scene.add(this.transformControls.getHelper())
@@ -84,13 +97,14 @@ export class ViewportScene {
 		metadata: SceneMetadata,
 		ghostMetadata: SceneMetadata,
 		selectedMeshInstanceId: string | null,
-		transformNode: TransformGraphNode | null,
+		transformNode: TransformableGraphNode | null,
+		arrayDistanceNode: ArrayGraphNode | null,
 		transformMode: TransformControlsMode
 	): void {
 		syncSceneMetadata(this.scene, this.meshesById, metadata)
 		syncSceneMetadata(this.scene, this.ghostMeshesById, ghostMetadata, { ghost: true })
 		this.syncSelection(selectedMeshInstanceId)
-		this.syncTransform(transformNode, transformMode)
+		this.syncGizmo(transformNode, arrayDistanceNode, transformMode)
 	}
 
 	public dispose(): void {
@@ -141,21 +155,33 @@ export class ViewportScene {
 		this.selectionHelper = null
 	}
 
-	private syncTransform(
-		node: TransformGraphNode | null,
+	private syncGizmo(
+		transformNode: TransformableGraphNode | null,
+		arrayDistanceNode: ArrayGraphNode | null,
 		mode: TransformControlsMode
 	): void {
-		this.transformControls.setMode(mode)
-		if (!node) {
-			this.attachedTransformNodeId = null
-			this.transformControls.detach()
+		if (transformNode) {
+			this.syncTransform(transformNode, mode)
 			return
 		}
+		if (arrayDistanceNode) {
+			this.syncArrayDistance(arrayDistanceNode)
+			return
+		}
+		this.clearGizmo()
+	}
 
-		this.syncingTransform = true
-		const translation = node.getTranslation()
-		const rotation = node.getRotation()
-		const scale = node.getScale()
+	private syncTransform(node: TransformableGraphNode, mode: TransformControlsMode): void {
+		this.transformControls.setMode(mode)
+		this.transformControls.showX = true
+		this.transformControls.showY = true
+		this.transformControls.showZ = true
+
+		this.syncingGizmo = true
+		const transform = node.getTransform()
+		const translation = transform.getTranslation()
+		const rotation = transform.getRotation()
+		const scale = transform.getScale()
 		this.transformTarget.position.set(translation.x, translation.y, translation.z)
 		this.transformTarget.rotation.set(
 			MathUtils.degToRad(rotation.x),
@@ -165,33 +191,122 @@ export class ViewportScene {
 		)
 		this.transformTarget.scale.set(scale.x, scale.y, scale.z)
 		this.transformTarget.updateMatrixWorld(true)
-		this.syncingTransform = false
+		this.syncingGizmo = false
 
-		if (this.attachedTransformNodeId !== node.id) {
+		if (this.attachedTransformNodeId !== node.id || this.attachedArrayDistanceNodeId !== null) {
 			this.attachedTransformNodeId = node.id
+			this.attachedArrayDistanceNodeId = null
 			this.transformControls.attach(this.transformTarget)
 		}
 	}
 
+	private syncArrayDistance(node: ArrayGraphNode): void {
+		const placement = this.getArrayGizmoPlacement(node)
+		if (!placement) {
+			this.clearGizmo()
+			return
+		}
+
+		this.transformControls.setMode('translate')
+		this.transformControls.setSpace('world')
+		this.transformControls.showX = node.getAxis() === 'x'
+		this.transformControls.showY = node.getAxis() === 'y'
+		this.transformControls.showZ = node.getAxis() === 'z'
+		this.syncingGizmo = true
+		this.arrayDistanceAnchor = placement.anchor
+		this.arrayDistanceSteps = placement.steps
+		this.transformTarget.position.copy(placement.target)
+		this.transformTarget.rotation.set(0, 0, 0)
+		this.transformTarget.scale.set(1, 1, 1)
+		this.transformTarget.updateMatrixWorld(true)
+		this.syncingGizmo = false
+
+		if (this.attachedArrayDistanceNodeId !== node.id || this.attachedTransformNodeId !== null) {
+			this.attachedTransformNodeId = null
+			this.attachedArrayDistanceNodeId = node.id
+			this.transformControls.attach(this.transformTarget)
+		}
+	}
+
+	private getArrayGizmoPlacement(
+		node: ArrayGraphNode
+	): { anchor: Vector3; target: Vector3; steps: number } | null {
+		const boundsByIndex = new Map<number, Box3>()
+		const prefix = `${node.id}/`
+		for (const [instanceId, mesh] of this.meshesById) {
+			if (!instanceId.startsWith(prefix)) continue
+			const remainder = instanceId.slice(prefix.length)
+			const separator = remainder.indexOf('/')
+			if (separator < 1) continue
+			const index = Number(remainder.slice(0, separator))
+			if (!Number.isInteger(index) || index < 0) continue
+			const bounds = boundsByIndex.get(index) ?? new Box3()
+			bounds.expandByObject(mesh)
+			boundsByIndex.set(index, bounds)
+		}
+
+		const firstBounds = boundsByIndex.get(0)
+		if (!firstBounds || firstBounds.isEmpty()) return null
+		const anchor = firstBounds.getCenter(new Vector3())
+		const lastIndex = Math.max(...boundsByIndex.keys())
+		if (lastIndex > 0) {
+			const lastBounds = boundsByIndex.get(lastIndex)
+			if (lastBounds && !lastBounds.isEmpty()) {
+				return {
+					anchor,
+					target: lastBounds.getCenter(new Vector3()),
+					steps: lastIndex,
+				}
+			}
+		}
+
+		const target = anchor.clone()
+		target[node.getAxis()] += node.getOffset()
+		return { anchor, target, steps: 1 }
+	}
+
+	private clearGizmo(): void {
+		this.attachedTransformNodeId = null
+		this.attachedArrayDistanceNodeId = null
+		this.arrayDistanceAnchor = null
+		this.transformControls.detach()
+	}
+
 	private readonly onTransformStart = () => {
-		this.transformStart = this.readTargetValues()
-		this.transformSequence += 1
-		this.transformHistoryGroup = String(this.transformSequence)
+		this.transformStart = this.attachedTransformNodeId ? this.readTargetValues() : null
+		this.arrayDistanceStart = this.attachedArrayDistanceNodeId
+			? this.readArrayDistance()
+			: null
+		this.gizmoSequence += 1
+		this.gizmoHistoryGroup = String(this.gizmoSequence)
 	}
 
 	private readonly onTransformChange = () => {
-		if (this.syncingTransform || !this.attachedTransformNodeId || !this.transformStart) return
-		this.controller.applyTransform(
-			this.attachedTransformNodeId,
-			this.transformStart,
-			this.readTargetValues(),
-			this.transformHistoryGroup
-		)
-		this.transformStart = this.readTargetValues()
+		if (this.syncingGizmo) return
+		if (this.attachedTransformNodeId && this.transformStart) {
+			this.controller.applyTransform(
+				this.attachedTransformNodeId,
+				this.transformStart,
+				this.readTargetValues(),
+				this.gizmoHistoryGroup
+			)
+			this.transformStart = this.readTargetValues()
+			return
+		}
+		if (this.attachedArrayDistanceNodeId && this.arrayDistanceStart !== null) {
+			const distance = this.readArrayDistance()
+			this.controller.applyArrayDistance(
+				this.attachedArrayDistanceNodeId,
+				distance,
+				this.gizmoHistoryGroup
+			)
+			this.arrayDistanceStart = distance
+		}
 	}
 
 	private readonly onTransformEnd = () => {
 		this.transformStart = null
+		this.arrayDistanceStart = null
 	}
 
 	private readonly onDraggingChanged = (event: { value: unknown }) => {
@@ -217,5 +332,18 @@ export class ViewportScene {
 				z: this.transformTarget.scale.z,
 			},
 		}
+	}
+
+	private readArrayDistance(): number {
+		if (!this.arrayDistanceAnchor || !this.attachedArrayDistanceNodeId) return 0
+		const axis = this.getVisibleArrayAxis()
+		return (this.transformTarget.position[axis] - this.arrayDistanceAnchor[axis])
+			/ this.arrayDistanceSteps
+	}
+
+	private getVisibleArrayAxis(): Axis {
+		if (this.transformControls.showX) return 'x'
+		if (this.transformControls.showY) return 'y'
+		return 'z'
 	}
 }

@@ -1,7 +1,7 @@
 import type { EditorController } from '@/parametric/editor/EditorController'
 import type { ReactBridge } from '@/parametric/editor/ReactBridge'
 import { emptySceneMetadata } from '@/parametric/evaluation/SceneMetadata'
-import { TransformGraphNode } from '@/parametric/model/GraphNode'
+import { ArrayGraphNode, isTransformableGraphNode } from '@/parametric/model/GraphNode'
 import { ViewportEditorController } from '@/parametric/three/editor/ViewportEditorController'
 import { ViewportScene } from '@/parametric/three/editor/ViewportScene'
 
@@ -10,17 +10,22 @@ export class ViewportEditor {
 	private scene: ViewportScene | null = null
 	private resizeObserver: ResizeObserver | null = null
 	private readonly unsubscribeGraph: () => void
+	private evaluationRevision: number
 
 	public constructor(
 		private readonly editorController: EditorController,
 		public readonly bridge: ReactBridge
 	) {
+		this.evaluationRevision = editorController.getSnapshot().evaluationRevision
 		this.controller = new ViewportEditorController(
 			editorController,
 			this.bridge,
 			() => this.syncScene()
 		)
 		this.unsubscribeGraph = editorController.subscribe(() => {
+			const evaluationRevision = editorController.getSnapshot().evaluationRevision
+			if (evaluationRevision === this.evaluationRevision) return
+			this.evaluationRevision = evaluationRevision
 			this.controller.handleGraphChange()
 		})
 	}
@@ -79,12 +84,16 @@ export class ViewportEditor {
 			const transformNode = bridgeSnapshot.transformNodeId
 				? graphSnapshot.model.getNode(bridgeSnapshot.transformNodeId)
 				: null
+			const arrayDistanceNode = bridgeSnapshot.arrayDistanceNodeId
+				? graphSnapshot.model.getNode(bridgeSnapshot.arrayDistanceNodeId)
+				: null
 
 			this.scene.sync(
 				metadata,
 				bridgeSnapshot.previewNodeId ? graphOutputMetadata : emptySceneMetadata(),
 				bridgeSnapshot.selectedMeshInstanceId,
-				transformNode instanceof TransformGraphNode ? transformNode : null,
+				isTransformableGraphNode(transformNode) ? transformNode : null,
+				arrayDistanceNode instanceof ArrayGraphNode ? arrayDistanceNode : null,
 				bridgeSnapshot.transformMode
 			)
 			if (bridgeSnapshot.error) this.bridge.update({ error: null })
@@ -94,6 +103,7 @@ export class ViewportEditor {
 				`Active graph: "${graphSnapshot.activeGraphId}".`,
 				`Preview node: "${bridgeSnapshot.previewNodeId ?? 'none'}".`,
 				`Transform node: "${bridgeSnapshot.transformNodeId ?? 'none'}".`,
+				`Array distance node: "${bridgeSnapshot.arrayDistanceNodeId ?? 'none'}".`,
 				describeError(cause),
 			].join(' ')
 			console.error(error, {
@@ -101,6 +111,7 @@ export class ViewportEditor {
 				activeGraphId: graphSnapshot.activeGraphId,
 				previewNodeId: bridgeSnapshot.previewNodeId,
 				transformNodeId: bridgeSnapshot.transformNodeId,
+				arrayDistanceNodeId: bridgeSnapshot.arrayDistanceNodeId,
 			})
 			this.bridge.update({ error })
 		}

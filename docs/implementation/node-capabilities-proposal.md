@@ -8,7 +8,10 @@ Make nodes be composed of several Capability objects (common interface)
 
 Transform capability
 
-reused for asset placement node, asset select, node array nodes - adds collapsible transform section to node.
+reused for asset placement, asset select, and assembly instance nodes - adds collapsible transform section to node.
+
+Array nodes deliberately expose duplication distance instead of transform capability. Their 3D
+editor affordance is a dedicated single-axis distance gizmo, not the shared transform widget.
 
 only standalone transform node does produce connectable inputs.
 

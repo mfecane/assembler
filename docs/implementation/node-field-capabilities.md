@@ -2,11 +2,25 @@
 
 ## Status
 
-Proposed. Tracks [Composable node capabilities](./node-capabilities.md), which is a live draft and
-may keep changing — re-check it against this plan before implementing. As of this revision it
-describes three capabilities: Transform (Phase 5), Group/multi-connect geometry inputs (Phase 6),
-and Toggle (Phase 7). See [Node graph model review](../reviews/node-graph-model-review.md) for the
-findings Phases 0–4 implement.
+Implemented. This document retains the staged design rationale behind the field and capability
+system. It tracks the original [Composable node capabilities proposal](./node-capabilities-proposal.md)
+and the [Node graph model review](../reviews/node-graph-model-review.md).
+
+## Implementation outcome
+
+- Scalar fields are registered by kind and mutate through `setFieldValue`; bespoke controller and
+  React hooks remain only for structural or connected-value behavior.
+- Mesh Asset, Mesh Selector, and Assembly Instance persist and evaluate a shared embedded
+  transform field and render the shared collapsible transform section.
+- The viewport recognizes that shared transform field as a capability, so its move, rotate, and
+  scale widgets edit embedded and standalone transforms through the same history path.
+- Array deliberately has no transform field. Its viewport-only single-axis gizmo edits the
+  existing duplication-distance field through a dedicated undoable controller command.
+- Geometry inputs are multi-connect by definition. Group uses one geometry input, while Sum
+  explicitly declares its single number input as multi-connect. The numbered dynamic-port model
+  was removed.
+- Transform opts into the generic enabled field and registry-level input/output bypass behavior.
+- The retained default graph and seed now use the implemented persisted node and port shapes.
 
 ## Goal
 
@@ -232,8 +246,8 @@ want a quick win first. Pure type-safety cleanup, zero behavior change.
 
 ## Phase 5 — embedded transform capability (builds on Phases 0–4)
 
-Implements the first proposal in `node-capabilities.md`: a collapsible, non-connectable transform
-section on Mesh Asset, Mesh Selector, and Array.
+Implements the first proposal in `node-capabilities-proposal.md`: a collapsible, non-connectable
+transform section on Mesh Asset, Mesh Selector, and Assembly Instance.
 
 1. **`TransformField`** (new, `model/fields/TransformField.ts`): composes `translation`,
    `rotation`, `scale` (each a `Vector3Value`) and `origin`. Deliberately excludes `copy` and
@@ -246,8 +260,9 @@ section on Mesh Asset, Mesh Selector, and Array.
    `defaultNodeRegistry.ts`) into a standalone exported function taking a `TransformField` and a
    list of scene instances. Both the standalone `TransformGraphNode.evaluate` and any host node's
    `evaluate` call the same function — one implementation, not two kept in sync by discipline.
-3. **Field exposure**: any host node (`MeshAssetGraphNode`, `MeshSelectorGraphNode`,
-   `ArrayGraphNode`) composes a `transform: TransformField` and registers its sub-fields through
+3. **Field exposure**: any host node (`MeshAssetGraphNode`, `MeshSelectorGraphNode`, or
+   `GraphInstanceGraphNode`) composes a `transform: TransformField` and
+   registers its sub-fields through
    the same `vectorNumericFields`-style factory used for the standalone Transform node, under a
    prefix (`transform.translation.x`, etc.). This means **no new `EditorController` method and no
    new hook** — Phases 1–3's generic `setFieldValue`/`useField` already cover it.
@@ -260,7 +275,7 @@ section on Mesh Asset, Mesh Selector, and Array.
    default-on-missing-field pattern already used for `TransformGraphNode`'s `copy`/`uniformScale`
    in `deserialize`. Existing MaxShelf documents remain valid with no migration step.
 
-**Acceptance:** adding the embedded transform to a *fourth* node type in the future requires only
+**Acceptance:** adding the embedded transform to another node type in the future requires only
 step 3 and step 4 above for that node — zero controller code, zero hook code. That's the test of
 whether Phases 0–4 actually paid off.
 
@@ -268,7 +283,7 @@ whether Phases 0–4 actually paid off.
 
 ## Phase 6 — multi-connection geometry input ports (spike required before committing)
 
-The current draft of `node-capabilities.md` frames this as a property of the `geometry` port
+The original draft of `node-capabilities-proposal.md` frames this as a property of the `geometry` port
 *type* — any input port typed `geometry` inherently accepts several incoming edges — rather than a
 per-node opt-in. That framing is meaningfully better than "let selected nodes multi-connect": it
 means this isn't a second mechanism bolted next to `DynamicInputPorts`, it's a chance to **replace**
@@ -300,7 +315,7 @@ This is still real model-layer surgery, not a controller-level trick like Phase 
 additional feature." If, after the spike, Group/Sum genuinely get simpler and no second mechanism
 survives, this phase is worth doing. If the spike shows `DynamicInputPorts` still needs to exist
 for some case a plain multi-connect port can't express, that's the signal to stop — per
-`node-capabilities.md`'s own discard criterion, don't keep both.
+`node-capabilities-proposal.md`'s own discard criterion, don't keep both.
 
 ---
 
@@ -338,9 +353,9 @@ declare `bypass` and doesn't get a toggle. Low risk, no dependency on Phase 6, o
 | 2 — `EditorController.setFieldValue` | 1 | low | 5, 7 |
 | 3 — `useField` hook | 1 | low | 5, 7 |
 | 4 — registry type-erasure fix | none | trivial | — |
-| 5 — embedded transform | 0–3 | medium (new shared math/UI, but no controller/hook growth) | closes `node-capabilities.md`'s Transform capability |
-| 6 — multi-connect geometry ports | none (independent, but re-scope Group/Sum after) | high (core model invariant change) — spike first | closes `node-capabilities.md`'s Group capability, or rules it out |
-| 7 — Toggle capability | 0–1 | low | closes `node-capabilities.md`'s Toggle capability |
+| 5 — embedded transform | 0–3 | medium (new shared math/UI, but no controller/hook growth) | closes the proposal's Transform capability |
+| 6 — multi-connect geometry ports | none (independent, but re-scope Group/Sum after) | high (core model invariant change) — spike first | closes the proposal's Group capability, or rules it out |
+| 7 — Toggle capability | 0–1 | low | closes the proposal's Toggle capability |
 
 Phase 4 can be done anytime. Phase 6 is the only high-risk item and is independent of the rest —
 spike it in isolation before committing. Phases 0→1→(2,3)→(5,7) are the main chain.

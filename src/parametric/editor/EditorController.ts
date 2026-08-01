@@ -12,24 +12,18 @@ import {
 } from '@/parametric/model/GraphDocumentModel'
 import { GraphModel } from '@/parametric/model/GraphModel'
 import {
+	ArrayGraphNode,
 	GraphInstanceGraphNode,
 	GraphInputGraphNode,
-	ArrayGraphNode,
-	ColorGraphNode,
-	MaterialGraphNode,
 	MeshAssetGraphNode,
 	MeshSelectorGraphNode,
 	OutputGraphNode,
-	PrimitiveGraphNode,
 	SelectorGraphNode,
-	SumGraphNode,
 	TransformGraphNode,
-	type Axis,
 	type GraphNode,
 	type GraphPoint,
 	type MeshSelection,
-	type PrimitiveKind,
-	type TransformOrigin,
+	isTransformableGraphNode,
 } from '@/parametric/model/GraphNode'
 import { Vector3Value, type Vector3Snapshot } from '@/parametric/model/Vector3Value'
 import { createAssetMetadataDocument, type AssetMetadataDocument } from '@/parametric/model/AssetMetadataDocument'
@@ -39,13 +33,21 @@ import {
 } from '@/parametric/model/GraphSerialization'
 import type { MeshCatalog, MeshDescriptor } from '@/parametric/model/MeshCatalog'
 import type { CreatableNodeDefinition, NodeRegistry } from '@/parametric/model/NodeDefinition'
+import { EnumField } from '@/parametric/model/fields/EnumField'
 
 export type EditorControllerSnapshot = GraphStateSnapshot
+
+export const ARRAY_DISTANCE_SNAP = 0.01
 
 export interface TransformNodeValues {
 	translation: Vector3Snapshot
 	rotation: Vector3Snapshot
 	scale: Vector3Snapshot
+}
+
+export interface NodePositionUpdate {
+	nodeId: string
+	position: GraphPoint
 }
 
 export class EditorController {
@@ -78,10 +80,23 @@ export class EditorController {
 	}
 
 	public setNodePosition(nodeId: string, position: GraphPoint): void {
+		this.setNodePositions([{ nodeId, position }])
+	}
+
+	public setNodePositions(updates: readonly NodePositionUpdate[]): void {
+		if (updates.length === 0) return
+		const nodeIds = [...new Set(updates.map((update) => update.nodeId))].sort()
 		this.execute(
-			`Move node "${nodeId}"`,
-			() => this.activeModel.getNode(nodeId)?.setPosition(position),
-			`node-position:${this.activeGraphId}:${nodeId}`
+			nodeIds.length === 1
+				? `Move node "${nodeIds[0]}"`
+				: `Move ${nodeIds.length} nodes`,
+			() => {
+				for (const update of updates) {
+					this.activeModel.getNode(update.nodeId)?.setPosition(update.position)
+				}
+			},
+			`node-positions:${this.activeGraphId}:${nodeIds.join(',')}`,
+			false
 		)
 	}
 
@@ -219,13 +234,10 @@ export class EditorController {
 			(candidate) => candidate.id === inputId
 		)
 		if (!input) return
-		const normalized = [...new Set(options.map((option) => option.trim()).filter(Boolean))]
-		if (normalized.length === 0) return
+		const field = new EnumField(String(input.defaultValue), options)
 		this.updateGraphInput(inputId, {
-			options: normalized,
-			defaultValue: normalized.includes(String(input.defaultValue))
-				? input.defaultValue
-				: normalized[0],
+			options: field.getOptions(),
+			defaultValue: field.get(),
 		})
 	}
 
@@ -375,30 +387,11 @@ export class EditorController {
 		this.execute('Import graph document', () => this.state.replaceDocument(document))
 	}
 
-	public setNumericValue(nodeId: string, field: string, value: number): void {
+	public setFieldValue(nodeId: string, field: string, value: unknown): void {
 		this.execute(
 			`Set ${field} on node "${nodeId}"`,
-			() => this.activeModel.setNumericValue(nodeId, field, value),
-			`numeric:${this.activeGraphId}:${nodeId}:${field}`
-		)
-	}
-
-	public setPrimitive(nodeId: string, value: PrimitiveKind): void {
-		this.updateNode<PrimitiveGraphNode>(
-			nodeId,
-			'primitive',
-			`Set primitive on node "${nodeId}"`,
-			(node) => node.setPrimitive(value)
-		)
-	}
-
-	public setPrimitiveSize(nodeId: string, value: Vector3Snapshot): void {
-		this.updateNode<PrimitiveGraphNode>(
-			nodeId,
-			'primitive',
-			`Set size on primitive node "${nodeId}"`,
-			(node) => node.setSize(Vector3Value.from(value)),
-			`primitive-size:${this.activeGraphId}:${nodeId}`
+			() => this.activeModel.setFieldValue(nodeId, field, value),
+			`field:${this.activeGraphId}:${nodeId}:${field}`
 		)
 	}
 
@@ -411,24 +404,6 @@ export class EditorController {
 		)
 	}
 
-	public setSelectorValue(nodeId: string, value: string): void {
-		this.updateNode<SelectorGraphNode>(
-			nodeId,
-			'selector',
-			`Set value on selector node "${nodeId}"`,
-			(node) => node.setValue(value)
-		)
-	}
-
-	public setColorNodeValue(nodeId: string, color: string): void {
-		this.updateNode<ColorGraphNode>(
-			nodeId,
-			'color',
-			`Set color on node "${nodeId}"`,
-			(node) => node.setColor(color)
-		)
-	}
-
 	public setMeshSelections(nodeId: string, selections: MeshSelection[]): void {
 		this.updateNode<MeshSelectorGraphNode>(
 			nodeId,
@@ -438,69 +413,13 @@ export class EditorController {
 		)
 	}
 
-	public setMeshAsset(nodeId: string, meshId: string): void {
-		this.updateNode<MeshAssetGraphNode>(
-			nodeId,
-			'meshAsset',
-			`Set mesh asset on node "${nodeId}"`,
-			(node) => node.setMeshId(meshId)
-		)
-	}
-
-	public setMaterialColor(nodeId: string, color: string): void {
-		this.updateNode<MaterialGraphNode>(
-			nodeId,
-			'material',
-			`Set material color on node "${nodeId}"`,
-			(node) => node.setColor(color)
-		)
-	}
-
-	public setSumEnabled(nodeId: string, value: boolean): void {
-		this.updateNode<SumGraphNode>(
-			nodeId,
-			'sum',
-			`Set enabled on sum node "${nodeId}"`,
-			(node) => node.setEnabled(value)
-		)
-	}
-
-	public setArrayAxis(nodeId: string, axis: Axis): void {
-		this.updateNode<ArrayGraphNode>(
-			nodeId,
-			'array',
-			`Set array axis on node "${nodeId}"`,
-			(node) => node.setAxis(axis)
-		)
-	}
-
-	public setTransformTranslation(nodeId: string, value: Vector3Snapshot): void {
-		this.updateTransformVector(nodeId, 'translation', value)
-	}
-
-	public setTransformRotation(nodeId: string, value: Vector3Snapshot): void {
-		this.updateTransformVector(nodeId, 'rotation', value)
-	}
-
 	public setTransformScale(nodeId: string, value: Vector3Snapshot): void {
-		this.updateTransformVector(nodeId, 'scale', value)
-	}
-
-	public setTransformOrigin(nodeId: string, value: TransformOrigin): void {
 		this.updateNode<TransformGraphNode>(
 			nodeId,
 			'transform',
-			`Set transform origin on node "${nodeId}"`,
-			(node) => node.setOrigin(value)
-		)
-	}
-
-	public setTransformCopy(nodeId: string, value: boolean): void {
-		this.updateNode<TransformGraphNode>(
-			nodeId,
-			'transform',
-			`Set transform copy on node "${nodeId}"`,
-			(node) => node.setCopy(value)
+			`Set scale on transform node "${nodeId}"`,
+			(node) => node.setScale(Vector3Value.from(value)),
+			`transform-scale:${this.activeGraphId}:${nodeId}`
 		)
 	}
 
@@ -520,20 +439,38 @@ export class EditorController {
 		after: TransformNodeValues,
 		historyGroup: string
 	): void {
-		this.updateNodeInGraph<TransformGraphNode>(
-			graphId,
-			nodeId,
-			'transform',
+		const node = this.document.getGraph(graphId)?.model.getNode(nodeId)
+		if (!isTransformableGraphNode(node)) return
+		this.execute(
 			`Transform node "${nodeId}" in 3D editor`,
-			(node) => {
-				const normalizedAfter = node.getUniformScale()
+			() => {
+				const normalizedAfter = node instanceof TransformGraphNode && node.getUniformScale()
 					? { ...after, scale: normalizeUniformScale(before.scale, after.scale) }
 					: after
-				node.setTranslation(Vector3Value.from(normalizedAfter.translation))
-				node.setRotation(Vector3Value.from(normalizedAfter.rotation))
-				node.setScale(Vector3Value.from(normalizedAfter.scale))
+				const transform = node.getTransform()
+				transform.setTranslation(Vector3Value.from(normalizedAfter.translation))
+				transform.setRotation(Vector3Value.from(normalizedAfter.rotation))
+				transform.setScale(Vector3Value.from(normalizedAfter.scale))
 			},
 			`viewport-transform:${graphId}:${nodeId}:${historyGroup}`
+		)
+	}
+
+	public setArrayDistance(
+		graphId: string,
+		nodeId: string,
+		value: number,
+		historyGroup: string
+	): void {
+		const node = this.document.getGraph(graphId)?.model.getNode(nodeId)
+		if (!(node instanceof ArrayGraphNode) || !Number.isFinite(value)) return
+		const snappedValue = Number(
+			(Math.round(value / ARRAY_DISTANCE_SNAP) * ARRAY_DISTANCE_SNAP).toFixed(2)
+		)
+		this.execute(
+			`Set duplication distance on array node "${nodeId}" in 3D editor`,
+			() => node.setOffset(snappedValue),
+			`viewport-array-distance:${graphId}:${nodeId}:${historyGroup}`
 		)
 	}
 
@@ -612,32 +549,18 @@ export class EditorController {
 		)
 	}
 
-	private updateTransformVector(
-		nodeId: string,
-		field: 'translation' | 'rotation' | 'scale',
-		value: Vector3Snapshot
+	private execute(
+		label: string,
+		mutation: () => void,
+		mergeKey?: string,
+		affectsEvaluation = true
 	): void {
-		this.updateNode<TransformGraphNode>(
-			nodeId,
-			'transform',
-			`Set ${field} on transform node "${nodeId}"`,
-			(node) => {
-				const vector = Vector3Value.from(value)
-				if (field === 'translation') node.setTranslation(vector)
-				else if (field === 'rotation') node.setRotation(vector)
-				else node.setScale(vector)
-			},
-			`transform-${field}:${this.activeGraphId}:${nodeId}`
-		)
-	}
-
-	private execute(label: string, mutation: () => void, mergeKey?: string): void {
 		try {
 			const changed = this.history.execute(
 				this.commandFactory.mutate(label, mutation, mergeKey)
 			)
 			if (!changed) return
-			this.state.publish()
+			this.state.publish(affectsEvaluation)
 			this.publishHistory()
 		} catch (cause) {
 			this.reportCommandError(label, cause)
