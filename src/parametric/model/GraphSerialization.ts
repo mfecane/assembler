@@ -1,6 +1,7 @@
 import { GraphEdge } from '@/parametric/model/GraphEdge'
 import {
 	GraphDocumentModel,
+	isInputValueCompatible,
 	type ConfigurationPanelControl,
 	type GraphDefinition,
 	type GraphInputDefinition,
@@ -15,6 +16,8 @@ import {
 	type GraphPoint,
 } from '@/parametric/model/GraphNode'
 import type { NodeRegistry } from '@/parametric/model/NodeDefinition'
+import { presetColorValues } from '@/parametric/model/ColorPalette'
+import type { ConfigurationConstraintDefinition } from '@/parametric/model/ConfigurationConstraint'
 
 export interface GraphDocument {
 	entryGraphId: string
@@ -22,6 +25,7 @@ export interface GraphDocument {
 	graphs: GraphDefinitionDocument[]
 	configurationPanel: {
 		controls: ConfigurationPanelControl[]
+		constraints: ConfigurationConstraintDefinition[]
 	}
 }
 
@@ -83,6 +87,7 @@ export function serializeGraph(
 		})),
 		configurationPanel: {
 			controls: document.getConfigurationControls(),
+			constraints: document.getConfigurationConstraints(),
 		},
 	}
 }
@@ -143,7 +148,8 @@ export function deserializeGraph(value: unknown, registry: NodeRegistry): GraphD
 		value.entryGraphId,
 		definitions,
 		value.entryInputValues,
-		value.configurationPanel.controls
+		value.configurationPanel.controls,
+		value.configurationPanel.constraints
 	)
 }
 
@@ -187,8 +193,24 @@ function assertInputDefinition(input: GraphInputDefinition, graphId: string): vo
 			throw new Error(`Input "${input.id}" in graph "${graphId}" has an invalid enum interface`)
 		}
 	}
-	if (input.valueType === 'color' && typeof input.defaultValue !== 'string') {
-		throw new Error(`Input "${input.id}" in graph "${graphId}" has an invalid color default`)
+	if (input.valueType === 'color') {
+		const options = input.options ?? []
+		const invalidOptions = options.filter((option) => !presetColorValues.includes(option))
+		if (
+			options.length === 0
+			|| new Set(options).size !== options.length
+			|| invalidOptions.length > 0
+			|| typeof input.defaultValue !== 'string'
+			|| !options.includes(input.defaultValue)
+		) {
+			throw new Error(
+				`Color input "${input.id}" in graph "${graphId}" requires a non-empty, unique `
+				+ `options list containing only supported preset colors and a default from that list. `
+				+ `Received options ${JSON.stringify(options)}, default `
+				+ `${JSON.stringify(input.defaultValue)}, invalid options ${JSON.stringify(invalidOptions)}. `
+				+ `Supported colors: ${JSON.stringify(presetColorValues)}.`
+			)
+		}
 	}
 	if (input.valueType === 'boolean' && typeof input.defaultValue !== 'boolean') {
 		throw new Error(`Input "${input.id}" in graph "${graphId}" has an invalid boolean default`)
@@ -246,20 +268,36 @@ function assertBoundaryNodes(
 }
 
 function assertLocalAcyclicReferences(graphs: GraphDefinition[]): void {
-	const graphIds = new Set(graphs.map((graph) => graph.id))
+	const graphsById = new Map(graphs.map((graph) => [graph.id, graph]))
 	const dependencies = new Map<string, string[]>()
 	for (const graph of graphs) {
-		const targets = graph.model.getNodes()
+		const instances = graph.model.getNodes()
 			.filter((node): node is GraphInstanceGraphNode => node instanceof GraphInstanceGraphNode)
-			.map((node) => node.getGraphId())
-		for (const target of targets) {
-			if (!graphIds.has(target)) {
+		for (const instance of instances) {
+			const target = graphsById.get(instance.getGraphId())
+			if (!target) {
 				throw new Error(
-					`Graph "${graph.id}" references graph "${target}" outside the current document`
+					`Graph "${graph.id}" instance "${instance.id}" references unknown graph `
+					+ `"${instance.getGraphId()}"`
 				)
 			}
+			for (const [inputId, value] of Object.entries(instance.getInputValues())) {
+				const input = target.inputs.find((candidate) => candidate.id === inputId)
+				if (!input) {
+					throw new Error(
+						`Graph "${graph.id}" instance "${instance.id}" stores a value for unknown `
+						+ `input "${inputId}" on graph "${target.id}"`
+					)
+				}
+				if (!isInputValueCompatible(input, value)) {
+					throw new Error(
+						`Graph "${graph.id}" instance "${instance.id}" has an incompatible value `
+						+ `for ${input.valueType} input "${inputId}" on graph "${target.id}"`
+					)
+				}
+			}
 		}
-		dependencies.set(graph.id, targets)
+		dependencies.set(graph.id, instances.map((instance) => instance.getGraphId()))
 	}
 
 	const visiting = new Set<string>()
@@ -291,7 +329,23 @@ function isGraphDocument(value: unknown): value is GraphDocument {
 		&& Array.isArray(document.graphs)
 		&& Boolean(document.configurationPanel)
 		&& Array.isArray(document.configurationPanel?.controls)
+		&& Array.isArray(document.configurationPanel?.constraints)
+		&& document.configurationPanel.constraints.every(isConfigurationConstraintDefinition)
 		&& document.graphs.every(isGraphDefinitionDocument)
+}
+
+function isConfigurationConstraintDefinition(
+	value: unknown
+): value is ConfigurationConstraintDefinition {
+	if (!value || typeof value !== 'object') return false
+	const constraint = value as Partial<ConfigurationConstraintDefinition>
+	return constraint.type === 'sumMaximumByEnum'
+		&& Array.isArray(constraint.inputIds)
+		&& constraint.inputIds.every((inputId) => typeof inputId === 'string')
+		&& typeof constraint.selectorInputId === 'string'
+		&& Boolean(constraint.maximums)
+		&& typeof constraint.maximums === 'object'
+		&& Object.values(constraint.maximums).every((maximum) => typeof maximum === 'number')
 }
 
 function isGraphDefinitionDocument(value: unknown): value is GraphDefinitionDocument {

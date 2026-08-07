@@ -76,13 +76,18 @@ export function ConfiguratorPanel() {
 									step={value.step}
 								/>
 							) : value.type === 'slider' ? (
-								<div className="grid grid-cols-[1fr_2.5rem] items-center gap-2">
+								<div
+									data-id={`configuration-slider-${value.id}`}
+									className="grid grid-cols-[1fr_2.5rem] items-center gap-x-2 gap-y-1"
+								>
 									<Slider
+										data-id={`configuration-slider-control-${value.id}`}
 										id={`configuration-${value.id}`}
 										value={[value.value]}
 										min={value.min}
 										max={value.max}
 										step={value.step}
+										disabled={value.max <= value.min}
 										onValueChange={([next]) => {
 											if (next !== undefined) setNumberValue(value.id, next)
 										}}
@@ -90,6 +95,15 @@ export function ConfiguratorPanel() {
 									<span className="text-right text-xs tabular-nums text-foreground">
 										{value.value}
 									</span>
+									{value.constraint && (
+										<span
+											data-id={`configuration-slider-limit-${value.id}`}
+											className="col-span-2 text-[10px] text-muted-foreground"
+										>
+											{value.constraint.total} / {value.constraint.maximum} total for{' '}
+											{value.constraint.selectorValue}
+										</span>
+									)}
 								</div>
 							) : value.type === 'enum' ? (
 								<Select
@@ -114,6 +128,7 @@ export function ConfiguratorPanel() {
 									value={value.value}
 									onValueChange={(next) => setColorValue(value.id, next)}
 									className="h-8 w-full"
+									options={value.options}
 								/>
 							) : (
 								<div className="flex h-8 items-center justify-end">

@@ -6,7 +6,7 @@ import {
 	SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { presetColors } from '@/parametric/model/ColorPalette'
+import { getPresetColors } from '@/parametric/model/ColorPalette'
 
 export function PresetColorSelect({
 	id,
@@ -14,13 +14,17 @@ export function PresetColorSelect({
 	onValueChange,
 	className,
 	disabled,
+	options,
 }: {
 	id?: string
 	value: string
 	onValueChange: (value: string) => void
 	className?: string
 	disabled?: boolean
+	options?: readonly string[]
 }) {
+	const colors = getPresetColors(options)
+
 	return (
 		<Select value={value} onValueChange={onValueChange}>
 			<SelectTrigger
@@ -31,7 +35,7 @@ export function PresetColorSelect({
 				<SelectValue />
 			</SelectTrigger>
 			<SelectContent>
-				{presetColors.map((color) => (
+				{colors.map((color) => (
 					<SelectItem key={color.value} value={color.value}>
 						<span className="flex items-center gap-2">
 							<span

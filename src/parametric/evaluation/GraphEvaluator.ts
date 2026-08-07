@@ -171,7 +171,12 @@ export class GraphEvaluator {
 		const inputs = new Map<string, GraphValue>()
 		for (const input of targetGraph.inputs) {
 			const supplied = this.resolveInput(frame, node, input.id)
-			const value = supplied ?? this.defaultValue(input)
+			const instanceValue = node.getInputValue(input.id)
+			const value = supplied ?? (
+				instanceValue === undefined
+					? undefined
+					: { valueType: input.valueType, value: instanceValue }
+			) ?? this.defaultValue(input)
 			if (value) inputs.set(input.id, value)
 		}
 

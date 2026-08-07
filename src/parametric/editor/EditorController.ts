@@ -9,10 +9,14 @@ import {
 	GraphDocumentModel,
 	type GraphInputDefinition,
 	type GraphInputValue,
+	isInputValueCompatible,
 } from '@/parametric/model/GraphDocumentModel'
+import type { ConfigurationConstraintDefinition } from '@/parametric/model/ConfigurationConstraint'
 import { GraphModel } from '@/parametric/model/GraphModel'
 import {
 	ArrayGraphNode,
+	EnumNumberMapGraphNode,
+	type EnumNumberMapping,
 	GraphInstanceGraphNode,
 	GraphInputGraphNode,
 	MeshAssetGraphNode,
@@ -34,6 +38,11 @@ import {
 import type { MeshCatalog, MeshDescriptor } from '@/parametric/model/MeshCatalog'
 import type { CreatableNodeDefinition, NodeRegistry } from '@/parametric/model/NodeDefinition'
 import { EnumField } from '@/parametric/model/fields/EnumField'
+import {
+	defaultMaterialColor,
+	normalizePresetColorOptions,
+	presetColorValues,
+} from '@/parametric/model/ColorPalette'
 
 export type EditorControllerSnapshot = GraphStateSnapshot
 
@@ -224,7 +233,10 @@ export class EditorController {
 	): void {
 		this.execute(
 			`Update graph input "${inputId}"`,
-			() => this.document.updateInput(this.activeGraphId, inputId, update),
+			() => {
+				if (!this.document.updateInput(this.activeGraphId, inputId, update)) return
+				this.reconcileGraphInstanceInputValues(this.activeGraphId, inputId)
+			},
 			`graph-input:${this.activeGraphId}:${inputId}`
 		)
 	}
@@ -272,6 +284,17 @@ export class EditorController {
 		)
 	}
 
+	public setGraphInputColorOptions(inputId: string, options: string[]): void {
+		const input = this.getGraphInput(inputId)
+		if (input?.valueType !== 'color') return
+		const normalizedOptions = normalizePresetColorOptions(options)
+		const defaultValue = typeof input.defaultValue === 'string'
+			&& normalizedOptions.includes(input.defaultValue)
+			? input.defaultValue
+			: normalizedOptions[0]
+		this.updateGraphInput(inputId, { options: normalizedOptions, defaultValue })
+	}
+
 	public removeGraphInput(inputId: string): void {
 		this.execute(
 			`Remove graph input "${inputId}"`,
@@ -286,6 +309,7 @@ export class EditorController {
 		)
 		if (!this.document.removeInput(graph.id, inputId)) return false
 		if (boundary) graph.model.removeNode(boundary.id)
+		this.reconcileGraphInstanceInputValues(graph.id, inputId)
 		for (const containingGraph of this.document.getGraphs()) {
 			const instanceIds = new Set(
 				containingGraph.model.getNodes()
@@ -327,6 +351,50 @@ export class EditorController {
 			}
 			this.activeModel.removeNode(nodeId)
 		})
+	}
+
+	public canCopyNode(nodeId: string): boolean {
+		const node = this.activeModel.getNode(nodeId)
+		return Boolean(
+			node
+			&& !(node instanceof GraphInputGraphNode)
+			&& !this.nodeRegistry.isOutput(node)
+		)
+	}
+
+	public copyNode(nodeId: string): void {
+		if (!this.canCopyNode(nodeId)) return
+		this.execute(`Copy node "${nodeId}"`, () => {
+			const source = this.activeModel.getNode(nodeId)
+			if (!source) return
+			const sourcePosition = source.getPosition()
+			const copy = this.nodeRegistry.deserialize(
+				source.type,
+				this.createNodeId(source.type),
+				{ x: sourcePosition.x + 32, y: sourcePosition.y + 32 },
+				this.nodeRegistry.serialize(source)
+			)
+			copy.setName(source.getName())
+			this.activeModel.addNode(copy)
+		})
+	}
+
+	public setGraphInstanceInputValue(
+		nodeId: string,
+		inputId: string,
+		value: GraphInputValue
+	): void {
+		const node = this.activeModel.getNode(nodeId)
+		if (!(node instanceof GraphInstanceGraphNode)) return
+		const input = this.document.getGraph(node.getGraphId())?.inputs.find(
+			(candidate) => candidate.id === inputId
+		)
+		if (!input || !isInputValueCompatible(input, value)) return
+		this.execute(
+			`Set input "${inputId}" on assembly instance "${nodeId}"`,
+			() => node.setInputValue(inputId, value),
+			`graph-instance-input:${this.activeGraphId}:${nodeId}:${inputId}`
+		)
 	}
 
 	public clearGraph(): void {
@@ -410,6 +478,15 @@ export class EditorController {
 			'meshSelector',
 			`Set mesh selections on node "${nodeId}"`,
 			(node) => node.setSelections(selections)
+		)
+	}
+
+	public setEnumNumberMappings(nodeId: string, mappings: EnumNumberMapping[]): void {
+		this.updateNode<EnumNumberMapGraphNode>(
+			nodeId,
+			'enumNumberMap',
+			`Set number mappings on node "${nodeId}"`,
+			(node) => node.setMappings(mappings)
 		)
 	}
 
@@ -511,6 +588,12 @@ export class EditorController {
 		})
 	}
 
+	public setConfigurationConstraints(constraints: ConfigurationConstraintDefinition[]): void {
+		this.execute('Update configuration constraints', () => {
+			this.document.setConfigurationConstraints(constraints)
+		})
+	}
+
 	public undo(): void {
 		this.applyHistory('undo', () => this.history.undo())
 	}
@@ -547,6 +630,21 @@ export class EditorController {
 		return this.document.requireGraph(this.activeGraphId).inputs.find(
 			(input) => input.id === inputId
 		)
+	}
+
+	private reconcileGraphInstanceInputValues(graphId: string, inputId: string): void {
+		const input = this.document.getGraph(graphId)?.inputs.find(
+			(candidate) => candidate.id === inputId
+		)
+		for (const graph of this.document.getGraphs()) {
+			for (const node of graph.model.getNodes()) {
+				if (!(node instanceof GraphInstanceGraphNode) || node.getGraphId() !== graphId) continue
+				const value = node.getInputValue(inputId)
+				if (value !== undefined && (!input || !isInputValueCompatible(input, value))) {
+					node.removeInputValue(inputId)
+				}
+			}
+		}
 	}
 
 	private execute(
@@ -716,7 +814,13 @@ function createInputDefinition(
 		}
 	}
 	if (valueType === 'color') {
-		return { id, label: 'Color', valueType, defaultValue: '#eaceac' }
+		return {
+			id,
+			label: 'Color',
+			valueType,
+			options: [...presetColorValues],
+			defaultValue: defaultMaterialColor,
+		}
 	}
 	if (valueType === 'boolean') {
 		return { id, label: 'Boolean', valueType, defaultValue: false }

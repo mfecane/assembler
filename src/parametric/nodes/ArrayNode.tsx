@@ -33,9 +33,14 @@ export function ArrayNode({ id }: NodeProps<ParametricFlowNode>) {
 			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} />} />
 			<div className="flex flex-col gap-2 text-xs">
 				<div className="nodrag relative flex items-center justify-between gap-2 text-muted-foreground">
-					<TypedHandle id="count" type="target" position={Position.Left} valueType="number" style={{ top: '50%' }} />
+					<TypedHandle id="count" type="target" position={Position.Left} valueType="number" />
 					<span>Count</span>
-					<NumericInput field={count} min={1} step={1} />
+					<NumericInput field={count} min={0} step={1} />
+				</div>
+				<div className="nodrag relative flex items-center justify-between gap-2 text-muted-foreground">
+					<TypedHandle id="startIndex" type="target" position={Position.Left} valueType="number" />
+					<span>Start index</span>
+					<span className="text-[10px] text-muted-foreground/70">0 when disconnected</span>
 				</div>
 				<div className="nodrag flex items-center justify-between gap-2 text-muted-foreground">
 					<Label htmlFor={`${id}-axis`} className="text-xs text-muted-foreground">Axis</Label>

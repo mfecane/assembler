@@ -1,6 +1,7 @@
 import { Position, type NodeProps } from '@xyflow/react'
 import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -18,6 +19,7 @@ import { PresetColorSelect } from '@/parametric/components/PresetColorSelect'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import { useEditorController } from '@/parametric/editor/react/EditorContext'
 import { GraphInputGraphNode } from '@/parametric/model/GraphNode'
+import { presetColors } from '@/parametric/model/ColorPalette'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
 
@@ -29,6 +31,7 @@ export function GraphInputNode({ id }: NodeProps<ParametricFlowNode>) {
 	const graph = document.requireGraph(activeGraphId)
 	const input = graph.inputs.find((candidate) => candidate.id === node.getInputId())
 	if (!input) return null
+	const colorOptions = input.valueType === 'color' ? input.options ?? [] : []
 
 	return (
 		<div
@@ -55,13 +58,51 @@ export function GraphInputNode({ id }: NodeProps<ParametricFlowNode>) {
 					/>
 				)}
 				{input.valueType === 'color' && (
-					<PresetColorSelect
-						id={`graph-input-default-${input.id}`}
-						value={typeof input.defaultValue === 'string' ? input.defaultValue : '#eaceac'}
-						onValueChange={(value) => controller.updateGraphInput(input.id, {
-							defaultValue: value,
-						})}
-					/>
+					<>
+						<div
+							data-id={`graph-input-color-options-${input.id}`}
+							className="flex flex-col gap-1.5"
+						>
+							<div className="text-[11px] text-muted-foreground">Allowed colors</div>
+							{presetColors.map((color) => {
+								const optionId = `graph-input-color-${input.id}-${color.value.slice(1)}`
+								const selected = colorOptions.includes(color.value)
+								return (
+									<div key={color.value} className="flex items-center gap-2">
+										<Checkbox
+											id={optionId}
+											data-id={optionId}
+											className="nodrag"
+											checked={selected}
+											disabled={selected && colorOptions.length <= 1}
+											onCheckedChange={(checked) => controller.setGraphInputColorOptions(
+												input.id,
+												checked === true
+													? [...colorOptions, color.value]
+													: colorOptions.filter((value) => value !== color.value)
+											)}
+										/>
+										<Label htmlFor={optionId} className="flex cursor-pointer items-center gap-2 text-xs">
+											<span
+												className="h-3 w-3 rounded-full border border-white/20"
+												style={{ backgroundColor: color.value }}
+											/>
+											{color.label}
+										</Label>
+									</div>
+								)
+							})}
+						</div>
+						<div className="text-[11px] text-muted-foreground">Default color</div>
+						<PresetColorSelect
+							id={`graph-input-default-${input.id}`}
+							value={typeof input.defaultValue === 'string' ? input.defaultValue : colorOptions[0]}
+							onValueChange={(value) => controller.updateGraphInput(input.id, {
+								defaultValue: value,
+							})}
+							options={colorOptions}
+						/>
+					</>
 				)}
 				{input.valueType === 'boolean' && (
 					<div className="flex h-8 items-center justify-between gap-3">

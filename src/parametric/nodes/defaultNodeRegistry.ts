@@ -18,6 +18,8 @@ import {
 	ArrayGraphNode,
 	type Axis,
 	ColorGraphNode,
+	EnumNumberMapGraphNode,
+	type EnumNumberMapping,
 	GraphInputGraphNode,
 	GraphInstanceGraphNode,
 	type GraphNode,
@@ -39,6 +41,7 @@ import { defaultMaterialColor } from '@/parametric/model/ColorPalette'
 import { Vector3Value, type Vector3Snapshot } from '@/parametric/model/Vector3Value'
 import { applyTransform } from '@/parametric/evaluation/applyTransform'
 import { TransformField, type TransformFieldSnapshot } from '@/parametric/model/fields/TransformField'
+import type { GraphInputValue } from '@/parametric/model/GraphDocumentModel'
 
 interface PrimitiveData {
 	primitive: PrimitiveKind
@@ -52,6 +55,10 @@ interface NumberInputData {
 interface SelectorData {
 	options: string[]
 	value: string
+}
+
+interface EnumNumberMapData {
+	mappings: EnumNumberMapping[]
 }
 
 interface ColorData {
@@ -91,6 +98,7 @@ interface ArrayData {
 interface GraphInstanceData {
 	graphId: string
 	transform: TransformFieldSnapshot
+	inputValues: Record<string, GraphInputValue>
 }
 
 interface SumData {
@@ -271,6 +279,28 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			return new SelectorGraphNode(id, position, value.options, value.value)
 		},
 		evaluate: (node) => new Map([['enum', enumValue(node.getValue())]]),
+	})
+
+	registry.register<EnumNumberMapGraphNode>({
+		type: 'enumNumberMap',
+		label: 'Enum to Number',
+		creatable: true,
+		create: (id, position) => new EnumNumberMapGraphNode(id, position, []),
+		ports: {
+			inputs: [{ id: 'enum', valueType: 'enum' }],
+			outputs: [{ id: 'number', valueType: 'number' }],
+		},
+		serialize: (node) => ({ mappings: node.getMappings() }),
+		deserialize: (id, position, data) =>
+			new EnumNumberMapGraphNode(id, position, (data as EnumNumberMapData).mappings),
+		evaluate: (node, context) => {
+			const input = context.resolveInput(node, 'enum')
+			if (input?.valueType !== 'enum' || typeof input.value !== 'string') return new Map()
+			const mappedNumber = node.getNumber(input.value)
+			return mappedNumber === undefined
+				? new Map()
+				: new Map([['number', number(mappedNumber)]])
+		},
 	})
 
 	registry.register<ColorGraphNode>({
@@ -495,10 +525,14 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			inputs: [
 				{ id: 'geometry', valueType: 'geometry' },
 				{ id: 'count', valueType: 'number' },
+				{ id: 'startIndex', valueType: 'number' },
 			],
 			outputs: geometryOutput,
-			getInputDefault: (node, portId) =>
-				portId === 'count' ? { valueType: 'number', value: node.getCount() } : undefined,
+			getInputDefault: (node, portId) => {
+				if (portId === 'count') return { valueType: 'number', value: node.getCount() }
+				if (portId === 'startIndex') return { valueType: 'number', value: 0 }
+				return undefined
+			},
 		},
 		fields: {
 			count: numberField((node) => node.getCount(), (node, value) => node.setCount(value)),
@@ -521,11 +555,14 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		evaluate: (node, context) => {
 			const input = context.resolveInput(node, 'geometry')
 			const count = context.resolveInput(node, 'count')
+			const startIndex = context.resolveInput(node, 'startIndex')
 			if (
 				input?.valueType !== 'geometry'
 				|| !isSceneMetadata(input.value)
 				|| count?.valueType !== 'number'
 				|| typeof count.value !== 'number'
+				|| startIndex?.valueType !== 'number'
+				|| typeof startIndex.value !== 'number'
 			) return new Map()
 
 			const translation = node.getAxis() === 'x'
@@ -534,12 +571,17 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 					? new Vector3(0, node.getOffset(), 0)
 					: new Vector3(0, 0, node.getOffset())
 			const instances = input.value.assetInstances
+			const firstIndex = Math.floor(startIndex.value)
 			const arrayInstances = instances.flatMap((instance) =>
-					Array.from({ length: Math.max(1, Math.floor(count.value as number)) }, (_, index) => ({
+					Array.from({ length: Math.max(0, Math.floor(count.value as number)) }, (_, index) => ({
 						...instance,
 						instanceId: `${node.id}/${index}/${instance.instanceId}`,
 						transform: matrixSnapshot(new Matrix4()
-							.makeTranslation(translation.x * index, translation.y * index, translation.z * index)
+							.makeTranslation(
+								translation.x * (firstIndex + index),
+								translation.y * (firstIndex + index),
+								translation.z * (firstIndex + index)
+							)
 							.multiply(new Matrix4().fromArray(instance.transform))),
 					}))
 				)
@@ -665,14 +707,17 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		serialize: (node) => ({
 			graphId: node.getGraphId(),
 			transform: node.getTransform().serialize(),
+			inputValues: node.getInputValues(),
 		}),
 		deserialize: (id, position, data) => {
 			const value = data as GraphInstanceData
+			const inputValues = parseGraphInstanceInputValues(id, value.inputValues)
 			return new GraphInstanceGraphNode(
 				id,
 				position,
 				value.graphId,
-				new TransformField(value.transform)
+				new TransformField(value.transform),
+				inputValues
 			)
 		},
 	})
@@ -681,3 +726,26 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 }
 
 export const defaultNodeRegistry = createDefaultNodeRegistry()
+
+function parseGraphInstanceInputValues(
+	nodeId: string,
+	value: unknown
+): Record<string, GraphInputValue> {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) {
+		throw new Error(`Graph instance node "${nodeId}" requires an inputValues object`)
+	}
+	const inputValues: Record<string, GraphInputValue> = {}
+	for (const [inputId, inputValue] of Object.entries(value)) {
+		if (
+			(typeof inputValue !== 'number' || !Number.isFinite(inputValue))
+			&& typeof inputValue !== 'string'
+			&& typeof inputValue !== 'boolean'
+		) {
+			throw new Error(
+				`Graph instance node "${nodeId}" has invalid value for input "${inputId}"`
+			)
+		}
+		inputValues[inputId] = inputValue
+	}
+	return inputValues
+}

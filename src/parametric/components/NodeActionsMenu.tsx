@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { Copy, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
 	Dialog,
@@ -20,6 +20,7 @@ export function NodeActionsMenu({ nodeId }: { nodeId: string }) {
 	const { model } = useGraphSnapshot()
 	const node = model.getNode(nodeId)
 	const displayedName = node?.getName() ?? nodeId
+	const canCopy = controller.canCopyNode(nodeId)
 	const canDelete = model.isNodeRemovable(nodeId)
 	const [menuOpen, setMenuOpen] = useState(false)
 	const [renameOpen, setRenameOpen] = useState(false)
@@ -65,6 +66,22 @@ export function NodeActionsMenu({ nodeId }: { nodeId: string }) {
 					className="nodrag nopan w-44 p-1"
 				>
 					<div role="menu" aria-label={`Actions for ${displayedName} node`}>
+						{canCopy && (
+							<Button
+								data-id={`copy-node-menu-item-${nodeId}`}
+								type="button"
+								variant="ghost"
+								className="h-9 w-full justify-start px-2 font-normal"
+								role="menuitem"
+								onClick={() => {
+									setMenuOpen(false)
+									controller.copyNode(nodeId)
+								}}
+							>
+								<Copy />
+								Copy
+							</Button>
+						)}
 						<Button
 							data-id={`rename-node-menu-item-${nodeId}`}
 							type="button"

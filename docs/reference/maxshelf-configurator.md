@@ -132,16 +132,64 @@ An internal corner is modeled as **two independent wall runs** (A and B) meeting
 
 ### 5.1 Current graph-fixture approximation
 
-[`projects/maxshelf/assembly.json`](../../projects/maxshelf/assembly.json) represents the internal
-corner as two independent instances of the reusable Wing graph plus a reusable Corner graph.
+[`projects/maxshelf/maxshelf.json`](../../projects/maxshelf/maxshelf.json) represents the internal
+corner as two independent instances of the reusable Wing graph plus a corner assembly. Wing repeats a
+separate Wing Section subgraph; the section owns one shelf bay, shelf-level repetition, its starting
+post and base, and the optional terminal post and base.
 The second section is rotated 90 degrees, with its depth axis mirrored so its shelves face away
 from the wall. Both sections are offset by one 1.26-unit shelf span from the corner origin. Section
-count and shelf count are forwarded to both wings; shelf count is also forwarded to the corner shelf
-array.
+count and separate big- and small-shelf counts are forwarded to both wings. Each Wing Section uses
+470 mm shelves with matching brackets for the lower group and 300 mm shelves with matching brackets
+for the upper group. Both configuration sliders allow zero through three shelves and default to
+three. The upper Array receives the lower count through its `startIndex` input, so changing either
+count preserves one continuous 0.2-unit vertical sequence without a dedicated math node.
+
+The combined big- and small-shelf count is limited by post height. The persisted
+`sumMaximumByEnum` configuration constraint maps 1200, 1400, 1600, 2100, 2400, 2600, and 2800 mm
+to total maxima of 4, 5, 6, 9, 10, 11, and 12 shelves respectively. These values follow the
+fixture's approximately 430 mm first shelf height and 200 mm level spacing; the individual slider
+maximum of three still applies. Each slider shows the current combined total and height-specific
+maximum. Reducing post height preserves big shelves first and reduces small shelves as needed.
+The rule is editable from the root graph's Configuration Panel dialog under Constraints. Authors
+can change the post-height selector, participating number inputs, priority order, or per-height
+maximums without editing JSON.
 
 The Wing graph's `include-last-support` input is intentionally not promoted to the Root graph or
-configuration panel. Both corner-run instances use its `false` default, removing the terminal post
-and base at the side joined to the Corner assembly.
+configuration panel. It is forwarded to Wing Section as `Include last post and base`. Section
+instances and their far bracket repeat along negative local X. Wing A disables the terminal support
+while Wing B keeps it enabled.
+
+The Root graph also exposes `Finish color` as a color configuration control. Its allowed list is
+configured on the Root color-input node and currently enables Sand, White, Charcoal, Red, Orange,
+Yellow, Green, Blue, and Purple. The selected color is forwarded through every graph-instance
+boundary. Each graph combines its output geometry and applies the forwarded color through its final
+Material node, so the finish covers every emitted mesh.
+
+`Post height` is an enum configuration control with 1200, 1400, 1600, 2100, 2400, 2600, and
+2800 mm options. Root forwards the selection through both Wing instances and the Corner 2 assembly.
+The Wing Section and Corner 2 graphs use the existing Mesh Selector node to map that enum to the
+matching upright asset, so all repeated wing and corner posts change together.
+
+`Backplate type` is an enum configuration control with Plain, Perforated, and Corner options. Root
+forwards it through each Wing into Wing Section, where a Mesh Selector chooses the repeated
+backplate asset. The three legacy backplate asset IDs currently resolve to the same 1000 × 300 mm
+source GLB, so the selection is persisted and drives the correct asset identity but does not yet
+produce a visual mesh difference. Corner 2 retains its fixed 665 × 400 mm plain panels because no
+same-size perforated or corner assets exist in the catalog.
+
+Backplates repeat vertically according to the selected post height. Wing Section maps post height
+to 4, 5, 6, 7, 8, 9, or 10 repeated 300 mm panels. Corner 2 maps it to 3, 4, 4, 6, 6, 7, or 7
+repeated 400 mm panels. Counts use ceiling division so the backplate stack reaches the top of every
+post, including heights that are not exact multiples of the available panel height.
+
+Asset choice still needs no product-specific node. Enum graph inputs carry selections across graph
+boundaries and Mesh Selector performs enum-to-asset mapping. Dynamic repetition does require the
+generic Enum to Number node because Array accepts a numeric count and the selected post height is an
+enum. This node stores editable enum-to-number mappings and can be reused anywhere a choice must
+drive a numeric graph input.
+
+`src/data/defaultGraph.json`, which is consumed directly by the local seed script, mirrors the same
+graph document.
 
 No dedicated internal-corner GLB assets are registered. The Corner graph therefore builds an MVP
 L-shaped infill by pairing the available 1000 × 300 back panel, 470mm base leg, and 1000 × 370 shelf

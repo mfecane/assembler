@@ -1,4 +1,4 @@
-import defaultGraph from '@/parametric/defaultGraph.json'
+import defaultGraph from '@/data/defaultGraph.json'
 import { Editor } from '@/parametric/editor/Editor'
 import { deserializeGraph } from '@/parametric/model/GraphSerialization'
 import { defaultNodeRegistry } from '@/parametric/nodes/defaultNodeRegistry'

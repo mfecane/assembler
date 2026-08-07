@@ -16,6 +16,21 @@ export const presetColors: readonly PresetColor[] = [
 ]
 
 export const defaultMaterialColor = presetColors[0].value
+export const presetColorValues = presetColors.map((color) => color.value)
+
+export function normalizePresetColorOptions(options: readonly string[]): string[] {
+	const selected = new Set(options)
+	const normalized = presetColors
+		.filter((color) => selected.has(color.value))
+		.map((color) => color.value)
+	return normalized.length > 0 ? normalized : [defaultMaterialColor]
+}
+
+export function getPresetColors(options?: readonly string[]): readonly PresetColor[] {
+	if (!options) return presetColors
+	const selected = new Set(options)
+	return presetColors.filter((color) => selected.has(color.value))
+}
 
 export function normalizePresetColor(color: string): string {
 	return presetColors.some((preset) => preset.value === color)

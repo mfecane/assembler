@@ -1,5 +1,11 @@
 import type { GraphValueType } from '@/parametric/model/GraphNode'
 import type { GraphModel } from '@/parametric/model/GraphModel'
+import {
+	createConfigurationConstraint,
+	type ConfigurationConstraintDefinition,
+	type ConfigurationConstraintState,
+	type SumMaximumByEnumConstraint,
+} from '@/parametric/model/ConfigurationConstraint'
 
 export type GraphInputValue = number | string | boolean
 
@@ -56,21 +62,24 @@ export type ConfigurationField =
 		min: number
 		max: number
 		step: number
+		constraint?: ConfigurationConstraintState
 	}
 	| { id: string; type: 'enum'; label: string; value: string; options: string[] }
-	| { id: string; type: 'color'; label: string; value: string }
+	| { id: string; type: 'color'; label: string; value: string; options: string[] }
 	| { id: string; type: 'boolean'; label: string; value: boolean }
 
 export class GraphDocumentModel {
 	private readonly graphs = new Map<string, GraphDefinition>()
 	private readonly entryInputValues = new Map<string, GraphInputValue>()
 	private configurationControls: ConfigurationPanelControl[]
+	private configurationConstraints: SumMaximumByEnumConstraint[]
 
 	public constructor(
 		private readonly entryGraphId: string,
 		graphs: GraphDefinition[],
 		entryInputValues: Record<string, GraphInputValue> = {},
-		configurationControls: ConfigurationPanelControl[] = []
+		configurationControls: ConfigurationPanelControl[] = [],
+		configurationConstraints: ConfigurationConstraintDefinition[] = []
 	) {
 		for (const graph of graphs) {
 			if (this.graphs.has(graph.id)) throw new Error(`Duplicate graph ID "${graph.id}"`)
@@ -85,7 +94,9 @@ export class GraphDocumentModel {
 			this.entryInputValues.set(inputId, value)
 		}
 		this.configurationControls = configurationControls.map((control) => ({ ...control }))
+		this.configurationConstraints = configurationConstraints.map(createConfigurationConstraint)
 		this.validateReferences()
+		this.validateConfigurationValues()
 	}
 
 	public getEntryGraphId(): string {
@@ -165,6 +176,8 @@ export class GraphDocumentModel {
 					this.entryInputValues.delete(inputId)
 				}
 			}
+			this.validateReferences()
+			this.validateConfigurationValues()
 		}
 		return true
 	}
@@ -180,6 +193,9 @@ export class GraphDocumentModel {
 			this.configurationControls = this.configurationControls.filter(
 				(control) => control.inputId !== inputId
 			)
+			this.configurationConstraints = this.configurationConstraints.filter(
+				(constraint) => !constraint.referencesInput(inputId)
+			)
 		}
 		return true
 	}
@@ -194,6 +210,12 @@ export class GraphDocumentModel {
 		const input = this.getEntryGraph().inputs.find((candidate) => candidate.id === inputId)
 		if (!input || !isInputValueCompatible(input, value)) return false
 		this.entryInputValues.set(inputId, value)
+		for (const constraint of this.configurationConstraints) {
+			const updates = constraint.reconcile(this.getResolvedEntryInputValues(), inputId)
+			for (const [constrainedInputId, constrainedValue] of Object.entries(updates)) {
+				this.entryInputValues.set(constrainedInputId, constrainedValue)
+			}
+		}
 		return true
 	}
 
@@ -203,6 +225,19 @@ export class GraphDocumentModel {
 
 	public getConfigurationControls(): ConfigurationPanelControl[] {
 		return this.configurationControls.map((control) => ({ ...control }))
+	}
+
+	public getConfigurationConstraints(): ConfigurationConstraintDefinition[] {
+		return this.configurationConstraints.map((constraint) => constraint.toDefinition())
+	}
+
+	public getConfigurationConstraintState(
+		inputId: string
+	): ConfigurationConstraintState | undefined {
+		const constraint = this.configurationConstraints.find(
+			(candidate) => candidate.getConstrainedInputIds().includes(inputId)
+		)
+		return constraint?.getState(inputId, this.getResolvedEntryInputValues())
 	}
 
 	public setConfigurationControls(controls: ConfigurationPanelControl[]): void {
@@ -224,6 +259,30 @@ export class GraphDocumentModel {
 			controlledInputs.add(control.inputId)
 			return [{ ...control }]
 		})
+	}
+
+	public setConfigurationConstraints(
+		definitions: ConfigurationConstraintDefinition[]
+	): void {
+		const constraints = definitions.map(createConfigurationConstraint)
+		this.validateConfigurationConstraints(constraints)
+
+		const values = this.getResolvedEntryInputValues()
+		const updates: Record<string, number> = {}
+		for (const constraint of constraints) {
+			const constraintUpdates = constraint.reconcile(
+				values,
+				constraint.getSelectorInputId()
+			)
+			Object.assign(values, constraintUpdates)
+			Object.assign(updates, constraintUpdates)
+			constraint.assertSatisfied(values)
+		}
+
+		this.configurationConstraints = constraints
+		for (const [inputId, value] of Object.entries(updates)) {
+			this.entryInputValues.set(inputId, value)
+		}
 	}
 
 	private validateReferences(): void {
@@ -259,6 +318,38 @@ export class GraphDocumentModel {
 			controlIds.add(control.id)
 			controlledInputs.add(control.inputId)
 		}
+
+		this.validateConfigurationConstraints(this.configurationConstraints)
+	}
+
+	private validateConfigurationConstraints(
+		constraints: SumMaximumByEnumConstraint[]
+	): void {
+		const inputs = this.getEntryGraph().inputs
+		const constrainedInputIds = new Set<string>()
+		for (const constraint of constraints) {
+			constraint.validate(inputs)
+			for (const inputId of constraint.getConstrainedInputIds()) {
+				if (constrainedInputIds.has(inputId)) {
+					throw new Error(
+						`Entry input "${inputId}" belongs to multiple configuration constraints.`
+					)
+				}
+				constrainedInputIds.add(inputId)
+			}
+		}
+	}
+
+	private validateConfigurationValues(): void {
+		const values = this.getResolvedEntryInputValues()
+		for (const constraint of this.configurationConstraints) constraint.assertSatisfied(values)
+	}
+
+	private getResolvedEntryInputValues(): Record<string, GraphInputValue> {
+		return Object.fromEntries(this.getEntryGraph().inputs.flatMap((input) => {
+			const value = this.getEntryInputValue(input.id)
+			return value === undefined ? [] : [[input.id, value]]
+		}))
 	}
 }
 
@@ -300,7 +391,9 @@ export function isInputValueCompatible(
 	if (input.valueType === 'enum') {
 		return typeof value === 'string' && Boolean(input.options?.includes(value))
 	}
-	if (input.valueType === 'color') return typeof value === 'string'
+	if (input.valueType === 'color') {
+		return typeof value === 'string' && Boolean(input.options?.includes(value))
+	}
 	if (input.valueType === 'boolean') return typeof value === 'boolean'
 	return false
 }

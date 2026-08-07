@@ -47,8 +47,10 @@ The graph has one non-creatable, non-removable Output node. It resolves the comb
 
 Every graph declares a public interface. Authors create its declarations by placing Number,
 Enum, Color, or Geometry Graph Input nodes and edit their labels and defaults directly on those
-nodes. The entry graph receives saved values from `entryInputValues`; graph instances receive
-connected parent values and declaration defaults.
+nodes. Color inputs also define a required, non-empty allowed subset of the standard preset palette;
+their configuration controls and unconnected graph-instance controls show only that subset. The
+entry graph receives saved values from `entryInputValues`; graph instances receive connected parent
+values and declaration defaults.
 
 The configuration panel is an independent presentation layer. Its controls bind only to public
 inputs of the entry graph and never to inner nodes or child graph paths. Its root-only editor

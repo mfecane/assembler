@@ -21,9 +21,10 @@ Direct and indirect recursive references are rejected.
 
 Evaluation uses frames containing the active definition, supplied inputs, connection index, node
 cache, and graph-instance path. Graph Input nodes resolve supplied values or declaration defaults.
-Graph Instance nodes evaluate their referenced definitions recursively and scope both rendered
-asset identity and origin-node instance identity, keeping repeated instances distinct in scene
-metadata.
+Graph Instance inputs resolve connected parent values first, instance-specific values second, and
+the referenced declaration's defaults last. Graph Instance nodes evaluate their referenced
+definitions recursively and scope both rendered asset identity and origin-node instance identity,
+keeping repeated instances distinct in scene metadata.
 
 Only the graph open in React Flow is used for node previews. The entry graph remains the product
 result shown by the normal viewport.
@@ -43,7 +44,10 @@ a recursive dependency.
 
 Number, enum, color, boolean, and geometry inputs are created as Graph Input nodes. Their labels,
 defaults, and enum options are edited on the node. Removing the node also removes its declaration,
-affected instance edges, saved entry value, and configuration control.
+affected instance edges and values, saved entry value, and configuration control. Assembly Instance
+nodes expose inline editors for disconnected number, enum, color, and boolean inputs. Connected
+inputs are disabled because their incoming edge takes precedence; geometry inputs remain
+connection-only.
 
 Configuration controls bind only to compatible public inputs of the entry graph. Inner nodes,
 child inputs, instance ports, and instance paths are not binding targets. See

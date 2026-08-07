@@ -1,6 +1,8 @@
 import { useCallback } from 'react'
 import { useEditorController } from '@/parametric/editor/react/EditorContext'
 import {
+	EnumNumberMapGraphNode,
+	type EnumNumberMapping,
 	MaterialGraphNode,
 	type MeshSelection,
 	MeshSelectorGraphNode,
@@ -84,6 +86,29 @@ export function useMeshSelectorNode(nodeId: string): MeshSelectorNodeBinding | u
 		availableMeshes: controller.getSelectableMeshes(),
 		availableEnumValues: model.getInputOptions(nodeId, 'enum'),
 		setSelections,
+	}
+}
+
+export interface EnumNumberMapNodeBinding {
+	mappings: EnumNumberMapping[]
+	availableEnumValues: string[]
+	setMappings: (mappings: EnumNumberMapping[]) => void
+}
+
+export function useEnumNumberMapNode(nodeId: string): EnumNumberMapNodeBinding | undefined {
+	const controller = useEditorController()
+	const { model } = useGraphSnapshot()
+	const node = model.getNode(nodeId)
+	const setMappings = useCallback(
+		(mappings: EnumNumberMapping[]) => controller.setEnumNumberMappings(nodeId, mappings),
+		[controller, nodeId]
+	)
+
+	if (!(node instanceof EnumNumberMapGraphNode)) return undefined
+	return {
+		mappings: node.getMappings(),
+		availableEnumValues: model.getInputOptions(nodeId, 'enum'),
+		setMappings,
 	}
 }
 

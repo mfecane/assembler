@@ -28,7 +28,8 @@ Do not use editor-architecture skill for already powered by react flow parts of 
 
 - Mark key React elements with data-id. This is needed to help inspection via browser dev tools.
 
-# Test graph
+# Data folder
 
-- Keep defaultGraph.json up to date with current schema, just parse it and modify alongside schema modification, update seed script too seed this exact graph. No automatic migration is needed, but this graph's shape should persist in the process of schema modification. It may not survive schema change 100% correctly, but maximum effort should be put to keep it as is.
+- Notify user about no-backwards compatible changes in schema. Await for explicit permission before processing.
+- Keep graphs in /projects and /src/data folders up to date with current schema, just parse it and modify alongside schema modification, update seed script too seed new defaultGraph No automatic migration is needed, but this graphs shape should persist in the process of schema modification. It may not survive schema change 100% correctly, but maximum effort should be put to keep it as is.
 - Do not replace seeded data with synthesised trivial graphs.

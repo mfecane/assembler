@@ -4,6 +4,7 @@ import { ColorField } from '@/parametric/model/fields/ColorField'
 import { EnumField } from '@/parametric/model/fields/EnumField'
 import { NumberField } from '@/parametric/model/fields/NumberField'
 import { TransformField } from '@/parametric/model/fields/TransformField'
+import type { GraphInputValue } from '@/parametric/model/GraphDocumentModel'
 
 export interface GraphPoint {
 	x: number
@@ -35,6 +36,11 @@ export interface GraphInputDefault {
 export interface MeshSelection {
 	enumValue: string
 	meshId: string
+}
+
+export interface EnumNumberMapping {
+	enumValue: string
+	value: number
 }
 
 export interface TransformOrigin {
@@ -163,6 +169,30 @@ export class SelectorGraphNode extends GraphNode {
 
 	public setValue(value: string): void {
 		this.valueField.set(value)
+	}
+}
+
+export class EnumNumberMapGraphNode extends GraphNode {
+	public readonly type = 'enumNumberMap'
+
+	public constructor(
+		id: string,
+		position: GraphPoint,
+		private mappings: EnumNumberMapping[]
+	) {
+		super(id, position)
+	}
+
+	public getMappings(): EnumNumberMapping[] {
+		return this.mappings.map((mapping) => ({ ...mapping }))
+	}
+
+	public setMappings(mappings: EnumNumberMapping[]): void {
+		this.mappings = mappings.map((mapping) => ({ ...mapping }))
+	}
+
+	public getNumber(enumValue: string): number | undefined {
+		return this.mappings.find((mapping) => mapping.enumValue === enumValue)?.value
 	}
 }
 
@@ -371,7 +401,7 @@ export class ArrayGraphNode extends GraphNode {
 	) {
 		super(id, position)
 		this.countField = new NumberField(count, (value) =>
-			Number.isFinite(value) ? Math.max(1, Math.floor(value)) : 1)
+			Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 1)
 		this.axisField = new EnumField(axis, ['x', 'y', 'z'])
 		this.offsetField = new NumberField(offset)
 	}
@@ -430,15 +460,18 @@ export class GraphInputGraphNode extends GraphNode {
 export class GraphInstanceGraphNode extends GraphNode {
 	public readonly type = 'graphInstance'
 	private readonly transform: TransformField
+	private inputValues: Record<string, GraphInputValue>
 
 	public constructor(
 		id: string,
 		position: GraphPoint,
 		private readonly graphId: string,
-		transform = new TransformField()
+		transform = new TransformField(),
+		inputValues: Record<string, GraphInputValue> = {}
 	) {
 		super(id, position)
 		this.transform = transform
+		this.inputValues = { ...inputValues }
 	}
 
 	public getGraphId(): string {
@@ -446,6 +479,22 @@ export class GraphInstanceGraphNode extends GraphNode {
 	}
 
 	public getTransform(): TransformField { return this.transform }
+
+	public getInputValue(inputId: string): GraphInputValue | undefined {
+		return this.inputValues[inputId]
+	}
+
+	public getInputValues(): Record<string, GraphInputValue> {
+		return { ...this.inputValues }
+	}
+
+	public setInputValue(inputId: string, value: GraphInputValue): void {
+		this.inputValues[inputId] = value
+	}
+
+	public removeInputValue(inputId: string): void {
+		delete this.inputValues[inputId]
+	}
 }
 
 export class GroupGraphNode extends GraphNode {

@@ -9,7 +9,7 @@ const user = {
 const projectId = '20000000-0000-4000-8000-000000000001'
 const projectName = 'Seeded MaxShelf configurator'
 const defaultGraph = JSON.parse(
-	readFileSync(new URL('../src/parametric/defaultGraph.json', import.meta.url), 'utf8')
+	readFileSync(new URL('../src/data/defaultGraph.json', import.meta.url), 'utf8')
 )
 const apiUrl = process.env.SUPABASE_INTERNAL_URL
 const secretKey = process.env.SUPABASE_SECRET_KEY

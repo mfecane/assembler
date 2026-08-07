@@ -21,14 +21,16 @@ export function useConfiguration() {
 			})
 		}
 		if (input.valueType === 'number' && typeof value === 'number' && control.type === 'slider') {
+			const constraint = document.getConfigurationConstraintState(input.id)
 			fields.push({
 				id: input.id,
 				type: 'slider',
 				label: control.label,
 				value,
 				min: control.min,
-				max: control.max,
+				max: Math.min(control.max, constraint?.effectiveMaximum ?? control.max),
 				step: control.step,
+				constraint,
 			})
 		}
 		if (input.valueType === 'enum' && typeof value === 'string' && control.type === 'select') {
@@ -46,6 +48,7 @@ export function useConfiguration() {
 				type: 'color',
 				label: control.label,
 				value,
+				options: input.options ?? [],
 			})
 		}
 		if (

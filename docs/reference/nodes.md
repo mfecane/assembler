@@ -90,6 +90,19 @@ configuration-panel control.
 
 Supported persisted colors are `#eaceac`, `#f4f4f5`, `#27272a`, `#dc5a5a`, `#e8913a`, `#e3c84f`, `#55a86d`, `#528bd1`, and `#9067c6`.
 
+## Value operations
+
+### Enum to Number (`enumNumberMap`)
+
+Maps an enum value to a number for driving numeric operation inputs.
+
+- Inputs: `enum: enum`.
+- Outputs: `number: number`.
+- Data: `mappings`, an array of `{ enumValue, value }` mappings.
+- Default: no mappings; connecting an enum exposes its options for editing in the node.
+- Evaluation: emits the number mapped to the incoming enum value. A missing input or mapping
+  produces no output.
+
 ## Geometry operations
 
 ### Transform (`transform`)
@@ -126,14 +139,15 @@ Assigns a standard material color to every incoming instance.
 
 Repeats incoming geometry along one axis.
 
-- Inputs: `geometry: geometry`; `count: number`.
+- Inputs: `geometry: geometry`; `count: number`; `startIndex: number`.
 - Outputs: `geometry: geometry`.
-- Data: `count` integer of at least 1; `axis` (`x`, `y`, or `z`); and `offset`, the editable
+- Data: non-negative integer `count`; `axis` (`x`, `y`, or `z`); and `offset`, the editable
   duplication distance.
 - Default: count `2`, x-axis, offset `1`.
-- Fallback: when `count` is unconnected, the stored count is used.
-- Evaluation: floors the effective count, clamps it to at least one, and emits copies at
-  `index × offset` along the selected axis.
+- Fallback: when `count` is unconnected, the stored count is used; when `startIndex` is
+  unconnected, zero is used. `startIndex` is connection-only and does not change persisted data.
+- Evaluation: floors the effective count, clamps it to at least zero, and emits copies at
+  `(startIndex + index) × offset` along the selected axis. A zero count emits empty geometry.
 - 3D editing: opening the node attaches a single-axis gizmo to the final duplicate. Dragging it
   changes the per-copy duplication distance and is recorded as one undoable history action.
 
@@ -173,9 +187,10 @@ Exposes one public input of the containing graph.
 - Inputs: none.
 - Output: the referenced input ID and value type.
 - Placement: add a Number, Enum, Color, Boolean, or Geometry graph input from the node menu.
-- Editing: default values and enum options are edited directly on the node. The public input label
-  is managed separately by the configuration-panel mapping UI; the node's own name is edited from
-  its header like every other node.
+- Editing: default values, enum options, and the allowed preset list for color inputs are edited
+  directly on the node. A color input must keep at least one option, and its default must be one of
+  the enabled colors. The public input label is managed separately by the configuration-panel
+  mapping UI; the node's own name is edited from its header like every other node.
 - Deletion: deleting the node also removes its public input declaration, configuration control,
   saved entry value, and affected graph-instance connections.
 

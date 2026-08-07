@@ -17,7 +17,7 @@ Open `http://localhost:5175/assembler/` and choose **Continue as local developer
 The stack contains only the services the application uses: PostgreSQL, Auth, PostgREST, the
 one-shot schema and seed jobs, and the Vite frontend. Vite proxies the local Auth and
 REST paths. The seed job creates the local user and upserts a **Seeded MaxShelf configurator**
-project from `src/parametric/defaultGraph.json`, so the seeded project and newly created
+project from `src/data/defaultGraph.json`, so the seeded project and newly created
 projects start from the same checked-in graph.
 
 Remove the containers and temporary database:

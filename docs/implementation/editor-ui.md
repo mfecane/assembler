@@ -27,14 +27,24 @@ Public inputs are created and edited as Graph Input nodes on the canvas. The con
 dialog does not create inputs; it maps compatible inputs from the entry graph to configurator
 controls.
 
-Each compatible entry input has a switch. Enabling it creates a control and exposes the compatible
-element types and settings inline:
+The dialog shows the configured UI items rather than an inventory of every graph input. **Add item**
+offers predefined number-field, slider, select, color-picker, and switch items. Adding an item binds
+it to the first unused compatible entry input; its Graph input selector can then link it to another
+unused compatible input. Each entry input can back at most one UI item.
+
+Items expose their label, widget type, graph-input binding, and type-specific settings inline:
 
 - Number inputs support number fields and sliders.
 - Enum inputs support selects.
 - Color inputs support color controls.
 - Boolean inputs support switches.
 - Geometry inputs cannot be exposed in the panel.
+
+The grip on each item uses React DnD to reorder configuration controls. Crossing the midpoint of
+another item updates the displayed order immediately, while the document receives one ordered-array
+update when the gesture ends. The runtime configurator therefore renders the same order without a
+separate layout field. Removing an item affects only its UI mapping; the graph input and its current
+value remain intact.
 
 The editor is available only while the entry graph is open. Runtime controls use an even
 label/control grid. The runtime panel can be collapsed, but collapsed state is view-only and is
@@ -45,9 +55,11 @@ not persisted in the graph document.
 Every node uses the shared header treatment: a Lucide type icon, its persisted node name, any
 node-specific actions, and a three-dots actions menu. The header icon and title are drag surfaces;
 renaming is intentionally available only from the actions menu so editing gestures do not compete
-with node movement. Rename opens a focused dialog, while Delete retains a confirmation step and is
-omitted for the required Output node. Assembly-input cards edit defaults and enum options only—their
-public labels remain owned by the separate configuration mapping UI.
+with node movement. Copy duplicates a node with all of its current field values, gives it a fresh
+ID, offsets it slightly from the source, and leaves it disconnected. Copy is omitted for assembly
+Input and Output boundary nodes. Rename opens a focused dialog, while Delete retains a confirmation
+step and is omitted for the required Output node. Assembly-input cards edit defaults and enum
+options only—their public labels remain owned by the separate configuration mapping UI.
 
 Assembly instances retain their explicit open action for navigation. Labels above transform vector
 inputs are also drag surfaces, while the inputs themselves remain interactive and do not move nodes.

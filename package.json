@@ -26,6 +26,8 @@
 		"clsx": "^2.1.1",
 		"lucide-react": "^1.27.0",
 		"react": "^19.2.8",
+		"react-dnd": "^16.0.1",
+		"react-dnd-html5-backend": "^16.0.1",
 		"react-dom": "^19.2.8",
 		"react-router-dom": "^7.18.2",
 		"tailwind-merge": "^3.6.0",

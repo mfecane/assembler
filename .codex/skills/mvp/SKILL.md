@@ -1,6 +1,6 @@
 ---
 name: mvp
-description: Building mvp projects.
+description: Use when building MVPs, prototypes, or early-stage/throwaway projects — especially when the user says "MVP," "quick prototype," "one-shot," "just get it working," or is clearly iterating fast without needing production durability. Also applies mid-project if the user signals they don't care about migrations, versioning, or future-proofing yet.
 ---
 
 One shot MVP mode

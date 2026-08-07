@@ -29,11 +29,13 @@ import { ColorNode } from '@/parametric/nodes/ColorNode'
 import { MaterialNode } from '@/parametric/nodes/MaterialNode'
 import { GraphInputNode } from '@/parametric/nodes/GraphInputNode'
 import { GraphInstanceNode } from '@/parametric/nodes/GraphInstanceNode'
+import { EnumNumberMapNode } from '@/parametric/nodes/EnumNumberMapNode'
 
 export const nodeViewTypes = {
 	primitive: PrimitiveNode,
 	numberInput: NumberInputNode,
 	selector: SelectorNode,
+	enumNumberMap: EnumNumberMapNode,
 	color: ColorNode,
 	meshAsset: MeshAssetNode,
 	meshSelector: MeshSelectorNode,
@@ -64,6 +66,11 @@ export const nodeViewPresentation: Record<string, NodeViewPresentation> = {
 	selector: {
 		group: 'Inputs',
 		description: 'Emit a stored choice',
+		icon: ListFilter,
+	},
+	enumNumberMap: {
+		group: 'Operations',
+		description: 'Map enum values to numbers',
 		icon: ListFilter,
 	},
 	color: {
