@@ -24,16 +24,29 @@ export function useConfiguration() {
 				})
 			}
 			if (input.valueType === 'number' && typeof value === 'number' && control.type === 'slider') {
-				const constraint = document.getConfigurationConstraintState(activeRootGraphId, input.id)
 				fields.push({
 					id: input.id,
 					type: 'slider',
 					label: control.label,
 					value,
 					min: control.min,
-					max: Math.min(control.max, constraint?.effectiveMaximum ?? control.max),
+					max: control.max,
 					step: control.step,
-					constraint,
+				})
+			}
+			if (
+				input.valueType === 'numberArray'
+				&& Array.isArray(value)
+				&& control.type === 'numberArray'
+			) {
+				fields.push({
+					id: input.id,
+					type: 'numberArray',
+					label: control.label,
+					value,
+					labels: control.labels,
+					total: control.total,
+					step: control.step,
 				})
 			}
 			if (input.valueType === 'enum' && typeof value === 'string' && control.type === 'select') {
@@ -86,6 +99,23 @@ export function useConfiguration() {
 		(id: string, value: boolean) => controller.setRootInputValue(activeRootGraphId, id, value),
 		[activeRootGraphId, controller]
 	)
+	const setNumberArrayValue = useCallback(
+		(id: string, index: number, value: number) => {
+			const field = values.find((candidate) => candidate.id === id)
+			if (field?.type !== 'numberArray') return
+			const otherTotal = field.value.reduce(
+				(total, item, candidateIndex) => total + (candidateIndex === index ? 0 : item),
+				0
+			)
+			const next = field.value.map((item, candidateIndex) =>
+				candidateIndex === index
+					? Math.min(Math.max(0, value), Math.max(0, field.total - otherTotal))
+					: item
+			)
+			controller.setRootInputValue(activeRootGraphId, id, next)
+		},
+		[activeRootGraphId, controller, values]
+	)
 
 	return {
 		rootGraphId: activeRootGraphId,
@@ -95,5 +125,6 @@ export function useConfiguration() {
 		setEnumValue,
 		setColorValue,
 		setBooleanValue,
+		setNumberArrayValue,
 	}
 }

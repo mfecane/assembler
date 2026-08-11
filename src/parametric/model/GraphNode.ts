@@ -15,7 +15,14 @@ export type GraphNodeType = string
 export type PrimitiveKind = 'box' | 'sphere' | 'cylinder' | 'cone'
 export type Axis = 'x' | 'y' | 'z'
 export type OriginAxis = 'min' | 'middle' | 'max'
-export type GraphValueType = 'geometry' | 'number' | 'enum' | 'color' | 'boolean'
+export type GraphValueType =
+	| 'geometry'
+	| 'meshArray'
+	| 'number'
+	| 'numberArray'
+	| 'enum'
+	| 'color'
+	| 'boolean'
 
 export interface GraphInputPort {
 	id: string
@@ -432,6 +439,36 @@ export class ArrayGraphNode extends GraphNode {
 
 }
 
+export class MeshArrayGraphNode extends GraphNode {
+	public readonly type = 'meshArray'
+
+	public constructor(id: string, position: GraphPoint) {
+		super(id, position)
+	}
+}
+
+export class MultiArrayGraphNode extends GraphNode {
+	public readonly type = 'multiArray'
+	private readonly axisField: EnumField<Axis>
+	private readonly offsetField: NumberField
+
+	public constructor(
+		id: string,
+		position: GraphPoint,
+		axis: Axis,
+		offset: number
+	) {
+		super(id, position)
+		this.axisField = new EnumField(axis, ['x', 'y', 'z'])
+		this.offsetField = new NumberField(offset)
+	}
+
+	public getAxis(): Axis { return this.axisField.get() }
+	public setAxis(axis: Axis): void { this.axisField.set(axis) }
+	public getOffset(): number { return this.offsetField.get() }
+	public setOffset(offset: number): void { this.offsetField.set(offset) }
+}
+
 export class OutputGraphNode extends GraphNode {
 	public readonly type = 'graphOutput'
 
@@ -471,7 +508,7 @@ export class GraphInstanceGraphNode extends GraphNode {
 	) {
 		super(id, position)
 		this.transform = transform
-		this.inputValues = { ...inputValues }
+		this.inputValues = copyGraphInputValues(inputValues)
 	}
 
 	public getGraphId(): string {
@@ -481,20 +518,30 @@ export class GraphInstanceGraphNode extends GraphNode {
 	public getTransform(): TransformField { return this.transform }
 
 	public getInputValue(inputId: string): GraphInputValue | undefined {
-		return this.inputValues[inputId]
+		const value = this.inputValues[inputId]
+		return Array.isArray(value) ? [...value] : value
 	}
 
 	public getInputValues(): Record<string, GraphInputValue> {
-		return { ...this.inputValues }
+		return copyGraphInputValues(this.inputValues)
 	}
 
 	public setInputValue(inputId: string, value: GraphInputValue): void {
-		this.inputValues[inputId] = value
+		this.inputValues[inputId] = Array.isArray(value) ? [...value] : value
 	}
 
 	public removeInputValue(inputId: string): void {
 		delete this.inputValues[inputId]
 	}
+}
+
+function copyGraphInputValues(
+	values: Record<string, GraphInputValue>
+): Record<string, GraphInputValue> {
+	return Object.fromEntries(Object.entries(values).map(([inputId, value]) => [
+		inputId,
+		Array.isArray(value) ? [...value] : value,
+	]))
 }
 
 export class GroupGraphNode extends GraphNode {

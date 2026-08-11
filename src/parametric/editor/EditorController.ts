@@ -10,7 +10,6 @@ import {
 	type GraphInputDefinition,
 	type GraphInputValue,
 } from '@/parametric/model/GraphDocumentModel'
-import type { ConfigurationConstraintDefinition } from '@/parametric/model/ConfigurationConstraint'
 import { GraphModel } from '@/parametric/model/GraphModel'
 import {
 	ArrayGraphNode,
@@ -194,8 +193,37 @@ export class EditorController {
 		})
 	}
 
-	public renameGraph(graphId: string, label: string): void {
-		this.execute(`Rename graph "${graphId}"`, () => this.document.renameGraph(graphId, label))
+	public editGraph(graphId: string, label: string, root: boolean): void {
+		const graph = this.document.requireGraph(graphId)
+		const normalizedLabel = label.trim()
+		if (!normalizedLabel) {
+			throw new Error(`Cannot edit graph "${graphId}": the graph name cannot be empty.`)
+		}
+		const wasRoot = this.document.isRootGraph(graphId)
+		if (wasRoot === root && graph.label === normalizedLabel) return
+		if (wasRoot && !root && this.document.getRootGraphs().length === 1) {
+			throw new Error(
+				`Cannot change graph "${graphId}" to a subgraph: the project requires at least one root graph.`
+			)
+		}
+		this.execute(`Edit graph "${graphId}"`, () => {
+			this.document.renameGraph(graphId, normalizedLabel)
+			if (wasRoot === root) return
+			if (root) {
+				this.document.addRootGraph(graphId)
+				this.state.openGraph(graphId, graphId)
+				return
+			}
+			if (!this.document.removeRootGraph(graphId)) {
+				throw new Error(
+					`Cannot change graph "${graphId}" to a subgraph: `
+						+ `the graph is not a removable root. Root count: ${this.document.getRootGraphs().length}.`
+				)
+			}
+			if (this.state.getActiveRootGraphId() === graphId) {
+				this.state.openGraph(graphId, this.document.getDefaultRootGraphId())
+			}
+		})
 	}
 
 	public removeGraph(graphId: string): void {
@@ -224,7 +252,11 @@ export class EditorController {
 		valueType: GraphInputDefinition['valueType'],
 		position: GraphPoint
 	): void {
-		const displayedType = valueType === 'enum' ? 'choice' : valueType
+		const displayedType = valueType === 'enum'
+			? 'choice'
+			: valueType === 'numberArray'
+				? 'number array'
+				: valueType
 		this.execute(`Add ${displayedType} graph input`, () => {
 			const graph = this.document.requireGraph(this.activeGraphId)
 			const inputId = this.createInputId(valueType)
@@ -609,15 +641,6 @@ export class EditorController {
 		})
 	}
 
-	public setConfigurationConstraints(
-		rootGraphId: string,
-		constraints: ConfigurationConstraintDefinition[]
-	): void {
-		this.execute(`Update configuration constraints for root graph "${rootGraphId}"`, () => {
-			this.document.setConfigurationConstraints(rootGraphId, constraints)
-		})
-	}
-
 	public undo(): void {
 		this.applyHistory('undo', () => this.history.undo())
 	}
@@ -913,6 +936,9 @@ function createInputDefinition(
 ): GraphInputDefinition {
 	if (valueType === 'number') {
 		return { id, label: 'Number', valueType, defaultValue: 1 }
+	}
+	if (valueType === 'numberArray') {
+		return { id, label: 'Number array', valueType, defaultValue: [1, 1] }
 	}
 	if (valueType === 'enum') {
 		if (!enumId) throw new Error(`Cannot create choice graph input "${id}" without a choice-set ID.`)

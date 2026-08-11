@@ -32,25 +32,29 @@ saved root inputs are used; non-root previews use declaration defaults.
 
 ## Editing and navigation
 
-React Flow projects only the open definition. The graph tree lists each root assembly and derives
-its descendants from Graph Instance nodes. Definitions unreachable from every root appear under
-**Unused assemblies**. Repeated instances appear as separate tree rows while opening their shared
-definition in the selected root's navigation context.
+React Flow projects only the open definition. The graph selector renders every root as a dependency
+tree, with each instantiated definition nested beneath its containing definition. Repeated instances
+of the same definition in one containing graph collapse to one tree entry. Definitions with no root
+status and no incoming instance reference appear in a separate unused-graphs forest, along with any
+dependencies they contain. Selecting a dependency from a root tree also selects that tree's root
+navigation context; selecting an unused graph keeps the current root context.
 
-Root definitions and reusable assemblies can be created separately, selected, renamed, and
-removed. The project's final root cannot be removed. Any definition referenced by an instance is
-also protected, and an instance cannot be added if it would create a recursive dependency.
+Root definitions and reusable assemblies can be created separately, selected, edited, and removed.
+Editing can promote a subgraph to a root or demote a root to a subgraph. Demotion removes the root's
+configuration state after confirmation but preserves the definition. The project's final root
+cannot be demoted or removed. Any definition referenced by an instance is also protected from
+deletion, and an instance cannot be added if it would create a recursive dependency.
 
 ## Public inputs
 
-Number, enum, color, boolean, and geometry inputs are created as Graph Input nodes. Their labels and
+Number, number-array, enum, color, boolean, and geometry inputs are created as Graph Input nodes. Their labels and
 defaults are edited on the node; color defaults and disconnected color instance values use
 arbitrary `#RRGGBB` pickers. Enum inputs select a document-level enum definition whose name and
 options are shared by every referencing graph input; the same node edits that shared definition and
 shows its usage count. Removing the node also removes its declaration, affected instance edges and
 values, saved root value, and configuration control. An enum definition is removed when its last
 referencing input is removed or rebound. Assembly Instance
-nodes expose inline editors for disconnected number, enum, color, and boolean inputs. Connected
+nodes expose inline editors for disconnected number, number-array, enum, color, and boolean inputs. Connected
 inputs are disabled because their incoming edge takes precedence; geometry inputs remain
 connection-only.
 

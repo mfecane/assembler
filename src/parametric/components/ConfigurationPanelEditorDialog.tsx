@@ -4,6 +4,7 @@ import { HTML5Backend } from 'react-dnd-html5-backend'
 import {
 	GripVertical,
 	Hash,
+	ListPlus,
 	ListFilter,
 	Palette,
 	Plus,
@@ -22,7 +23,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Separator } from '@/components/ui/separator'
 import {
 	Select,
 	SelectContent,
@@ -32,7 +32,6 @@ import {
 } from '@/components/ui/select'
 import { DraftNumberInput } from '@/parametric/components/DraftNumberInput'
 import { RgbColorInput } from '@/parametric/components/RgbColorInput'
-import { ConfigurationConstraintEditor } from '@/parametric/components/ConfigurationConstraintEditor'
 import { useEditorController } from '@/parametric/editor/react/EditorContext'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
 import { useSortableControl } from '@/parametric/hooks/useSortableControl'
@@ -135,7 +134,7 @@ export function ConfigurationPanelEditorDialog({
 						<div>
 							<DialogTitle>Configuration panel · {rootGraph.label}</DialogTitle>
 							<DialogDescription>
-								Configure this root's input controls and cross-input value constraints.
+								Configure this root's input controls and their display settings.
 							</DialogDescription>
 						</div>
 						<AddItemPopover
@@ -158,7 +157,7 @@ export function ConfigurationPanelEditorDialog({
 						</div>
 						{inputs.length === 0 ? (
 							<EmptyState>
-								Add number, choice, color, or boolean input nodes to the root assembly first.
+								Add configurable input nodes to the root assembly first.
 							</EmptyState>
 						) : controls.length === 0 ? (
 							<EmptyState>
@@ -192,8 +191,6 @@ export function ConfigurationPanelEditorDialog({
 							</DndProvider>
 						)}
 					</section>
-					<Separator />
-					<ConfigurationConstraintEditor />
 				</div>
 			</DialogContent>
 		</Dialog>
@@ -458,6 +455,86 @@ function ControlEditor({
 						onChange={(options) => onChange({ ...control, options })}
 					/>
 				)}
+
+				{control.type === 'numberArray' && (
+					<NumberArraySettings
+						control={control}
+						onChange={onChange}
+					/>
+				)}
+			</div>
+		</div>
+	)
+}
+
+function NumberArraySettings({
+	control,
+	onChange,
+}: {
+	control: Extract<ConfigurationPanelControl, { type: 'numberArray' }>
+	onChange: (control: ConfigurationPanelControl) => void
+}) {
+	return (
+		<div data-id={`configuration-number-array-${control.id}`} className="space-y-3 sm:col-span-2">
+			<div className="grid grid-cols-2 gap-3">
+				<NumberSetting
+					id={`${control.id}-total`}
+					label="Maximum total"
+					value={control.total}
+					onChange={(total) => onChange({ ...control, total: Math.max(0, total) })}
+				/>
+				<NumberSetting
+					id={`${control.id}-step`}
+					label="Step"
+					value={control.step}
+					onChange={(step) => onChange({ ...control, step: positive(step, control.step) })}
+				/>
+			</div>
+			<div className="space-y-2">
+				<Label className="text-xs text-muted-foreground">Value labels</Label>
+				{control.labels.map((label, index) => (
+					<div key={index} className="flex items-center gap-2">
+						<Input
+							data-id={`configuration-number-array-label-${control.id}-${index}`}
+							className="h-8 text-xs"
+							value={label}
+							onChange={(event) => onChange({
+								...control,
+								labels: control.labels.map((candidate, candidateIndex) =>
+									candidateIndex === index ? event.target.value : candidate
+								),
+							})}
+						/>
+						<Button
+							data-id={`configuration-number-array-remove-${control.id}-${index}`}
+							type="button"
+							variant="ghost"
+							size="icon"
+							className="h-8 w-8 shrink-0 text-muted-foreground"
+							disabled={control.labels.length === 1}
+							onClick={() => onChange({
+								...control,
+								labels: control.labels.filter((_, candidateIndex) => candidateIndex !== index),
+							})}
+							aria-label={`Remove value label ${index + 1}`}
+						>
+							<Trash2 />
+						</Button>
+					</div>
+				))}
+				<Button
+					data-id={`configuration-number-array-add-${control.id}`}
+					type="button"
+					variant="outline"
+					size="sm"
+					onClick={() => onChange({
+						...control,
+						labels: [...control.labels, `Value ${control.labels.length + 1}`],
+					})}
+				>
+					<Plus />
+					Add value
+				</Button>
 			</div>
 		</div>
 	)
@@ -561,11 +638,19 @@ function NumberSetting({
 
 type ControlType = ConfigurationPanelControl['type']
 
-const controlTypes: ControlType[] = ['number', 'slider', 'select', 'color', 'switch']
+const controlTypes: ControlType[] = [
+	'number',
+	'slider',
+	'numberArray',
+	'select',
+	'color',
+	'switch',
+]
 
 const controlTypeLabels: Record<ControlType, string> = {
 	number: 'Number field',
 	slider: 'Slider',
+	numberArray: 'Number array',
 	select: 'Select',
 	color: 'Color picker',
 	switch: 'Switch',
@@ -576,7 +661,9 @@ function WidgetIcon({ type }: { type: ControlType }) {
 		? Hash
 		: type === 'slider'
 			? SlidersHorizontal
-			: type === 'select'
+			: type === 'numberArray'
+				? ListPlus
+				: type === 'select'
 				? ListFilter
 				: type === 'color'
 					? Palette
@@ -586,6 +673,7 @@ function WidgetIcon({ type }: { type: ControlType }) {
 
 function getCompatibleControlTypes(input: GraphInputDefinition): ControlType[] {
 	if (input.valueType === 'number') return ['number', 'slider']
+	if (input.valueType === 'numberArray') return ['numberArray']
 	if (input.valueType === 'enum') return ['select']
 	if (input.valueType === 'color') return ['color']
 	if (input.valueType === 'boolean') return ['switch']
@@ -609,6 +697,7 @@ function findAvailableInput(
 
 function requiredInputLabel(type: ControlType): string {
 	if (type === 'number' || type === 'slider') return 'number'
+	if (type === 'numberArray') return 'number-array'
 	if (type === 'select') return 'choice'
 	if (type === 'color') return 'color'
 	return 'boolean'
@@ -630,6 +719,16 @@ function createControl(
 		return { ...base, type, min: Math.min(0, value), max: Math.max(100, value), step: 1 }
 	}
 	if (type === 'number') return { ...base, type, step: 0.1 }
+	if (type === 'numberArray') {
+		const values = Array.isArray(input.defaultValue) ? input.defaultValue : [0]
+		return {
+			...base,
+			type,
+			labels: values.map((_, index) => `Value ${index + 1}`),
+			total: Math.max(1, values.reduce((sum, value) => sum + value, 0)),
+			step: 1,
+		}
+	}
 	if (type === 'select') return { ...base, type }
 	if (type === 'switch') return { ...base, type }
 	const defaultColor = typeof input.defaultValue === 'string' && isRgbColor(input.defaultValue)

@@ -40,6 +40,8 @@ behavior; only files under **Planned work** are pending.
   and shared component conventions.
 - [Node fields and capabilities](./implementation/node-field-capabilities.md) — generic scalar
   fields, embedded transforms, multi-connect inputs, and node bypass behavior.
+- [Shelf array configuration](./implementation/shelf-arrays.md) — number-array inputs and widgets,
+  ordered mesh bundles, Multi Array placement, and the MaxShelf wiring.
 
 ## Reviews
 

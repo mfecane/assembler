@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/tooltip'
 import { UserMenu } from '@/auth/UserMenu'
 import { ConfirmationDialog } from '@/parametric/components/ConfirmationDialog'
+import { GraphEditDialog } from '@/parametric/components/GraphEditDialog'
 import { GraphTree } from '@/parametric/components/GraphTree'
 import type { EditorController } from '@/parametric/editor/EditorController'
 import { GraphInstanceGraphNode } from '@/parametric/model/GraphNode'
@@ -365,32 +366,20 @@ function AssemblyHeaderControls({
 			? `“${activeGraph.label}” is used by ${graphInstanceCount} instance${graphInstanceCount === 1 ? '' : 's'} in ${referencingGraphs.map((graph) => `“${graph.label}”`).join(', ')}. Remove ${graphInstanceCount === 1 ? 'that instance' : 'those instances'} before deleting the assembly.`
 			: 'Delete current assembly'
 	const [actionMenuOpen, setActionMenuOpen] = useState(false)
-	const [renameOpen, setRenameOpen] = useState(false)
-	const [renameDraft, setRenameDraft] = useState(activeGraph.label)
+	const [editOpen, setEditOpen] = useState(false)
 	const [confirmingClear, setConfirmingClear] = useState(false)
 	const [confirmingRemove, setConfirmingRemove] = useState(false)
 
 	useEffect(() => {
-		setRenameDraft(activeGraph.label)
-		setRenameOpen(false)
+		setEditOpen(false)
 		setActionMenuOpen(false)
 		setConfirmingClear(false)
 		setConfirmingRemove(false)
 	}, [activeGraphId, activeGraph.label])
 
-	const openRename = () => {
-		setRenameDraft(activeGraph.label)
+	const openEdit = () => {
 		setActionMenuOpen(false)
-		setRenameOpen(true)
-	}
-
-	const submitRename = () => {
-		const normalizedName = renameDraft.trim()
-		if (!normalizedName) return
-		if (normalizedName !== activeGraph.label) {
-			controller.renameGraph(activeGraph.id, normalizedName)
-		}
-		setRenameOpen(false)
+		setEditOpen(true)
 	}
 
 	return (
@@ -423,15 +412,15 @@ function AssemblyHeaderControls({
 					>
 						<div role="menu" aria-label={`Actions for ${activeGraph.label}`}>
 							<Button
-								data-id="rename-assembly-menu-item"
+								data-id="edit-graph-menu-item"
 								type="button"
 								variant="ghost"
 								className="h-9 w-full justify-start px-2 font-normal"
 								role="menuitem"
-								onClick={openRename}
+								onClick={openEdit}
 							>
 								<Pencil />
-								Rename assembly…
+								Edit graph…
 							</Button>
 							<Button
 								data-id="clear-assembly-menu-item"
@@ -481,41 +470,18 @@ function AssemblyHeaderControls({
 					</PopoverContent>
 				</Popover>
 			</ButtonGroup>
-			<Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-				<DialogContent data-id="rename-assembly-dialog" className="sm:max-w-md">
-					<form
-						data-id="rename-assembly-form"
-						onSubmit={(event) => {
-							event.preventDefault()
-							submitRename()
-						}}
-					>
-						<DialogHeader>
-							<DialogTitle>Rename assembly</DialogTitle>
-							<DialogDescription>
-								Choose the name shown in the assembly selector and instance menus.
-							</DialogDescription>
-						</DialogHeader>
-						<Input
-							data-id="rename-assembly-name-input"
-							value={renameDraft}
-							aria-label="Assembly name"
-							className="mt-4"
-							onChange={(event) => setRenameDraft(event.target.value)}
-							onFocus={(event) => event.currentTarget.select()}
-							autoFocus
-						/>
-						<DialogFooter className="mt-6">
-							<Button type="button" variant="outline" onClick={() => setRenameOpen(false)}>
-								Cancel
-							</Button>
-							<Button type="submit" disabled={!renameDraft.trim()}>
-								Rename assembly
-							</Button>
-						</DialogFooter>
-					</form>
-				</DialogContent>
-			</Dialog>
+			<GraphEditDialog
+				open={editOpen}
+				graphId={activeGraph.id}
+				graphLabel={activeGraph.label}
+				isRoot={isRootGraph}
+				isOnlyRoot={isLastRootGraph}
+				configurationControlCount={
+					isRootGraph ? document.getConfigurationControls(activeGraph.id).length : 0
+				}
+				onOpenChange={setEditOpen}
+				onSave={(name, root) => controller.editGraph(activeGraph.id, name, root)}
+			/>
 			<ConfirmationDialog
 				open={confirmingClear}
 				title={`Clear "${activeGraph.label}"?`}

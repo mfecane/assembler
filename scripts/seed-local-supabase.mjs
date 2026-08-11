@@ -37,7 +37,6 @@ const invalidRootGraphs = defaultGraph.rootGraphs.filter((rootGraph, index) => (
 	|| rootGraphIds.indexOf(rootGraph.graphId) !== index
 	|| !rootGraph.inputValues
 	|| !Array.isArray(rootGraph.configurationPanel?.controls)
-	|| !Array.isArray(rootGraph.configurationPanel?.constraints)
 ))
 if (invalidRootGraphs.length > 0) {
 	throw new Error(
@@ -78,6 +77,45 @@ if (invalidColorControls.length > 0) {
 		'The default graph seed contains invalid configuration color palettes. '
 		+ 'Every color control requires a non-empty, unique list of #RRGGBB colors; '
 		+ `received ${JSON.stringify(invalidColorControls)}.`
+	)
+}
+const numberArrayInputs = defaultGraph.graphs.flatMap((graph) => graph.inputs
+	.filter((input) => input.valueType === 'numberArray')
+	.map((input) => ({ graphId: graph.id, input })))
+const invalidNumberArrayInputs = numberArrayInputs.filter(({ input }) => (
+	!Array.isArray(input.defaultValue)
+	|| input.defaultValue.some((value) => (
+		typeof value !== 'number' || !Number.isFinite(value) || value < 0
+	))
+))
+const invalidNumberArrayControls = defaultGraph.rootGraphs.flatMap((rootGraph) => (
+	rootGraph.configurationPanel.controls
+		.filter((control) => control.type === 'numberArray')
+		.map((control) => ({ graphId: rootGraph.graphId, control }))
+)).filter(({ control }) => (
+	!Array.isArray(control.labels)
+	|| control.labels.length === 0
+	|| control.labels.some((label) => typeof label !== 'string' || !label.trim())
+	|| typeof control.total !== 'number'
+	|| !Number.isFinite(control.total)
+	|| control.total < 0
+	|| typeof control.step !== 'number'
+	|| !Number.isFinite(control.step)
+	|| control.step <= 0
+))
+if (invalidNumberArrayInputs.length > 0 || invalidNumberArrayControls.length > 0) {
+	throw new Error(
+		'The default graph seed contains invalid number-array inputs or configuration controls. '
+		+ 'Defaults must contain non-negative finite numbers; controls require labels, a non-negative '
+		+ `total, and a positive step. Invalid inputs: ${JSON.stringify(invalidNumberArrayInputs)}. `
+		+ `Invalid controls: ${JSON.stringify(invalidNumberArrayControls)}.`
+	)
+}
+const nodeTypes = defaultGraph.graphs.flatMap((graph) => graph.nodes.map((node) => node.type))
+if (!nodeTypes.includes('meshArray') || !nodeTypes.includes('multiArray')) {
+	throw new Error(
+		'The default MaxShelf seed must exercise both shelf array node types. '
+		+ `Received node types ${JSON.stringify([...new Set(nodeTypes)])}.`
 	)
 }
 const apiUrl = process.env.SUPABASE_INTERNAL_URL

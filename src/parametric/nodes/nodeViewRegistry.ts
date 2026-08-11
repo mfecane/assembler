@@ -4,6 +4,7 @@ import {
 	Cuboid,
 	Grid3X3,
 	Hash,
+	Layers3,
 	LogIn,
 	LogOut,
 	Network,
@@ -30,6 +31,8 @@ import { MaterialNode } from '@/parametric/nodes/MaterialNode'
 import { GraphInputNode } from '@/parametric/nodes/GraphInputNode'
 import { GraphInstanceNode } from '@/parametric/nodes/GraphInstanceNode'
 import { EnumNumberMapNode } from '@/parametric/nodes/EnumNumberMapNode'
+import { MeshArrayNode } from '@/parametric/nodes/MeshArrayNode'
+import { MultiArrayNode } from '@/parametric/nodes/MultiArrayNode'
 
 export const nodeViewTypes = {
 	primitive: PrimitiveNode,
@@ -41,6 +44,8 @@ export const nodeViewTypes = {
 	meshSelector: MeshSelectorNode,
 	transform: TransformNode,
 	array: ArrayNode,
+	meshArray: MeshArrayNode,
+	multiArray: MultiArrayNode,
 	sum: SumNode,
 	material: MaterialNode,
 	parametricGroup: GroupNode,
@@ -106,6 +111,16 @@ export const nodeViewPresentation: Record<string, NodeViewPresentation> = {
 	array: {
 		group: 'Operations',
 		description: 'Repeat geometry along an axis',
+		icon: Grid3X3,
+	},
+	meshArray: {
+		group: 'Operations',
+		description: 'Collect ordered mesh or geometry bundles',
+		icon: Layers3,
+	},
+	multiArray: {
+		group: 'Operations',
+		description: 'Repeat each mesh bundle by its matching count',
 		icon: Grid3X3,
 	},
 	sum: {

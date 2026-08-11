@@ -14,6 +14,7 @@ import { DraftNumberInput } from '@/parametric/components/DraftNumberInput'
 import { EmbeddedTransformSection } from '@/parametric/components/EmbeddedTransformSection'
 import { GeometryPreviewButton } from '@/parametric/components/GeometryPreviewButton'
 import { NodeHeader } from '@/parametric/components/NodeHeader'
+import { NumberArrayEditor } from '@/parametric/components/NumberArrayEditor'
 import { RgbColorInput } from '@/parametric/components/RgbColorInput'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
@@ -137,6 +138,13 @@ function GraphInstanceInput({
 					value={typeof value === 'number' ? value : 0}
 					onValueChange={onValueChange}
 					step={0.1}
+					disabled={connected}
+				/>
+			) : input.valueType === 'numberArray' ? (
+				<NumberArrayEditor
+					dataId={`${controlId}-control`}
+					values={Array.isArray(value) ? value : [0]}
+					onChange={onValueChange}
 					disabled={connected}
 				/>
 			) : input.valueType === 'enum' ? (

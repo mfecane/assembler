@@ -60,6 +60,13 @@
               },
               {
                 "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                }
               }
             ]
           }
@@ -73,20 +80,13 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "controls",
-        "constraints"
+        "controls"
       ],
       "properties": {
         "controls": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/configurationControl"
-          }
-        },
-        "constraints": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/configurationConstraint"
           }
         }
       }
@@ -209,6 +209,34 @@
             },
             "defaultValue": {
               "type": "number"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "label",
+            "valueType",
+            "defaultValue"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "label": {
+              "type": "string"
+            },
+            "valueType": {
+              "const": "numberArray"
+            },
+            "defaultValue": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "minimum": 0
+              }
             }
           }
         },
@@ -415,6 +443,8 @@
             "transform",
             "material",
             "array",
+            "meshArray",
+            "multiArray",
             "group",
             "sum",
             "graphInput",
@@ -617,44 +647,6 @@
         }
       }
     },
-    "configurationConstraint": {
-      "oneOf": [
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "type",
-            "inputIds",
-            "selectorInputId",
-            "maximums"
-          ],
-          "properties": {
-            "type": {
-              "const": "sumMaximumByEnum"
-            },
-            "inputIds": {
-              "type": "array",
-              "minItems": 2,
-              "uniqueItems": true,
-              "items": {
-                "$ref": "#/$defs/id"
-              }
-            },
-            "selectorInputId": {
-              "$ref": "#/$defs/id"
-            },
-            "maximums": {
-              "type": "object",
-              "minProperties": 1,
-              "additionalProperties": {
-                "type": "number",
-                "minimum": 0
-              }
-            }
-          }
-        }
-      ]
-    },
     "configurationControl": {
       "oneOf": [
         {
@@ -679,6 +671,49 @@
             },
             "type": {
               "const": "number"
+            },
+            "step": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "inputId",
+            "label",
+            "type",
+            "labels",
+            "total",
+            "step"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "inputId": {
+              "$ref": "#/$defs/id"
+            },
+            "label": {
+              "type": "string"
+            },
+            "type": {
+              "const": "numberArray"
+            },
+            "labels": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "total": {
+              "type": "number",
+              "minimum": 0
             },
             "step": {
               "type": "number",

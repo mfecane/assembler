@@ -17,7 +17,6 @@ import {
 } from '@/parametric/model/GraphNode'
 import type { NodeRegistry } from '@/parametric/model/NodeDefinition'
 import { isRgbColor } from '@/parametric/model/ColorPalette'
-import type { ConfigurationConstraintDefinition } from '@/parametric/model/ConfigurationConstraint'
 import type { EnumDefinitionSnapshot } from '@/parametric/model/EnumDefinition'
 import { RootGraph } from '@/parametric/model/RootGraph'
 
@@ -32,7 +31,6 @@ export interface RootGraphDocument {
 	inputValues: Record<string, GraphInputValue>
 	configurationPanel: {
 		controls: ConfigurationPanelControl[]
-		constraints: ConfigurationConstraintDefinition[]
 	}
 }
 
@@ -71,9 +69,6 @@ export function serializeGraph(
 			inputValues: root.getInputValues(),
 			configurationPanel: {
 				controls: root.getConfigurationControls(),
-				constraints: root.getConfigurationConstraints().map(
-					(constraint) => constraint.toDefinition()
-				),
 			},
 		})),
 		enums: document.getEnumDefinitions(),
@@ -109,7 +104,7 @@ export function deserializeGraph(value: unknown, registry: NodeRegistry): GraphD
 		const topLevelKeys = value && typeof value === 'object' ? Object.keys(value) : []
 		throw new Error(
 			'Unsupported graph document. Expected rootGraphs, enums, and graphs. Each rootGraphs item '
-			+ 'must contain graphId, inputValues, and configurationPanel with controls and constraints. '
+			+ 'must contain graphId, inputValues, and configurationPanel with controls. '
 			+ `Received ${typeof value} with top-level keys ${JSON.stringify(topLevelKeys)}.`
 		)
 	}
@@ -169,8 +164,7 @@ export function deserializeGraph(value: unknown, registry: NodeRegistry): GraphD
 	const rootGraphs = value.rootGraphs.map((root) => new RootGraph(
 		root.graphId,
 		root.inputValues,
-		root.configurationPanel.controls,
-		root.configurationPanel.constraints
+		root.configurationPanel.controls
 	))
 	const document = new GraphDocumentModel(
 		rootGraphs,
@@ -206,7 +200,7 @@ function assertInputDefinition(
 	graphId: string,
 	enumDefinitions: ReadonlyMap<string, EnumDefinitionSnapshot>
 ): void {
-	if (!['number', 'enum', 'color', 'boolean', 'geometry'].includes(input.valueType)) {
+	if (!['number', 'numberArray', 'enum', 'color', 'boolean', 'geometry'].includes(input.valueType)) {
 		throw new Error(`Input "${input.id}" in graph "${graphId}" has an unknown value type`)
 	}
 	if (input.valueType === 'geometry') {
@@ -222,6 +216,15 @@ function assertInputDefinition(
 		typeof input.defaultValue !== 'number' || !Number.isFinite(input.defaultValue)
 	)) {
 		throw new Error(`Input "${input.id}" in graph "${graphId}" has an invalid number default`)
+	}
+	if (input.valueType === 'numberArray' && (
+		!Array.isArray(input.defaultValue)
+		|| input.defaultValue.some((item) => !Number.isFinite(item) || item < 0)
+	)) {
+		throw new Error(
+			`Input "${input.id}" in graph "${graphId}" requires an array of non-negative finite `
+			+ `numbers as its default. Received ${JSON.stringify(input.defaultValue)}.`
+		)
 	}
 	if (input.valueType === 'enum') {
 		const definition = enumDefinitions.get(input.enumId ?? '')
@@ -368,7 +371,9 @@ function assertLocalAcyclicReferences(
 }
 
 function copyInput(input: GraphInputDefinition): GraphInputDefinition {
-	return { ...input }
+	return Array.isArray(input.defaultValue)
+		? { ...input, defaultValue: [...input.defaultValue] }
+		: { ...input }
 }
 
 function isGraphDocument(value: unknown): value is GraphDocument {
@@ -394,12 +399,12 @@ function isRootGraphDocument(value: unknown): value is RootGraphDocument {
 			typeof inputValue === 'number'
 			|| typeof inputValue === 'string'
 			|| typeof inputValue === 'boolean'
+			|| (Array.isArray(inputValue) && inputValue.every((item) => typeof item === 'number'))
 		))
 		&& Boolean(root.configurationPanel)
+		&& !('constraints' in (root.configurationPanel as object))
 		&& Array.isArray(root.configurationPanel?.controls)
 		&& root.configurationPanel.controls.every(isConfigurationPanelControl)
-		&& Array.isArray(root.configurationPanel?.constraints)
-		&& root.configurationPanel.constraints.every(isConfigurationConstraintDefinition)
 }
 
 function isConfigurationPanelControl(value: unknown): value is ConfigurationPanelControl {
@@ -429,6 +434,14 @@ function isConfigurationPanelControl(value: unknown): value is ConfigurationPane
 		return Array.isArray(control.options)
 			&& control.options.every((option) => typeof option === 'string')
 	}
+	if (control.type === 'numberArray') {
+		return Array.isArray(control.labels)
+			&& control.labels.every((label) => typeof label === 'string')
+			&& typeof control.total === 'number'
+			&& Number.isFinite(control.total)
+			&& typeof control.step === 'number'
+			&& Number.isFinite(control.step)
+	}
 	return control.type === 'select' || control.type === 'switch'
 }
 
@@ -456,20 +469,6 @@ function assertEnumDefinitions(definitions: EnumDefinitionSnapshot[]): void {
 		if (ids.has(definition.id)) throw new Error(`Duplicate choice-set ID "${definition.id}"`)
 		ids.add(definition.id)
 	}
-}
-
-function isConfigurationConstraintDefinition(
-	value: unknown
-): value is ConfigurationConstraintDefinition {
-	if (!value || typeof value !== 'object') return false
-	const constraint = value as Partial<ConfigurationConstraintDefinition>
-	return constraint.type === 'sumMaximumByEnum'
-		&& Array.isArray(constraint.inputIds)
-		&& constraint.inputIds.every((inputId) => typeof inputId === 'string')
-		&& typeof constraint.selectorInputId === 'string'
-		&& Boolean(constraint.maximums)
-		&& typeof constraint.maximums === 'object'
-		&& Object.values(constraint.maximums).every((maximum) => typeof maximum === 'number')
 }
 
 function isGraphDefinitionDocument(value: unknown): value is GraphDefinitionDocument {

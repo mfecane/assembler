@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, PackageSearch } from 'lucide-react'
+import { Check, PackageSearch, Search } from 'lucide-react'
 import {
 	AmbientLight,
 	Color,
@@ -20,6 +20,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { useEditorController } from '@/parametric/editor/react/EditorContext'
 import type { MeshDescriptor } from '@/parametric/model/MeshCatalog'
@@ -47,15 +48,26 @@ export function MeshAssetPickerDialog({
 }: MeshAssetPickerDialogProps) {
 	const controller = useEditorController()
 	const assets = useMemo(() => controller.getSelectableMeshes(), [controller])
+	const [nameFilter, setNameFilter] = useState('')
+	const filteredAssets = useMemo(() => {
+		const normalizedFilter = nameFilter.trim().toLocaleLowerCase()
+		if (!normalizedFilter) return assets
+		return assets.filter((asset) => asset.label.toLocaleLowerCase().includes(normalizedFilter))
+	}, [assets, nameFilter])
 	const previews = useAssetPreviews(open, assets)
+
+	const handleOpenChange = (nextOpen: boolean) => {
+		if (!nextOpen) setNameFilter('')
+		onOpenChange(nextOpen)
+	}
 
 	const selectAsset = (meshId: string) => {
 		onSelect(meshId)
-		onOpenChange(false)
+		handleOpenChange(false)
 	}
 
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
+		<Dialog open={open} onOpenChange={handleOpenChange}>
 			<DialogContent
 				data-id="mesh-asset-picker-dialog"
 				className="flex max-h-[85vh] max-w-3xl flex-col gap-0 p-0"
@@ -67,21 +79,48 @@ export function MeshAssetPickerDialog({
 					</DialogDescription>
 				</DialogHeader>
 
-				<div className="min-h-0 flex-1 overflow-y-auto p-4">
-					<div
-						data-id="mesh-asset-picker-grid"
-						className="grid grid-cols-2 gap-3"
-					>
-						{assets.map((asset) => (
-							<AssetCard
-								key={asset.id}
-								asset={asset}
-								preview={previews.get(asset.id)}
-								selected={asset.id === selectedMeshId}
-								onSelect={() => selectAsset(asset.id)}
-							/>
-						))}
+				<div data-id="mesh-asset-picker-filter" className="border-b border-border px-4 py-3">
+					<div className="relative">
+						<Search
+							className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+							aria-hidden="true"
+						/>
+						<Input
+							data-id="mesh-asset-picker-name-filter"
+							type="search"
+							value={nameFilter}
+							onChange={(event) => setNameFilter(event.target.value)}
+							placeholder="Filter meshes by name…"
+							aria-label="Filter meshes by name"
+							className="pl-9"
+						/>
 					</div>
+				</div>
+
+				<div className="min-h-0 flex-1 overflow-y-auto p-4">
+					{filteredAssets.length > 0 ? (
+						<div
+							data-id="mesh-asset-picker-grid"
+							className="grid grid-cols-2 gap-3"
+						>
+							{filteredAssets.map((asset) => (
+								<AssetCard
+									key={asset.id}
+									asset={asset}
+									preview={previews.get(asset.id)}
+									selected={asset.id === selectedMeshId}
+									onSelect={() => selectAsset(asset.id)}
+								/>
+							))}
+						</div>
+					) : (
+						<div
+							data-id="mesh-asset-picker-empty-filter"
+							className="py-10 text-center text-sm text-muted-foreground"
+						>
+							No mesh assets match “{nameFilter.trim()}”.
+						</div>
+					)}
 				</div>
 			</DialogContent>
 		</Dialog>

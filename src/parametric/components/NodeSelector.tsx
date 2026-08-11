@@ -6,6 +6,7 @@ import {
 	Hash,
 	ListFilter,
 	Network,
+	ListPlus,
 	Palette,
 	Plus,
 	Shapes,
@@ -58,7 +59,7 @@ export function NodeSelector({ selectedEdges }: { selectedEdges: Edge[] }) {
 		selectedEdges.length === 1 ? selectedEdges[0].id : undefined
 
 	const addSelectedInput = (
-		valueType: 'number' | 'enum' | 'color' | 'boolean' | 'geometry'
+		valueType: 'number' | 'numberArray' | 'enum' | 'color' | 'boolean' | 'geometry'
 	) => {
 		addGraphInput(valueType, getInsertPosition())
 		setOpen(false)
@@ -111,6 +112,11 @@ export function NodeSelector({ selectedEdges }: { selectedEdges: Edge[] }) {
 								icon={Hash}
 								label="Number"
 								onClick={() => addSelectedInput('number')}
+							/>
+							<InputNodeButton
+								icon={ListPlus}
+								label="Number array"
+								onClick={() => addSelectedInput('numberArray')}
 							/>
 							<InputNodeButton
 								icon={ListFilter}

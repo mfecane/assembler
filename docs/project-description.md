@@ -28,9 +28,16 @@ by the selection rectangle; nodes do not need to be fully enclosed.
 
 A graph consists of nodes and directed edges. Nodes contain editor positions and type-specific persistent data. Edges connect a named output port to a named input port.
 
-Ports have open string value types. The built-in registry uses `geometry`, `number`, `enum`, and `color`. A connection is valid only when its source and target value types are identical. Each input port accepts at most one incoming edge, while one output may feed multiple inputs.
+Ports have open string value types. The built-in registry uses `geometry`, `meshArray`, `number`,
+`numberArray`, `enum`, `color`, and `boolean`. A connection is valid only when its source and target
+value types are identical. Each input port accepts at most one incoming edge unless its node declares
+multi-connect behavior, while one output may feed multiple inputs.
 
-The built-in graph vocabulary includes nodes for placing a fixed mesh asset, selecting an asset from an enum value, creating primitive geometry, transforming geometry, repeating it in an array, changing its material, grouping multiple geometry branches, and selecting the final output. Number, selector, color, and sum nodes provide supporting configurable values.
+The built-in graph vocabulary includes nodes for placing a fixed mesh asset, selecting an asset from
+an enum value, creating primitive geometry, transforming geometry, repeating one geometry value,
+collecting ordered mesh bundles, repeating those bundles from matching count arrays, changing
+materials, grouping geometry branches, and selecting the final output. Number, selector, color,
+and sum nodes provide supporting configurable values.
 
 ### Geometry value
 
@@ -45,8 +52,8 @@ The graph has one non-creatable, non-removable Output node. It resolves the comb
 
 ### Public graph input
 
-Every graph declares a public interface. Authors create its declarations by placing Number,
-Enum, Color, or Geometry Graph Input nodes and edit their labels and defaults directly on those
+Every graph declares a public interface. Authors create its declarations by placing Number, Number
+Array, Enum, Color, Boolean, or Geometry Graph Input nodes and edit their labels and defaults directly on those
 nodes. Color inputs and unconnected graph instances use arbitrary RGB pickers. Customer-facing
 available colors live only on a root input's configuration control. Each `rootGraphs` record owns
 the saved values supplied to its graph; graph instances receive connected parent values and
@@ -54,8 +61,8 @@ declaration defaults.
 
 The configuration panel is an independent presentation layer. Its controls bind only to public
 inputs of its owning root and never to inner nodes or child graph paths. Each root has an independent
-root-only editor that maps those inputs to compatible number field, slider, select, color-picker,
-and switch controls.
+root-only editor that maps those inputs to compatible number field, slider, labeled number-array,
+select, color-picker, and switch controls.
 
 ## Architecture
 

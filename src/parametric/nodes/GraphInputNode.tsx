@@ -6,6 +6,7 @@ import { RgbColorInput } from '@/parametric/components/RgbColorInput'
 import { Switch } from '@/components/ui/switch'
 import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { GeometryPreviewButton } from '@/parametric/components/GeometryPreviewButton'
+import { NumberArrayEditor } from '@/parametric/components/NumberArrayEditor'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import { useEditorController } from '@/parametric/editor/react/EditorContext'
 import { GraphInputGraphNode } from '@/parametric/model/GraphNode'
@@ -32,7 +33,11 @@ export function GraphInputNode({ id }: NodeProps<ParametricFlowNode>) {
 				actions={input.valueType === 'geometry' ? <GeometryPreviewButton nodeId={id} /> : undefined}
 			/>
 			<div className="mb-2 text-[11px] capitalize text-muted-foreground">
-				{input.valueType === 'enum' ? 'choice' : input.valueType} input
+				{input.valueType === 'enum'
+					? 'choice'
+					: input.valueType === 'numberArray'
+						? 'number array'
+						: input.valueType} input
 			</div>
 			<div className="flex flex-col gap-2">
 				{input.valueType === 'number' && (
@@ -44,6 +49,15 @@ export function GraphInputNode({ id }: NodeProps<ParametricFlowNode>) {
 							defaultValue: value,
 						})}
 						step={0.1}
+					/>
+				)}
+				{input.valueType === 'numberArray' && (
+					<NumberArrayEditor
+						dataId={`graph-input-default-${input.id}`}
+						values={Array.isArray(input.defaultValue) ? input.defaultValue : [0]}
+						onChange={(defaultValue) => controller.updateGraphInput(input.id, {
+							defaultValue,
+						})}
 					/>
 				)}
 				{input.valueType === 'color' && (

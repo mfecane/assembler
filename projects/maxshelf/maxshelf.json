@@ -4,12 +4,14 @@
       "graphId": "main",
       "inputValues": {
         "number-1": 4,
-        "number-2": 2,
         "number-3": 4,
         "post-height": "1200 mm",
         "finish-color": "#eaceac",
         "backplate-type": "Plain",
-        "small-shelf-count": 2
+        "shelf-counts": [
+          2,
+          2
+        ]
       },
       "configurationPanel": {
         "controls": [
@@ -23,22 +25,16 @@
             "inputId": "number-1"
           },
           {
-            "id": "number-2-control",
-            "max": 3,
-            "min": 0,
-            "step": 1,
-            "type": "slider",
-            "label": "Big shelves",
-            "inputId": "number-2"
-          },
-          {
-            "id": "small-shelf-count-control",
-            "max": 3,
-            "min": 0,
-            "step": 1,
-            "type": "slider",
-            "label": "Small shelves",
-            "inputId": "small-shelf-count"
+            "id": "shelf-counts-control",
+            "inputId": "shelf-counts",
+            "label": "Shelves by size",
+            "type": "numberArray",
+            "labels": [
+              "Big shelves",
+              "Small shelves"
+            ],
+            "total": 6,
+            "step": 1
           },
           {
             "id": "number-3-control",
@@ -78,25 +74,6 @@
             "label": "Backplate type",
             "inputId": "backplate-type"
           }
-        ],
-        "constraints": [
-          {
-            "type": "sumMaximumByEnum",
-            "inputIds": [
-              "number-2",
-              "small-shelf-count"
-            ],
-            "selectorInputId": "post-height",
-            "maximums": {
-              "1200 mm": 4,
-              "1400 mm": 5,
-              "1600 mm": 6,
-              "2100 mm": 9,
-              "2400 mm": 10,
-              "2600 mm": 11,
-              "2800 mm": 12
-            }
-          }
         ]
       }
     },
@@ -116,8 +93,7 @@
             "max": 5,
             "step": 1
           }
-        ],
-        "constraints": []
+        ]
       }
     }
   ],
@@ -157,16 +133,13 @@
           "defaultValue": 1
         },
         {
-          "id": "number-2",
-          "label": "Big shelves",
-          "valueType": "number",
-          "defaultValue": 3
-        },
-        {
-          "id": "small-shelf-count",
-          "label": "Small shelves",
-          "valueType": "number",
-          "defaultValue": 3
+          "id": "shelf-counts",
+          "label": "Shelf counts",
+          "valueType": "numberArray",
+          "defaultValue": [
+            3,
+            3
+          ]
         },
         {
           "id": "number-3",
@@ -299,26 +272,14 @@
         },
         {
           "id": "graphInput-2",
-          "name": "Big shelves",
+          "name": "Shelf counts",
           "position": {
             "x": 969.3150160115847,
             "y": 162.68778694776975
           },
           "type": "graphInput",
           "data": {
-            "inputId": "number-2"
-          }
-        },
-        {
-          "id": "small-shelf-count-input",
-          "name": "Small shelves",
-          "position": {
-            "x": 998.0133203222026,
-            "y": 344.26658574591266
-          },
-          "type": "graphInput",
-          "data": {
-            "inputId": "small-shelf-count"
+            "inputId": "shelf-counts"
           }
         },
         {
@@ -436,34 +397,6 @@
           "targetPort": "number-1"
         },
         {
-          "id": "graphInput-2:number-2->graphInstance-1:number-2",
-          "sourceNodeId": "graphInput-2",
-          "targetNodeId": "graphInstance-1",
-          "sourcePort": "number-2",
-          "targetPort": "number-2"
-        },
-        {
-          "id": "graphInput-2:number-2->graphInstance-2:number-2",
-          "sourceNodeId": "graphInput-2",
-          "targetNodeId": "graphInstance-2",
-          "sourcePort": "number-2",
-          "targetPort": "number-2"
-        },
-        {
-          "id": "small-shelf-count-input:small-shelf-count->graphInstance-1:small-shelf-count",
-          "sourceNodeId": "small-shelf-count-input",
-          "targetNodeId": "graphInstance-1",
-          "sourcePort": "small-shelf-count",
-          "targetPort": "small-shelf-count"
-        },
-        {
-          "id": "small-shelf-count-input:small-shelf-count->graphInstance-2:small-shelf-count",
-          "sourceNodeId": "small-shelf-count-input",
-          "targetNodeId": "graphInstance-2",
-          "sourcePort": "small-shelf-count",
-          "targetPort": "small-shelf-count"
-        },
-        {
           "id": "graphInput-3:number-3->graphInstance-2:number-1",
           "sourceNodeId": "graphInput-3",
           "targetNodeId": "graphInstance-2",
@@ -567,6 +500,20 @@
           "targetNodeId": "graphInstance-2",
           "sourcePort": "backplate-type",
           "targetPort": "backplate-type"
+        },
+        {
+          "id": "graphInput-2:shelf-counts->graphInstance-1:shelf-counts",
+          "sourceNodeId": "graphInput-2",
+          "targetNodeId": "graphInstance-1",
+          "sourcePort": "shelf-counts",
+          "targetPort": "shelf-counts"
+        },
+        {
+          "id": "graphInput-2:shelf-counts->graphInstance-2:shelf-counts",
+          "sourceNodeId": "graphInput-2",
+          "targetNodeId": "graphInstance-2",
+          "sourcePort": "shelf-counts",
+          "targetPort": "shelf-counts"
         }
       ]
     },
@@ -575,16 +522,13 @@
       "label": "Wing Section",
       "inputs": [
         {
-          "id": "number-2",
-          "label": "Big shelves",
-          "valueType": "number",
-          "defaultValue": 3
-        },
-        {
-          "id": "small-shelf-count",
-          "label": "Small shelves",
-          "valueType": "number",
-          "defaultValue": 3
+          "id": "shelf-counts",
+          "label": "Shelf counts",
+          "valueType": "numberArray",
+          "defaultValue": [
+            3,
+            3
+          ]
         },
         {
           "id": "mirror-shelves-and-base",
@@ -828,40 +772,27 @@
         },
         {
           "id": "array-2",
-          "name": "Big shelf levels",
+          "name": "Shelf levels by size",
           "position": {
             "x": -583.1467818731005,
             "y": -37.4167965186149
           },
-          "type": "array",
+          "type": "multiArray",
           "data": {
-            "count": 3,
             "axis": "y",
             "offset": 0.2
           }
         },
         {
           "id": "graphInput-2",
-          "name": "Big shelves",
+          "name": "Shelf counts",
           "position": {
             "x": -1238.2195107375023,
             "y": 281.7447307616952
           },
           "type": "graphInput",
           "data": {
-            "inputId": "number-2"
-          }
-        },
-        {
-          "id": "small-shelf-count-input",
-          "name": "Small shelves",
-          "position": {
-            "x": -1223.838331339212,
-            "y": 382.5814184922951
-          },
-          "type": "graphInput",
-          "data": {
-            "inputId": "small-shelf-count"
+            "inputId": "shelf-counts"
           }
         },
         {
@@ -1086,20 +1017,6 @@
             "copy": false,
             "uniformScale": true,
             "enabled": true
-          }
-        },
-        {
-          "id": "small-shelf-levels",
-          "name": "Small shelf levels",
-          "position": {
-            "x": -580,
-            "y": 390
-          },
-          "type": "array",
-          "data": {
-            "count": 3,
-            "axis": "y",
-            "offset": 0.2
           }
         },
         {
@@ -1417,6 +1334,16 @@
           "data": {
             "color": "#eaceac"
           }
+        },
+        {
+          "id": "shelf-mesh-array",
+          "name": "Shelf sizes",
+          "position": {
+            "x": -450,
+            "y": 165
+          },
+          "type": "meshArray",
+          "data": {}
         }
       ],
       "edges": [
@@ -1428,32 +1355,11 @@
           "targetPort": "geometry"
         },
         {
-          "id": "array-2:geometry->finish-geometry:geometry",
-          "sourceNodeId": "array-2",
-          "targetNodeId": "finish-geometry",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
-        },
-        {
-          "id": "small-shelf-levels:geometry->finish-geometry:geometry",
-          "sourceNodeId": "small-shelf-levels",
-          "targetNodeId": "finish-geometry",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
-        },
-        {
           "id": "numberInput-1:number->sum-1:number",
           "sourceNodeId": "numberInput-1",
           "targetNodeId": "sum-1",
           "sourcePort": "number",
           "targetPort": "number"
-        },
-        {
-          "id": "graphInput-2:number-2->array-2:count",
-          "sourceNodeId": "graphInput-2",
-          "targetNodeId": "array-2",
-          "sourcePort": "number-2",
-          "targetPort": "count"
         },
         {
           "id": "graphInput-3:include-last-support->sum-1:enabled",
@@ -1519,13 +1425,6 @@
           "targetPort": "geometry"
         },
         {
-          "id": "transform-6:geometry->array-2:geometry",
-          "sourceNodeId": "transform-6",
-          "targetNodeId": "array-2",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
-        },
-        {
           "id": "small-shelf:geometry->small-shelf-group:geometry",
           "sourceNodeId": "small-shelf",
           "targetNodeId": "small-shelf-group",
@@ -1559,27 +1458,6 @@
           "targetNodeId": "small-shelf-base-height",
           "sourcePort": "geometry",
           "targetPort": "geometry"
-        },
-        {
-          "id": "small-shelf-base-height:geometry->small-shelf-levels:geometry",
-          "sourceNodeId": "small-shelf-base-height",
-          "targetNodeId": "small-shelf-levels",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
-        },
-        {
-          "id": "small-shelf-count-input:small-shelf-count->small-shelf-levels:count",
-          "sourceNodeId": "small-shelf-count-input",
-          "targetNodeId": "small-shelf-levels",
-          "sourcePort": "small-shelf-count",
-          "targetPort": "count"
-        },
-        {
-          "id": "graphInput-2:number-2->small-shelf-levels:startIndex",
-          "sourceNodeId": "graphInput-2",
-          "targetNodeId": "small-shelf-levels",
-          "sourcePort": "number-2",
-          "targetPort": "startIndex"
         },
         {
           "id": "meshAsset-1:geometry->array-3:geometry",
@@ -1673,20 +1551,6 @@
           "targetPort": "count"
         },
         {
-          "id": "array-2:geometry->shelves-and-base-for-mirror:geometry",
-          "sourceNodeId": "array-2",
-          "targetNodeId": "shelves-and-base-for-mirror",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
-        },
-        {
-          "id": "small-shelf-levels:geometry->shelves-and-base-for-mirror:geometry",
-          "sourceNodeId": "small-shelf-levels",
-          "targetNodeId": "shelves-and-base-for-mirror",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
-        },
-        {
           "id": "base-supports-for-mirror:geometry->shelves-and-base-for-mirror:geometry",
           "sourceNodeId": "base-supports-for-mirror",
           "targetNodeId": "shelves-and-base-for-mirror",
@@ -1727,6 +1591,48 @@
           "targetNodeId": "shelves-and-base-for-mirror",
           "sourcePort": "geometry",
           "targetPort": "geometry"
+        },
+        {
+          "id": "transform-6:geometry->shelf-mesh-array:geometry",
+          "sourceNodeId": "transform-6",
+          "targetNodeId": "shelf-mesh-array",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "small-shelf-base-height:geometry->shelf-mesh-array:geometry",
+          "sourceNodeId": "small-shelf-base-height",
+          "targetNodeId": "shelf-mesh-array",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "shelf-mesh-array:meshes->array-2:meshes",
+          "sourceNodeId": "shelf-mesh-array",
+          "targetNodeId": "array-2",
+          "sourcePort": "meshes",
+          "targetPort": "meshes"
+        },
+        {
+          "id": "graphInput-2:shelf-counts->array-2:counts",
+          "sourceNodeId": "graphInput-2",
+          "targetNodeId": "array-2",
+          "sourcePort": "shelf-counts",
+          "targetPort": "counts"
+        },
+        {
+          "id": "array-2:geometry->finish-geometry:geometry",
+          "sourceNodeId": "array-2",
+          "targetNodeId": "finish-geometry",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "array-2:geometry->shelves-and-base-for-mirror:geometry",
+          "sourceNodeId": "array-2",
+          "targetNodeId": "shelves-and-base-for-mirror",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
         }
       ]
     },
@@ -1741,16 +1647,13 @@
           "defaultValue": 1
         },
         {
-          "id": "number-2",
-          "label": "Big shelves",
-          "valueType": "number",
-          "defaultValue": 3
-        },
-        {
-          "id": "small-shelf-count",
-          "label": "Small shelves",
-          "valueType": "number",
-          "defaultValue": 3
+          "id": "shelf-counts",
+          "label": "Shelf counts",
+          "valueType": "numberArray",
+          "defaultValue": [
+            3,
+            3
+          ]
         },
         {
           "id": "include-last-support",
@@ -1809,26 +1712,14 @@
         },
         {
           "id": "graph-4-shelf-count",
-          "name": "Big shelves",
+          "name": "Shelf counts",
           "position": {
             "x": -704.640651219251,
             "y": -39.275450282285036
           },
           "type": "graphInput",
           "data": {
-            "inputId": "number-2"
-          }
-        },
-        {
-          "id": "graph-4-small-shelf-count",
-          "name": "Small shelves",
-          "position": {
-            "x": -716.6824328205064,
-            "y": 104.9125669233647
-          },
-          "type": "graphInput",
-          "data": {
-            "inputId": "small-shelf-count"
+            "inputId": "shelf-counts"
           }
         },
         {
@@ -2017,20 +1908,6 @@
           "targetPort": "geometry"
         },
         {
-          "id": "graph-4-shelf-count:number-2->graph-4-section:number-2",
-          "sourceNodeId": "graph-4-shelf-count",
-          "targetNodeId": "graph-4-section",
-          "sourcePort": "number-2",
-          "targetPort": "number-2"
-        },
-        {
-          "id": "graph-4-small-shelf-count:small-shelf-count->graph-4-section:small-shelf-count",
-          "sourceNodeId": "graph-4-small-shelf-count",
-          "targetNodeId": "graph-4-section",
-          "sourcePort": "small-shelf-count",
-          "targetPort": "small-shelf-count"
-        },
-        {
           "id": "graph-4-section-count:number-1->sum-1:number",
           "sourceNodeId": "graph-4-section-count",
           "targetNodeId": "sum-1",
@@ -2057,20 +1934,6 @@
           "targetNodeId": "graphInstance-1",
           "sourcePort": "include-last-support",
           "targetPort": "include-last-support"
-        },
-        {
-          "id": "graph-4-shelf-count:number-2->graphInstance-1:number-2",
-          "sourceNodeId": "graph-4-shelf-count",
-          "targetNodeId": "graphInstance-1",
-          "sourcePort": "number-2",
-          "targetPort": "number-2"
-        },
-        {
-          "id": "graph-4-small-shelf-count:small-shelf-count->graphInstance-1:small-shelf-count",
-          "sourceNodeId": "graph-4-small-shelf-count",
-          "targetNodeId": "graphInstance-1",
-          "sourcePort": "small-shelf-count",
-          "targetPort": "small-shelf-count"
         },
         {
           "id": "finish-geometry:geometry->finish-material:geometry",
@@ -2134,6 +1997,20 @@
           "targetNodeId": "graphInstance-1",
           "sourcePort": "backplate-type",
           "targetPort": "backplate-type"
+        },
+        {
+          "id": "graph-4-shelf-count:shelf-counts->graph-4-section:shelf-counts",
+          "sourceNodeId": "graph-4-shelf-count",
+          "targetNodeId": "graph-4-section",
+          "sourcePort": "shelf-counts",
+          "targetPort": "shelf-counts"
+        },
+        {
+          "id": "graph-4-shelf-count:shelf-counts->graphInstance-1:shelf-counts",
+          "sourceNodeId": "graph-4-shelf-count",
+          "targetNodeId": "graphInstance-1",
+          "sourcePort": "shelf-counts",
+          "targetPort": "shelf-counts"
         }
       ]
     },

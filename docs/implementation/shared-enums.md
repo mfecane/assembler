@@ -21,10 +21,8 @@ Rebinding an input removes its previous definition when that definition has no r
 Removing an enum input or graph performs the same unused-definition cleanup.
 
 Option changes reconcile all dependent state in the same command. Renames preserve graph defaults,
-entry values, graph-instance overrides, configuration-constraint maximums, Mesh Selector rows, and
-Choice to Number rows. Removals discard invalid overrides and mapping rows, select a valid default,
-and rebuild constraint keys from the remaining options. New constraint keys start at the current
-combined constrained value so the document remains valid.
+entry values, graph-instance overrides, Mesh Selector rows, and Choice to Number rows. Removals
+discard invalid overrides and mapping rows and select a valid default.
 
 ## Persistence
 
@@ -39,5 +37,5 @@ document enums define reusable graph-interface choice domains.
 
 Static TypeScript validation covers model and component integration. The project owner must verify
 definition switching, shared option editing, undo/redo, instance overrides, mapping reconciliation,
-configuration constraints, JSON import/export, project reset, and seeded-project creation in the
+JSON import/export, project reset, and seeded-project creation in the
 running application.

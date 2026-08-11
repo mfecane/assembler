@@ -1,6 +1,7 @@
 import { Matrix4, Vector3 } from 'three'
 import type {
 	GeometryValue,
+	MeshArrayValue,
 	NumberValue,
 	EnumValue,
 	ColorValue,
@@ -25,9 +26,11 @@ import {
 	type GraphNode,
 	GroupGraphNode,
 	MaterialGraphNode,
+	MeshArrayGraphNode,
 	MeshAssetGraphNode,
 	type MeshSelection,
 	MeshSelectorGraphNode,
+	MultiArrayGraphNode,
 	NumberInputGraphNode,
 	OutputGraphNode,
 	PrimitiveGraphNode,
@@ -91,6 +94,11 @@ interface MaterialData {
 
 interface ArrayData {
 	count: number
+	axis: Axis
+	offset: number
+}
+
+interface MultiArrayData {
 	axis: Axis
 	offset: number
 }
@@ -185,6 +193,10 @@ function geometry(assetInstances: SceneAssetInstanceMetadata[]): GeometryValue {
 
 function number(value: number): NumberValue {
 	return { valueType: 'number', value }
+}
+
+function meshArray(value: MeshArrayValue['value']): MeshArrayValue {
+	return { valueType: 'meshArray', value }
 }
 
 function enumValue(value: string): EnumValue {
@@ -589,6 +601,103 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		},
 	})
 
+	registry.register<MeshArrayGraphNode>({
+		type: 'meshArray',
+		label: 'Mesh Array',
+		creatable: true,
+		create: (id, position) => new MeshArrayGraphNode(id, position),
+		ports: {
+			inputs: geometryInput,
+			outputs: [{ id: 'meshes', valueType: 'meshArray' }],
+		},
+		serialize: () => ({}),
+		deserialize: (id, position) => new MeshArrayGraphNode(id, position),
+		evaluate: (node, context) => {
+			const meshes = context.resolveInputs(node, 'geometry').flatMap((input, inputIndex) => {
+				if (input.valueType !== 'geometry' || !isSceneMetadata(input.value)) return []
+				return [{
+					assetInstances: input.value.assetInstances.map((instance) => ({
+						...instance,
+						instanceId: `${node.id}/${inputIndex}/${instance.instanceId}`,
+					})),
+				}]
+			})
+			return new Map([['meshes', meshArray(meshes)]])
+		},
+	})
+
+	registry.register<MultiArrayGraphNode>({
+		type: 'multiArray',
+		label: 'Multi Array',
+		creatable: true,
+		create: (id, position) => new MultiArrayGraphNode(id, position, 'x', 1),
+		ports: {
+			inputs: [
+				{ id: 'meshes', valueType: 'meshArray' },
+				{ id: 'counts', valueType: 'numberArray' },
+			],
+			outputs: geometryOutput,
+		},
+		fields: {
+			offset: numberField((node) => node.getOffset(), (node, value) => node.setOffset(value)),
+			axis: enumField(
+				(node) => node.getAxis(),
+				(node, value) => node.setAxis(value),
+				() => ['x', 'y', 'z']
+			),
+		},
+		serialize: (node) => ({ axis: node.getAxis(), offset: node.getOffset() }),
+		deserialize: (id, position, data) => {
+			const value = data as MultiArrayData
+			return new MultiArrayGraphNode(id, position, value.axis, value.offset)
+		},
+		evaluate: (node, context) => {
+			const meshes = context.resolveInput(node, 'meshes')
+			const counts = context.resolveInput(node, 'counts')
+			if (
+				meshes?.valueType !== 'meshArray'
+				|| !Array.isArray(meshes.value)
+				|| !meshes.value.every(isSceneMetadata)
+				|| counts?.valueType !== 'numberArray'
+				|| !Array.isArray(counts.value)
+				|| !counts.value.every((count) => typeof count === 'number' && Number.isFinite(count))
+			) return new Map()
+			if (meshes.value.length !== counts.value.length) {
+				throw new Error(
+					`Multi Array node "${node.id}" requires one count per mesh bundle. Received `
+					+ `${meshes.value.length} mesh bundles and ${counts.value.length} counts: `
+					+ `${JSON.stringify(counts.value)}.`
+				)
+			}
+			const countValues = counts.value as number[]
+			const translation = node.getAxis() === 'x'
+				? new Vector3(node.getOffset(), 0, 0)
+				: node.getAxis() === 'y'
+					? new Vector3(0, node.getOffset(), 0)
+					: new Vector3(0, 0, node.getOffset())
+			let copyOffset = 0
+			const instances = meshes.value.flatMap((mesh, meshIndex) => {
+				const count = Math.max(0, Math.floor(countValues[meshIndex] as number))
+				const copies = Array.from({ length: count }, (_, copyIndex) =>
+					mesh.assetInstances.map((instance) => ({
+						...instance,
+						instanceId: `${node.id}/${meshIndex}/${copyIndex}/${instance.instanceId}`,
+						transform: matrixSnapshot(new Matrix4()
+							.makeTranslation(
+								translation.x * (copyOffset + copyIndex),
+								translation.y * (copyOffset + copyIndex),
+								translation.z * (copyOffset + copyIndex)
+							)
+							.multiply(new Matrix4().fromArray(instance.transform))),
+					}))
+				).flat()
+				copyOffset += count
+				return copies
+			})
+			return new Map([['geometry', geometry(instances)]])
+		},
+	})
+
 	registry.register<GroupGraphNode>({
 		type: 'group',
 		label: 'Group',
@@ -738,16 +847,19 @@ function parseGraphInstanceInputValues(
 	}
 	const inputValues: Record<string, GraphInputValue> = {}
 	for (const [inputId, inputValue] of Object.entries(value)) {
+		const numberArrayValue = Array.isArray(inputValue)
+			&& inputValue.every((item) => typeof item === 'number' && Number.isFinite(item))
 		if (
 			(typeof inputValue !== 'number' || !Number.isFinite(inputValue))
 			&& typeof inputValue !== 'string'
 			&& typeof inputValue !== 'boolean'
+			&& !numberArrayValue
 		) {
 			throw new Error(
 				`Graph instance node "${nodeId}" has invalid value for input "${inputId}"`
 			)
 		}
-		inputValues[inputId] = inputValue
+		inputValues[inputId] = Array.isArray(inputValue) ? [...inputValue] : inputValue
 	}
 	return inputValues
 }

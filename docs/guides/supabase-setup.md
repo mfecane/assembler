@@ -1,38 +1,39 @@
-# Supabase setup runbook
+# Hosted Supabase setup
 
-The application code and database schema are checked in. Complete these external steps before
-testing the cloud workflow.
+[`supabase/schema.sql`](../../supabase/schema.sql) is the authoritative application schema. Use
+this guide for the hosted Supabase project; local setup is documented in
+[`local-development.md`](./local-development.md).
 
 ## 1. Create the Supabase schema
 
 1. Create a Supabase project.
-2. Open its SQL Editor and run
+2. In the SQL Editor, run the complete contents of
    [`supabase/schema.sql`](../../supabase/schema.sql).
-3. In Project Settings, copy the project URL and publishable key. Do not use a secret or
-   service-role key.
-4. Create `.env.local` from `.env.example` and fill in:
+3. From Project Settings, copy the project URL and publishable key. Do not use a secret or
+   service-role key in the frontend.
+4. Copy `.env.example` to `.env.local` and set:
 
    ```text
    VITE_SUPABASE_URL=https://<project-ref>.supabase.co
    VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
    ```
 
-## 2. Configure Google OAuth
+## 2. Configure Google sign-in
 
 1. In Google Cloud, create a Web OAuth client.
 2. Add these Authorized JavaScript origins:
    - `http://localhost:5175`
    - `https://mfecane.github.io`
-3. In Supabase Authentication > Providers > Google, copy the displayed Supabase callback URL.
+3. In Supabase **Authentication > Providers > Google**, copy the displayed callback URL.
 4. Add that Supabase callback URL as an Authorized redirect URI in the Google OAuth client.
-5. Enable the Google provider in Supabase and enter the Google client ID and secret.
+5. Enable Google in Supabase and enter the client ID and secret.
 
 The Google client secret stays in Supabase provider configuration and must not be added to this
 repository.
 
 ## 3. Configure Supabase return URLs
 
-In Supabase Authentication > URL Configuration:
+In Supabase **Authentication > URL Configuration**:
 
 - set Site URL to `https://mfecane.github.io/assembler/`;
 - add `http://localhost:5175/assembler/` to Redirect URLs;
@@ -43,71 +44,65 @@ domain while retaining `/assembler/`.
 
 ## 4. Configure GitHub Pages builds
 
-In GitHub repository Settings > Secrets and variables > Actions > Variables, add:
+In GitHub **Settings > Secrets and variables > Actions > Variables**, add:
 
 - `VITE_SUPABASE_URL`;
 - `VITE_SUPABASE_PUBLISHABLE_KEY`.
 
 Both are public browser configuration values. The deployment workflow passes them to Vite.
 
-## 5. Rebuild the production application database
+## 5. Wipe and rebuild the application schema
 
-Use this procedure immediately before a production deployment when the checked-in schema must
-replace the current production application schema and no existing project data needs to survive.
-It rebuilds the application-owned objects in the existing Supabase project. It does **not** change
-the project URL, API keys, Google provider configuration, return URLs, or Supabase-managed Auth
-users.
+This procedure deletes every object and row in the `public` schema. It preserves Supabase-managed
+schemas such as `auth` and `storage`, including Auth users, as well as project settings such as
+URLs, keys, and providers. Confirm that nothing outside this application uses `public` before
+continuing.
 
 Do not run `supabase db reset --linked` for this repository. The repository deliberately has no
 `supabase/migrations/` history, so the CLI would have no migration from which to reconstruct the
 application schema. The authoritative schema is
 [`supabase/schema.sql`](../../supabase/schema.sql).
 
-1. Confirm that the Supabase dashboard is open on the intended production project.
-2. Open the SQL Editor and create a new query.
-3. Put the following reset statements at the beginning of the query:
+1. Confirm that the SQL Editor is open on the intended Supabase project.
+2. Run this full application wipe as a standalone query:
 
    ```sql
    begin;
 
-   drop table if exists public.projects cascade;
-   drop function if exists public.set_updated_at() cascade;
-   ```
+   drop schema if exists public cascade;
+   create schema public authorization postgres;
 
-4. Paste the complete, current contents of `supabase/schema.sql` after those statements.
-5. Put `commit;` at the end and run the entire query as one operation:
+   grant usage on schema public to postgres, anon, authenticated, service_role;
+   grant all on schema public to postgres, service_role;
 
-   ```sql
    commit;
    ```
 
-The transaction deletes all rows in `public.projects`, then recreates the table, index, update
-trigger, RLS policies, and grants from the current source tree. If any schema statement fails,
-the transaction is rolled back instead of leaving a partially rebuilt application schema.
+3. Wait for the wipe query to succeed. Do not continue if it reports an error.
+4. Create a new SQL Editor query and paste the complete contents of
+   [`supabase/schema.sql`](../../supabase/schema.sql).
+5. Run the schema query once.
+
+Both queries are transactional. A failed wipe restores the previous `public` schema. A failed
+schema execution leaves the successfully wiped `public` schema empty instead of partially created.
+After both queries succeed, `public.projects`, its index, update trigger, RLS policies, and grants
+match the checked-in schema.
 
 The current `graph_document` constraint accepts only the root-graph document shape: top-level
 `rootGraphs`, `enums`, and `graphs` arrays are required. The former singular `entryGraphId`,
 `entryInputValues`, and top-level `configurationPanel` shape is intentionally unsupported.
 
-Do not run [`scripts/seed-local-supabase.mjs`](../../scripts/seed-local-supabase.mjs) against
-production. It is local-development tooling that creates a fixed developer account and seeded
-project.
-
-After the query succeeds, check the Table Editor for an empty `public.projects` table and confirm
-that RLS is enabled. Existing users may then sign in through the already configured Google
-provider and create projects against the clean schema.
-
-Deleting and recreating the Supabase project is not part of this procedure because doing so would
-replace the project URL and keys and require the OAuth and deployment configuration to be entered
-again.
+Do not run [`scripts/seed-local-supabase.mjs`](../../scripts/seed-local-supabase.mjs) against the
+hosted project. It creates a fixed local developer account and seeded project.
 
 ## 6. Verify
 
-Open the deployed GitHub Pages site, sign in, create a project, edit it, Save, refresh, and reopen it.
-Then verify RLS with two separate Google users:
+1. In the Table Editor, confirm that `public.projects` is empty and RLS is enabled.
+2. Open the deployed site, sign in, create a project, edit it, save, refresh, and reopen it.
+3. With two separate Google users, verify that:
 
-- each user sees projects created by both users, including the creator email;
-- user A can open, update, rename, and delete user B's project;
-- anonymous requests cannot read `public.projects`.
+   - each user sees projects created by both users, including the creator email;
+   - one user can open, update, rename, and delete the other user's project;
+   - anonymous requests cannot read `public.projects`.
 
 Do not release until the two-user RLS checks pass.

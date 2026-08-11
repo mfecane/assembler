@@ -1,3 +1,8 @@
+begin;
+
+drop table if exists public.projects cascade;
+drop function if exists public.set_updated_at() cascade;
+
 create table public.projects (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -65,3 +70,5 @@ grant usage on schema public to authenticated, service_role;
 grant select, insert, delete on table public.projects to authenticated;
 grant update (name, graph_document) on table public.projects to authenticated;
 grant select, insert, update, delete on table public.projects to service_role;
+
+commit;

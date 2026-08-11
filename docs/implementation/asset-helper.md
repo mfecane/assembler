@@ -7,7 +7,7 @@ Status: implemented.
 The graph toolbar includes a mesh-asset browser. It lists every selectable mesh
 registered in the active editor's mesh catalog, with a rendered preview and the
 catalog label and ID. Assets are displayed in a fixed two-column grid inside a
-scrollable dialog.
+scrollable dialog and can be filtered by name with a case-insensitive text search.
 
 The same picker is used in three contexts:
 
@@ -19,7 +19,7 @@ The same picker is used in three contexts:
   preserving the node's other mappings and transform.
 
 Selecting an asset closes the dialog. When replacing an existing selection, the current asset is
-marked in the grid.
+marked in the grid. The name filter is cleared whenever the dialog closes.
 
 ## UI and rendering
 
@@ -32,8 +32,8 @@ marked in the grid.
 - Preview initialization and per-asset failures are shown directly on the
   affected cards and logged with the asset label, asset ID, list position, and
   underlying error details.
-- Key dialog, grid, card, loading, preview, error, node trigger, and mapping-row elements expose
-  `data-id` attributes for browser inspection.
+- Key dialog, filter, empty-filter state, grid, card, loading, preview, error, node trigger, and
+  mapping-row elements expose `data-id` attributes for browser inspection.
 
 ## Implementation
 

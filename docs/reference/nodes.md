@@ -5,7 +5,9 @@
 Ports are written as `port-id: value-type`. Built-in value types are:
 
 - `geometry` — a list of evaluated mesh instances.
+- `meshArray` — an ordered array of geometry bundles used by Mesh Array and Multi Array.
 - `number` — a JavaScript number.
+- `numberArray` — an ordered array of non-negative JavaScript numbers.
 - `enum` — one string selected from a source node's options.
 - `color` — an RGB color string in `#RRGGBB` format.
 - `boolean` — a JavaScript boolean.
@@ -15,8 +17,10 @@ and concatenate their scene instances before evaluation. Other inputs accept one
 port explicitly declares multi-connect behavior; Sum's `number` input does so.
 
 All nodes persist the common fields `id`, non-empty `name`, `type`, `position: { x, y }`, and
-type-specific `data`. Every node header displays a Lucide icon for its type. Double-click the node
-name to edit it; Enter or leaving the field saves the trimmed name, while Escape cancels.
+type-specific `data`. Every node header displays a Lucide icon for its type. Node backgrounds are
+color-coded by function: purple for inputs, blue for geometry, red for appearance, amber for
+operations, and green for outputs. Double-click the node name to edit it; Enter or leaving the
+field saves the trimmed name, while Escape cancels.
 
 Geometry nodes with embedded transform capability can be opened in the 3D editor and edited with
 the same move, rotate, and scale widgets as a standalone Transform node.
@@ -153,6 +157,28 @@ Repeats incoming geometry along one axis.
   `(startIndex + index) × offset` along the selected axis. A zero count emits empty geometry.
 - 3D editing: opening the node attaches a single-axis gizmo to the final duplicate. Dragging it
   changes the per-copy duplication distance and is recorded as one undoable history action.
+
+### Mesh Array (`meshArray`)
+
+Preserves multiple incoming geometry branches as an ordered array of bundles.
+
+- Inputs: one multi-connect `geometry: geometry` port.
+- Outputs: `meshes: meshArray`.
+- Data: empty object.
+- Evaluation: each incoming geometry value becomes one array item; meshes within a connected Group
+  remain in the same bundle.
+
+### Multi Array (`multiArray`)
+
+Repeats multiple geometry bundles using matching entries from a number array and one shared step.
+
+- Inputs: `meshes: meshArray`; `counts: numberArray`.
+- Outputs: `geometry: geometry`.
+- Data: `axis` (`x`, `y`, or `z`) and numeric `offset` step distance.
+- Default: x-axis, offset `1`.
+- Evaluation: the first bundle is copied by the first count, the second by the second count, and so
+  on. Placement indices continue across bundle boundaries. Count and bundle lengths must match;
+  counts are floored and clamped to zero.
 
 ### Group (`group`)
 

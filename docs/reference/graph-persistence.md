@@ -58,7 +58,7 @@ nodes and continue to persist their own options.
 ## Graph instances
 
 A `graphInstance` node stores one `graphId`, an embedded transform, and an `inputValues` object for
-instance-specific scalar input values. The graph ID must resolve to a definition in the same
+instance-specific non-geometry input values. The graph ID must resolve to a definition in the same
 document. Every stored input value must target a declared non-geometry input and match its type;
 choice values must also belong to the referenced choice set and colors must use `#RRGGBB`. There is
 no external graph address or loading mechanism.
@@ -87,47 +87,39 @@ Controls cannot address graph IDs, node IDs, instance IDs, instance paths, or po
 must be promoted through parent graph interfaces until it becomes an input of the owning root.
 
 Root input values are independent from UI presentation. Hiding a control does not remove its input
-or reset its saved value. Controls and constraints in one root never affect another root.
+or reset its saved value. Controls in one root never affect another root.
 
 Each control stores its rendered element type and only types compatible with its input are
 valid:
 
 - Number inputs support `number` controls with `step`, or `slider` controls with `min`, `max`,
   and `step`.
+- Number-array inputs support `numberArray`. The control owns one display label per array item, a
+  positive `step`, and a non-negative `total` maximum shared by all items. Changing the label count
+  resizes the root value; lowering the total preserves earlier values and reduces later values.
 - Enum inputs support `select`.
 - Color inputs support `color`; the control owns a non-empty, unique list of `#RRGGBB` choices.
 - Boolean inputs support `switch`.
 - Geometry inputs cannot be mapped to the configuration panel.
 
-The `sumMaximumByEnum` constraint limits the combined value of two or more number inputs according
-to the selected value of an enum input:
+The number-array control stores related values and their total limit together:
 
 ```json
 {
-  "type": "sumMaximumByEnum",
-  "inputIds": ["big-shelves", "small-shelves"],
-  "selectorInputId": "post-height",
-  "maximums": {
-    "1200 mm": 4,
-    "1400 mm": 5
-  }
+  "id": "shelf-counts-control",
+  "inputId": "shelf-counts",
+  "label": "Shelves by size",
+  "type": "numberArray",
+  "labels": ["Big shelves", "Small shelves"],
+  "total": 6,
+  "step": 1
 }
 ```
-
-Every selector option requires exactly one non-negative finite maximum. Constrained inputs must be
-numeric inputs on the same root, and one numeric input cannot belong to multiple constraints. Each constrained
-slider's effective maximum is the group maximum minus the other constrained values. If a selector
-change lowers the maximum below the current total, inputs are reduced in `inputIds` order: earlier
-values are preserved and later values are reduced first. Constrained values must be non-negative.
 
 The configuration-panel editor is available while any root graph is open. It presents that root's
 ordered control list and lets authors manually add a predefined compatible UI item, bind it to an
 unused root input, configure its presentation settings, drag it into display order, or remove it.
-Its Constraints section can add or remove `sumMaximumByEnum` rules, choose the enum selector, select
-at least two number inputs, reorder their preservation priority, and edit the maximum for every enum
-option. Number inputs already used by another constraint are disabled. Creating a constraint starts
-with the first two available number inputs and initializes every maximum to their current total, so
-the document remains valid while the author configures the rule.
+Number-array items additionally edit their value labels, item count, step, and shared total.
 Public inputs for all graphs are created, configured, and removed as nodes on the canvas. A color
 input stores only an arbitrary `#RRGGBB` default, edited with an RGB picker on its Graph Input node.
 When a root color input is exposed to customers, its configuration control owns and edits the
@@ -151,8 +143,8 @@ Application validation enforces rules that JSON Schema cannot express:
 10. Configuration controls target compatible inputs on their owning root only.
 11. Every color input and stored color value uses `#RRGGBB`; every color configuration control owns
     a non-empty, unique RGB option list containing its current root value.
-12. Configuration constraints reference compatible inputs on their owning root, completely map
-    their selector's options, do not overlap numeric inputs, and are satisfied by persisted values.
+12. Number-array controls have one or more labels and stored values of the same length whose sum
+    does not exceed the control total.
 13. Enum IDs are unique, every enum input resolves one definition, and its default belongs to that
     definition.
 
@@ -163,7 +155,7 @@ only the document shape described here and rebuilds every graph scope against th
 local graph interface index.
 
 Top-level `rootGraphs`, `enums`, and `graphs`; root-level `inputValues` and `configurationPanel`;
-enum-input `enumId`; color-control `options`; and root configuration constraints are required.
+enum-input `enumId`; and color-control `options` are required.
 Documents from the former singular `entryGraphId` / `entryInputValues` shape and documents that
 store choice or color options on graph inputs are intentionally unsupported. No compatibility
 migration is provided.
@@ -181,26 +173,26 @@ configurable inputs, and connections—rather than a reduced smoke-test graph.
 
 The fixture uses five graph definitions and two root records:
 
-- `main` (`Root`) exposes left-section count, separate big- and small-shelf counts, right-section
+- `main` (`Root`) exposes left-section count, one labeled shelf-count array, right-section
   count, finish color, post height, and backplate type. It places two Wing instances and one corner
   assembly into the configured-shelving output.
 - `graph-4` (`Wing`) repeats and combines instances of `graph-1` (`Wing Section`).
-- `graph-1` (`Wing Section`) builds one shelving section with 470 mm lower shelves and 300 mm upper
-  shelves. Separate arrays share a 0.2-unit level spacing; the upper array starts at the lower
-  array's effective count through Array's `startIndex` input. Mesh Selector nodes choose its post
+- `graph-1` (`Wing Section`) builds one shelving section with 470 mm and 300 mm shelf bundles. Mesh
+  Array preserves those ordered bundles, and Multi Array pairs them with the shelf-count array while
+  applying one shared 0.2-unit level step. Mesh Selector nodes choose its post
   height and repeated backplate type from choice inputs forwarded by Wing. Its optional
   `mirror-shelves-and-base` boolean input adds reflected shelf, bracket, and base geometry behind the
   backplate without duplicating posts or panels. A Choice to Number node maps post height to the
   repeated backplate count.
-- `graph-2` (`Corner`) builds the paired-panel MVP corner infill retained in the project.
 - `graph-3` (`Corner 2`) builds the corner assembly currently instantiated by Root. Its post Mesh
   Selectors share Root's post-height choice; its 665 × 400 mm back panels remain fixed because the
   catalog has no matching alternate backplate-type assets. Its own Choice to Number mapping repeats
   those panels high enough to fill the selected posts.
+- `graph-5` (`Root 3`) is a small independent root retained to exercise multi-root configuration.
 
-`main` is the first root and retains the complete MaxShelf configuration panel. `graph-2` is a
-second root with its own shelf-count and finish-color controls, demonstrating that roots persist
-and evaluate independent UI configurations without copying their graph definitions.
+`main` is the first root and retains the complete MaxShelf configuration panel. `graph-5` is a
+second root with its own number slider, demonstrating that roots persist and evaluate independent
+UI configurations without copying their graph definitions.
 
 The fixture defines `post-height` and `backplate-type` once in the document-level enum collection.
 Every Root, Wing, Wing Section, and Corner 2 input that forwards those choices references the same
@@ -209,7 +201,6 @@ definition rather than persisting another option array.
 Every graph exposes the finish-color input, forwards it through child graph instances, combines its
 output geometry, and applies the color with a final Material node. The `main` root binds this input
 to a color configuration control rendered from the allowed list stored on the control. Its panel
-enables all nine standard presets and binds post height and backplate type to select controls. A
-`sumMaximumByEnum` constraint limits the combined big- and small-shelf count from the selected post
-height. The fixture uses generic graph-input, mesh-selector, and enum-to-number nodes rather than
-introducing product-specific nodes.
+enables all nine standard presets and binds post height and backplate type to select controls. Its
+number-array widget labels the two shelf sizes and limits their combined count to six. The fixture
+uses the shelf-oriented Mesh Array and Multi Array nodes for mixed-size placement.

@@ -138,11 +138,11 @@ separate Wing Section subgraph; the section owns one shelf bay, shelf-level repe
 post and base, and the optional terminal post and base.
 The second section is rotated 90 degrees, with its depth axis mirrored so its shelves face away
 from the wall. Both sections are offset by one 1.26-unit shelf span from the corner origin. Section
-count and separate big- and small-shelf counts are forwarded to both wings. Each Wing Section uses
+count and one `[big, small]` shelf-count array are forwarded to both wings. Each Wing Section uses
 470 mm shelves with matching brackets for the lower group and 300 mm shelves with matching brackets
-for the upper group. Both configuration sliders allow zero through three shelves and default to
-three. The upper Array receives the lower count through its `startIndex` input, so changing either
-count preserves one continuous 0.2-unit vertical sequence without a dedicated math node.
+for the upper group. A Mesh Array preserves the two complete shelf/bracket bundles in size order.
+Multi Array pairs those bundles with the two counts and places every copy in one continuous
+0.2-unit vertical sequence.
 
 Wing Section also exposes `Mirror shelves and base`, a boolean authoring input that defaults to
 off. When enabled on a Wing Section instance, it adds a second set of both shelf groups, their
@@ -151,15 +151,10 @@ the geometry across the backplate plane while leaving the posts and backplates s
 node converts the boolean to an optional Array count of zero or one, keeping the behavior within the
 existing persisted node vocabulary.
 
-The combined big- and small-shelf count is limited by post height. The persisted
-`sumMaximumByEnum` configuration constraint maps 1200, 1400, 1600, 2100, 2400, 2600, and 2800 mm
-to total maxima of 4, 5, 6, 9, 10, 11, and 12 shelves respectively. These values follow the
-fixture's approximately 430 mm first shelf height and 200 mm level spacing; the individual slider
-maximum of three still applies. Each slider shows the current combined total and height-specific
-maximum. Reducing post height preserves big shelves first and reduces small shelves as needed.
-The rule is editable from the root graph's Configuration Panel dialog under Constraints. Authors
-can change the post-height selector, participating number inputs, priority order, or per-height
-maximums without editing JSON.
+The shelf-count configuration widget labels the two entries **Big shelves** and **Small shelves**,
+uses whole-number steps, and limits their combined total to six. Editing either entry clamps it to
+the remaining shared total. Authors can add or remove size entries, rename every entry, and change
+the total or step from the root graph's Configuration Panel dialog.
 
 The Wing graph's `include-last-support` input is intentionally not promoted to the Root graph or
 configuration panel. It is forwarded to Wing Section as `Include last post and base`. Section

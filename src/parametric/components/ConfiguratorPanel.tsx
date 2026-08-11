@@ -25,6 +25,7 @@ export function ConfiguratorPanel() {
 		setEnumValue,
 		setColorValue,
 		setBooleanValue,
+		setNumberArrayValue,
 	} = useConfiguration()
 	if (values.length === 0) return null
 
@@ -75,7 +76,36 @@ export function ConfiguratorPanel() {
 							>
 								{value.label}
 							</Label>
-							{value.type === 'number' ? (
+							{value.type === 'numberArray' ? (
+								<div
+									data-id={`configuration-number-array-${value.id}`}
+									className="space-y-2"
+								>
+									{value.value.map((item, index) => (
+										<div key={index} className="grid grid-cols-[1fr_4rem] items-center gap-2">
+											<Label
+												htmlFor={`configuration-${value.id}-${index}`}
+												className="truncate text-[11px] text-muted-foreground"
+												title={value.labels[index]}
+											>
+												{value.labels[index]}
+											</Label>
+											<DraftNumberInput
+												id={`configuration-${value.id}-${index}`}
+												data-id={`configuration-number-array-${value.id}-${index}`}
+												className="h-8 px-2 text-xs tabular-nums"
+												value={item}
+												min={0}
+												step={value.step}
+												onValueChange={(next) => setNumberArrayValue(value.id, index, next)}
+											/>
+										</div>
+									))}
+									<div className="text-right text-[10px] text-muted-foreground">
+										{value.value.reduce((total, item) => total + item, 0)} / {value.total} total
+									</div>
+								</div>
+							) : value.type === 'number' ? (
 								<DraftNumberInput
 									className="h-8 w-full px-2 text-xs tabular-nums"
 									id={`configuration-${value.id}`}
@@ -103,15 +133,6 @@ export function ConfiguratorPanel() {
 									<span className="text-right text-xs tabular-nums text-foreground">
 										{value.value}
 									</span>
-									{value.constraint && (
-										<span
-											data-id={`configuration-slider-limit-${value.id}`}
-											className="col-span-2 text-[10px] text-muted-foreground"
-										>
-											{value.constraint.total} / {value.constraint.maximum} total for{' '}
-											{value.constraint.selectorValue}
-										</span>
-									)}
 								</div>
 							) : value.type === 'enum' ? (
 								<Select

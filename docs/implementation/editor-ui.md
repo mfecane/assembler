@@ -8,16 +8,21 @@
   from the canvas toolbar.
 - The project header presents a breadcrumb-like hierarchy: a folder icon identifies the project,
   followed by a directional separator and a grouped assembly control. The full current-assembly
-  control opens the assembly tree, keeping the dropdown anchored to the name it changes. Each graph
-  definition can appear below multiple roots or instances when those paths share it.
+  control opens the graph selector, keeping the dropdown anchored to the name it changes. The
+  selector presents root graphs as dependency trees. A child definition appears once per containing
+  graph even when that parent has multiple instances of it. Unreferenced non-root definitions are
+  presented separately under **Unused graphs**, with their own dependencies nested beneath them.
 - The assembly selector and adjacent actions button use a shared button group so they read as one
-  control. The actions menu provides Rename assembly, Clear assembly, and Delete assembly. Rename
-  uses a focused dialog. Clearing retains the Output node, while deletion removes the complete
-  assembly; both destructive actions require confirmation. Deletion is unavailable for the final
-  remaining root or an assembly that still has instances. Hovering or focusing the disabled delete
-  action explains the exact restriction, including the referencing assemblies and instance count
-  when applicable. Separate **New root** and **New assembly** actions create top-level products and
-  reusable definitions respectively.
+  control. The actions menu provides Edit graph, Clear assembly, and Delete assembly. Edit graph
+  changes both the graph name and whether it is a root or subgraph. Promoting a subgraph creates an
+  empty root configuration. Demoting a root requires confirmation because it removes that root's
+  saved input values and configuration controls; the graph definition and its nodes
+  remain. The project's only root cannot be demoted. Clearing retains the Output node, while
+  deletion removes the complete assembly; both destructive actions require confirmation. Deletion
+  is unavailable for the final remaining root or an assembly that still has instances. Hovering or
+  focusing the disabled delete action explains the exact restriction, including the referencing
+  assemblies and instance count when applicable. Separate **New root** and **New assembly** actions
+  create top-level products and reusable definitions respectively.
 - Node controls and viewport tools remain beside the content they affect.
 - The Add node menu stays within the viewport and scrolls internally when its node groups exceed
   the available height.
@@ -29,13 +34,15 @@ dialog does not create inputs; it maps compatible inputs from the open root grap
 configurator controls.
 
 The dialog shows the configured UI items rather than an inventory of every graph input. **Add item**
-offers predefined number-field, slider, select, color-picker, and switch items. Adding an item binds
+offers predefined number-field, slider, number-array, select, color-picker, and switch items. Adding an item binds
 it to the first unused compatible root input; its Graph input selector can then link it to another
 unused compatible input. Each root input can back at most one UI item in that root's panel.
 
 Items expose their label, widget type, graph-input binding, and type-specific settings inline:
 
 - Number inputs support number fields and sliders.
+- Number-array inputs support a multi-value number editor with author-defined labels, item count,
+  step, and shared total maximum.
 - Choice inputs support selects.
 - Color inputs support color controls. Each control edits the non-empty RGB choice list shown in
   the runtime configurator; graph and graph-instance nodes remain unrestricted RGB pickers.

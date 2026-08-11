@@ -11,7 +11,9 @@ export interface GraphValue<T = unknown> {
 }
 
 export type GeometryValue = GraphValue<SceneMetadata> & { valueType: 'geometry' }
+export type MeshArrayValue = GraphValue<SceneMetadata[]> & { valueType: 'meshArray' }
 export type NumberValue = GraphValue<number> & { valueType: 'number' }
+export type NumberArrayValue = GraphValue<number[]> & { valueType: 'numberArray' }
 export type EnumValue = GraphValue<string> & { valueType: 'enum' }
 export type ColorValue = GraphValue<string> & { valueType: 'color' }
 export type BooleanValue = GraphValue<boolean> & { valueType: 'boolean' }
