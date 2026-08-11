@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ChevronDown, SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DraftNumberInput } from '@/parametric/components/DraftNumberInput'
-import { PresetColorSelect } from '@/parametric/components/PresetColorSelect'
+import { ColorOptionSelect } from '@/parametric/components/ColorOptionSelect'
 import { useConfiguration } from '@/parametric/hooks/useConfiguration'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
@@ -18,6 +18,8 @@ import {
 export function ConfiguratorPanel() {
 	const [expanded, setExpanded] = useState(true)
 	const {
+		rootGraphId,
+		rootLabel,
 		values,
 		setNumberValue,
 		setEnumValue,
@@ -29,6 +31,7 @@ export function ConfiguratorPanel() {
 	return (
 		<div
 			data-id="configuration-panel"
+			data-root-graph-id={rootGraphId}
 			className="absolute right-3 top-3 w-72 overflow-hidden rounded-lg border border-border bg-surface shadow-md"
 		>
 			<Button
@@ -41,7 +44,12 @@ export function ConfiguratorPanel() {
 				onClick={() => setExpanded((current) => !current)}
 			>
 				<SlidersHorizontal className="text-muted-foreground" />
-				<span className="flex-1 text-left text-sm font-semibold">Configuration</span>
+				<span
+					className="flex-1 truncate text-left text-sm font-semibold"
+					title={`Configuration for ${rootLabel}`}
+				>
+					Configuration · {rootLabel}
+				</span>
 				<ChevronDown
 					className={`text-muted-foreground transition-transform ${
 						expanded ? 'rotate-180' : ''
@@ -123,7 +131,7 @@ export function ConfiguratorPanel() {
 									</SelectContent>
 								</Select>
 							) : value.type === 'color' ? (
-								<PresetColorSelect
+								<ColorOptionSelect
 									id={`configuration-${value.id}`}
 									value={value.value}
 									onValueChange={(next) => setColorValue(value.id, next)}

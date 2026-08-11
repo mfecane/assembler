@@ -21,6 +21,8 @@ import { GraphInstanceGraphNode } from '@/parametric/model/GraphNode'
 interface GraphTreeItem {
 	key: string
 	graphId: string
+	rootGraphId?: string
+	root: boolean
 	label: string
 	children: GraphTreeItem[]
 }
@@ -32,18 +34,18 @@ export function GraphTree({
 	controller: EditorController
 	disabled?: boolean
 }) {
-	const { document, activeGraphId, revision } = useSyncExternalStore(
+	const { document, activeGraphId, activeRootGraphId, revision } = useSyncExternalStore(
 		controller.subscribe,
 		controller.getSnapshot
 	)
 	const activeGraph = document.requireGraph(activeGraphId)
 	const [open, setOpen] = useState(false)
-	const { root, unused } = useMemo(
+	const { roots, unused } = useMemo(
 		() => createGraphTree(document),
 		[document, revision]
 	)
-	const openGraph = (graphId: string) => {
-		controller.openGraph(graphId)
+	const openGraph = (graphId: string, rootGraphId?: string) => {
+		controller.openGraph(graphId, rootGraphId)
 		setOpen(false)
 	}
 
@@ -78,13 +80,19 @@ export function GraphTree({
 				className="max-h-[min(32rem,70vh)] w-72 overflow-auto p-2"
 			>
 				<div data-id="graph-tree" role="tree" aria-label="Project assemblies">
-					<TreeRow
-						item={root}
-						depth={0}
-						activeGraphId={activeGraphId}
-						onOpen={openGraph}
-						entry
-					/>
+					<div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+						Root assemblies
+					</div>
+					{roots.map((item) => (
+						<TreeRow
+							key={item.key}
+							item={item}
+							depth={0}
+							activeGraphId={activeGraphId}
+							activeRootGraphId={activeRootGraphId}
+							onOpen={openGraph}
+						/>
+					))}
 					{unused.length > 0 && (
 						<div className="mt-3 border-t border-border pt-3">
 							<div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -96,6 +104,7 @@ export function GraphTree({
 									item={item}
 									depth={0}
 									activeGraphId={activeGraphId}
+									activeRootGraphId={activeRootGraphId}
 									onOpen={openGraph}
 								/>
 							))}
@@ -111,18 +120,19 @@ function TreeRow({
 	item,
 	depth,
 	activeGraphId,
+	activeRootGraphId,
 	onOpen,
-	entry = false,
 }: {
 	item: GraphTreeItem
 	depth: number
 	activeGraphId: string
-	onOpen: (graphId: string) => void
-	entry?: boolean
+	activeRootGraphId: string
+	onOpen: (graphId: string, rootGraphId?: string) => void
 }) {
 	const active = item.graphId === activeGraphId
+		&& (!item.rootGraphId || item.rootGraphId === activeRootGraphId)
 	return (
-		<div>
+		<div data-id={`graph-tree-branch-${item.key}`}>
 			<Button
 				data-id={`graph-tree-item-${item.key}`}
 				type="button"
@@ -133,11 +143,11 @@ function TreeRow({
 					active ? 'bg-input text-primary' : 'text-muted-foreground'
 				}`}
 				style={{ paddingLeft: 8 + depth * 14 }}
-				onClick={() => onOpen(item.graphId)}
+				onClick={() => onOpen(item.graphId, item.rootGraphId)}
 				title={item.label}
 			>
 				{depth > 0 && <ChevronRight className="h-3 w-3 opacity-50" />}
-				{entry ? <FileBox className="h-3.5 w-3.5" /> : <Network className="h-3.5 w-3.5" />}
+				{item.root ? <FileBox className="h-3.5 w-3.5" /> : <Network className="h-3.5 w-3.5" />}
 				<span className="truncate">{item.label}</span>
 			</Button>
 			{item.children.map((child) => (
@@ -146,6 +156,7 @@ function TreeRow({
 					item={child}
 					depth={depth + 1}
 					activeGraphId={activeGraphId}
+					activeRootGraphId={activeRootGraphId}
 					onOpen={onOpen}
 				/>
 			))}
@@ -154,29 +165,41 @@ function TreeRow({
 }
 
 function createGraphTree(document: EditorControllerSnapshot['document']): {
-	root: GraphTreeItem
+	roots: GraphTreeItem[]
 	unused: GraphTreeItem[]
 } {
-	const included = new Set<string>()
-	const build = (graphId: string, entry = false): GraphTreeItem | null => {
-		if (included.has(graphId)) return null
+	const includedByRoots = new Set<string>()
+	const build = (
+		graphId: string,
+		key: string,
+		rootGraphId: string | undefined,
+		path: ReadonlySet<string>,
+		root: boolean
+	): GraphTreeItem => {
+		if (path.has(graphId)) {
+			throw new Error(
+				`Assembly selector found recursive graph reference at "${graphId}" in path ` +
+					JSON.stringify([...path])
+			)
+		}
 		const graph = document.requireGraph(graphId)
-		included.add(graphId)
+		if (rootGraphId) includedByRoots.add(graphId)
+		const nextPath = new Set(path).add(graphId)
 		const children = graph.model.getNodes()
 			.filter((node): node is GraphInstanceGraphNode => node instanceof GraphInstanceGraphNode)
 			.flatMap((node) => {
 				const childId = node.getGraphId()
 				if (!document.getGraph(childId)) return []
-				const item = build(childId)
-				return item ? [item] : []
+				return [build(childId, `${key}/${node.id}`, rootGraphId, nextPath, false)]
 			})
-		return { key: entry ? `entry/${graphId}` : graphId, graphId, label: graph.label, children }
+		return { key, graphId, rootGraphId, root, label: graph.label, children }
 	}
 
-	const entryId = document.getEntryGraphId()
-	const root = build(entryId, true)
-	if (!root) throw new Error(`Entry assembly "${entryId}" was already added to its own selector tree`)
-	const remaining = document.getGraphs().filter((graph) => !included.has(graph.id))
+	const roots = document.getRootGraphs().map((root) => {
+		const graphId = root.getGraphId()
+		return build(graphId, `root/${graphId}`, graphId, new Set(), true)
+	})
+	const remaining = document.getGraphs().filter((graph) => !includedByRoots.has(graph.id))
 	const remainingIds = new Set(remaining.map((graph) => graph.id))
 	const referencedByRemaining = new Set(
 		remaining.flatMap((graph) =>
@@ -188,13 +211,6 @@ function createGraphTree(document: EditorControllerSnapshot['document']): {
 	)
 	const unused = remaining
 		.filter((graph) => !referencedByRemaining.has(graph.id))
-		.flatMap((graph) => {
-			const item = build(graph.id)
-			return item ? [item] : []
-		})
-	remaining.forEach((graph) => {
-		const item = build(graph.id)
-		if (item) unused.push(item)
-	})
-	return { root, unused }
+		.map((graph) => build(graph.id, `unused/${graph.id}`, undefined, new Set(), false))
+	return { roots, unused }
 }

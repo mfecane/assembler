@@ -1,7 +1,7 @@
 import { Position, type NodeProps } from '@xyflow/react'
 import { GeometryNodeActions } from '@/parametric/components/GeometryNodeActions'
 import { NodeHeader } from '@/parametric/components/NodeHeader'
-import { PresetColorSelect } from '@/parametric/components/PresetColorSelect'
+import { RgbColorInput } from '@/parametric/components/RgbColorInput'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 import { useMaterialNode } from '@/parametric/hooks/useGraphNode'
@@ -31,10 +31,12 @@ export function MaterialNode({ id }: NodeProps<ParametricFlowNode>) {
 					valueType="color"
 					style={{ top: '50%' }}
 				/>
-				<PresetColorSelect
+				<RgbColorInput
+					dataId={`material-node-color-${id}`}
 					value={binding.color}
 					onValueChange={binding.setColor}
 					disabled={binding.colorConnected}
+					ariaLabel="Material RGB color"
 				/>
 			</div>
 			<TypedHandle id="geometry" type="source" position={Position.Right} valueType="geometry" />

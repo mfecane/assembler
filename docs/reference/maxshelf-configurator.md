@@ -144,6 +144,13 @@ for the upper group. Both configuration sliders allow zero through three shelves
 three. The upper Array receives the lower count through its `startIndex` input, so changing either
 count preserves one continuous 0.2-unit vertical sequence without a dedicated math node.
 
+Wing Section also exposes `Mirror shelves and base`, a boolean authoring input that defaults to
+off. When enabled on a Wing Section instance, it adds a second set of both shelf groups, their
+brackets, and every section base on the opposite side of the backplate. The mirrored branch reflects
+the geometry across the backplate plane while leaving the posts and backplates single-sided. A Sum
+node converts the boolean to an optional Array count of zero or one, keeping the behavior within the
+existing persisted node vocabulary.
+
 The combined big- and small-shelf count is limited by post height. The persisted
 `sumMaximumByEnum` configuration constraint maps 1200, 1400, 1600, 2100, 2400, 2600, and 2800 mm
 to total maxima of 4, 5, 6, 9, 10, 11, and 12 shelves respectively. These values follow the
@@ -159,8 +166,8 @@ configuration panel. It is forwarded to Wing Section as `Include last post and b
 instances and their far bracket repeat along negative local X. Wing A disables the terminal support
 while Wing B keeps it enabled.
 
-The Root graph also exposes `Finish color` as a color configuration control. Its allowed list is
-configured on the Root color-input node and currently enables Sand, White, Charcoal, Red, Orange,
+The Root graph also exposes `Finish color` as a color configuration control. Its available list is
+configured on that item in the Configuration Panel dialog and currently enables Sand, White, Charcoal, Red, Orange,
 Yellow, Green, Blue, and Purple. The selected color is forwarded through every graph-instance
 boundary. Each graph combines its output geometry and applies the forwarded color through its final
 Material node, so the finish covers every emitted mesh.
@@ -184,9 +191,9 @@ post, including heights that are not exact multiples of the available panel heig
 
 Asset choice still needs no product-specific node. Enum graph inputs carry selections across graph
 boundaries and Mesh Selector performs enum-to-asset mapping. Dynamic repetition does require the
-generic Enum to Number node because Array accepts a numeric count and the selected post height is an
-enum. This node stores editable enum-to-number mappings and can be reused anywhere a choice must
-drive a numeric graph input.
+generic Choice to Number node because Array accepts a numeric count and the selected post height is
+stored internally as an enum. This node stores editable choice-to-number mappings and can be reused
+anywhere a choice must drive a numeric graph input.
 
 `src/data/defaultGraph.json`, which is consumed directly by the local seed script, mirrors the same
 graph document.

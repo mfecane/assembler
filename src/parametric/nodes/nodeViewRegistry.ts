@@ -70,12 +70,12 @@ export const nodeViewPresentation: Record<string, NodeViewPresentation> = {
 	},
 	enumNumberMap: {
 		group: 'Operations',
-		description: 'Map enum values to numbers',
+		description: 'Map choices to numbers',
 		icon: ListFilter,
 	},
 	color: {
 		group: 'Inputs',
-		description: 'Emit a stored preset color',
+		description: 'Emit a stored RGB color',
 		icon: Palette,
 	},
 	primitive: {
@@ -90,7 +90,7 @@ export const nodeViewPresentation: Record<string, NodeViewPresentation> = {
 	},
 	meshSelector: {
 		group: 'Geometry',
-		description: 'Map enum values to meshes',
+		description: 'Map choices to meshes',
 		icon: Boxes,
 	},
 	material: {

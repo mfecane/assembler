@@ -31,6 +31,7 @@ import {
 	SelectValue,
 } from '@/components/ui/select'
 import { DraftNumberInput } from '@/parametric/components/DraftNumberInput'
+import { RgbColorInput } from '@/parametric/components/RgbColorInput'
 import { ConfigurationConstraintEditor } from '@/parametric/components/ConfigurationConstraintEditor'
 import { useEditorController } from '@/parametric/editor/react/EditorContext'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
@@ -39,6 +40,11 @@ import type {
 	ConfigurationPanelControl,
 	GraphInputDefinition,
 } from '@/parametric/model/GraphDocumentModel'
+import {
+	defaultMaterialColor,
+	isRgbColor,
+	presetColorValues,
+} from '@/parametric/model/ColorPalette'
 
 export function ConfigurationPanelEditorDialog({
 	open,
@@ -52,17 +58,18 @@ export function ConfigurationPanelEditorDialog({
 	const [addOpen, setAddOpen] = useState(false)
 	const [dragOrder, setDragOrder] = useState<string[] | null>(null)
 	const dragOrderRef = useRef<string[] | null>(null)
-	const isEntry = activeGraphId === graphDocument.getEntryGraphId()
-	const inputs = graphDocument.getEntryGraph().inputs.filter(
+	const isRoot = graphDocument.isRootGraph(activeGraphId)
+	const rootGraph = graphDocument.requireGraph(activeGraphId)
+	const inputs = rootGraph.inputs.filter(
 		(input) => input.valueType !== 'geometry'
 	)
-	const controls = graphDocument.getConfigurationControls()
+	const controls = isRoot ? graphDocument.getConfigurationControls(activeGraphId) : []
 	const displayedControls = dragOrder
 		? dragOrder.flatMap((id) => controls.find((control) => control.id === id) ?? [])
 		: controls
 
 	const setControls = (next: ConfigurationPanelControl[]) => {
-		controller.setConfigurationControls(next)
+		controller.setConfigurationControls(activeGraphId, next)
 	}
 
 	const updateControl = (
@@ -75,7 +82,14 @@ export function ConfigurationPanelEditorDialog({
 	const addControl = (type: ControlType) => {
 		const input = findAvailableInput(type, inputs, controls)
 		if (!input) return
-		setControls([...controls, createControl(input, controls, undefined, type)])
+		const control = createControl(input, controls, undefined, type)
+		const currentValue = graphDocument.getRootInputValue(activeGraphId, input.id)
+		const initializedControl = control.type === 'color'
+			&& typeof currentValue === 'string'
+			&& isRgbColor(currentValue)
+			? { ...control, options: [currentValue.toLowerCase()] }
+			: control
+		setControls([...controls, initializedControl])
 		setAddOpen(false)
 	}
 
@@ -101,7 +115,7 @@ export function ConfigurationPanelEditorDialog({
 		setControls(order.flatMap((id) => controls.find((control) => control.id === id) ?? []))
 	}, [controls])
 
-	if (!isEntry) return null
+	if (!isRoot) return null
 
 	return (
 		<Dialog open={open} onOpenChange={(nextOpen) => {
@@ -119,9 +133,9 @@ export function ConfigurationPanelEditorDialog({
 				<DialogHeader className="border-b border-border px-6 py-5">
 					<div className="flex items-start justify-between gap-4 pr-8">
 						<div>
-							<DialogTitle>Configuration panel</DialogTitle>
+							<DialogTitle>Configuration panel · {rootGraph.label}</DialogTitle>
 							<DialogDescription>
-								Configure root input controls and cross-input value constraints.
+								Configure this root's input controls and cross-input value constraints.
 							</DialogDescription>
 						</div>
 						<AddItemPopover
@@ -139,12 +153,12 @@ export function ConfigurationPanelEditorDialog({
 						<div>
 							<h3 className="text-sm font-semibold">UI items</h3>
 							<p className="text-xs text-muted-foreground">
-								Bind entry inputs to controls and drag them into display order.
+								Bind root inputs to controls and drag them into display order.
 							</p>
 						</div>
 						{inputs.length === 0 ? (
 							<EmptyState>
-								Add number, enum, color, or boolean input nodes to the root assembly first.
+								Add number, choice, color, or boolean input nodes to the root assembly first.
 							</EmptyState>
 						) : controls.length === 0 ? (
 							<EmptyState>
@@ -436,7 +450,87 @@ function ControlEditor({
 						/>
 					</div>
 				)}
+
+				{control.type === 'color' && (
+					<ColorOptionsEditor
+						controlId={control.id}
+						options={control.options}
+						onChange={(options) => onChange({ ...control, options })}
+					/>
+				)}
 			</div>
+		</div>
+	)
+}
+
+function ColorOptionsEditor({
+	controlId,
+	options,
+	onChange,
+}: {
+	controlId: string
+	options: string[]
+	onChange: (options: string[]) => void
+}) {
+	return (
+		<div
+			data-id={`configuration-control-colors-${controlId}`}
+			className="space-y-2 sm:col-span-2"
+		>
+			<div>
+				<Label className="text-xs text-muted-foreground">Available colors</Label>
+				<p className="text-[10px] text-muted-foreground">
+					These are the choices shown in the customer configuration panel.
+				</p>
+			</div>
+			<div className="grid gap-2 sm:grid-cols-2">
+				{options.map((option, index) => (
+					<div
+						key={index}
+						data-id={`configuration-color-${controlId}-${index}`}
+						className="flex items-center gap-2"
+					>
+						<RgbColorInput
+							dataId={`configuration-color-value-${controlId}-${index}`}
+							value={option}
+							onValueChange={(value) => {
+								if (options.some((candidate, candidateIndex) => (
+									candidateIndex !== index && candidate === value
+								))) return
+								onChange(options.map((candidate, candidateIndex) => (
+									candidateIndex === index ? value : candidate
+								)))
+							}}
+							ariaLabel={`Available color ${index + 1}`}
+							className="min-w-0 flex-1"
+						/>
+						<Button
+							data-id={`configuration-remove-color-${controlId}-${index}`}
+							type="button"
+							variant="ghost"
+							size="icon"
+							className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+							disabled={options.length === 1}
+							onClick={() => onChange(options.filter((_, candidateIndex) => (
+								candidateIndex !== index
+							)))}
+							aria-label={`Remove available color ${option}`}
+						>
+							<Trash2 />
+						</Button>
+					</div>
+				))}
+			</div>
+			<Button
+				data-id={`configuration-add-color-${controlId}`}
+				type="button"
+				variant="outline"
+				size="sm"
+				onClick={() => onChange([...options, nextAvailableColor(options)])}
+			>
+				<Plus />
+				Add color
+			</Button>
 		</div>
 	)
 }
@@ -515,7 +609,7 @@ function findAvailableInput(
 
 function requiredInputLabel(type: ControlType): string {
 	if (type === 'number' || type === 'slider') return 'number'
-	if (type === 'select') return 'enum'
+	if (type === 'select') return 'choice'
 	if (type === 'color') return 'color'
 	return 'boolean'
 }
@@ -538,7 +632,23 @@ function createControl(
 	if (type === 'number') return { ...base, type, step: 0.1 }
 	if (type === 'select') return { ...base, type }
 	if (type === 'switch') return { ...base, type }
-	return { ...base, type: 'color' }
+	const defaultColor = typeof input.defaultValue === 'string' && isRgbColor(input.defaultValue)
+		? input.defaultValue.toLowerCase()
+		: defaultMaterialColor
+	return { ...base, type: 'color', options: [defaultColor] }
+}
+
+function nextAvailableColor(options: readonly string[]): string {
+	const preset = presetColorValues.find((color) => !options.includes(color))
+	if (preset) return preset
+	for (let value = 0; value <= 0xffffff; value += 1) {
+		const color = `#${value.toString(16).padStart(6, '0')}`
+		if (!options.includes(color)) return color
+	}
+	throw new Error(
+		`Cannot add another configuration color because all 16,777,216 RGB values are already used. `
+		+ `Current control options: ${JSON.stringify(options)}.`
+	)
 }
 
 function createControlId(inputId: string, controls: ConfigurationPanelControl[]): string {

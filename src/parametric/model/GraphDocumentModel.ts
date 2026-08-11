@@ -1,11 +1,17 @@
 import type { GraphValueType } from '@/parametric/model/GraphNode'
 import type { GraphModel } from '@/parametric/model/GraphModel'
 import {
+	EnumDefinition,
+	type EnumDefinitionSnapshot,
+} from '@/parametric/model/EnumDefinition'
+import {
 	createConfigurationConstraint,
 	type ConfigurationConstraintDefinition,
 	type ConfigurationConstraintState,
 	type SumMaximumByEnumConstraint,
 } from '@/parametric/model/ConfigurationConstraint'
+import { isRgbColor } from '@/parametric/model/ColorPalette'
+import { RootGraph } from '@/parametric/model/RootGraph'
 
 export type GraphInputValue = number | string | boolean
 
@@ -14,7 +20,7 @@ export interface GraphInputDefinition {
 	label: string
 	valueType: GraphValueType
 	defaultValue?: GraphInputValue
-	options?: string[]
+	enumId?: string
 }
 
 export interface GraphOutputDefinition {
@@ -49,7 +55,7 @@ export type ConfigurationPanelControl =
 		step: number
 	})
 	| (ConfigurationPanelControlBase & { type: 'select' })
-	| (ConfigurationPanelControlBase & { type: 'color' })
+	| (ConfigurationPanelControlBase & { type: 'color'; options: string[] })
 	| (ConfigurationPanelControlBase & { type: 'switch' })
 
 export type ConfigurationField =
@@ -70,41 +76,180 @@ export type ConfigurationField =
 
 export class GraphDocumentModel {
 	private readonly graphs = new Map<string, GraphDefinition>()
-	private readonly entryInputValues = new Map<string, GraphInputValue>()
-	private configurationControls: ConfigurationPanelControl[]
-	private configurationConstraints: SumMaximumByEnumConstraint[]
+	private readonly enumDefinitions = new Map<string, EnumDefinition>()
+	private readonly rootGraphs = new Map<string, RootGraph>()
 
 	public constructor(
-		private readonly entryGraphId: string,
-		graphs: GraphDefinition[],
-		entryInputValues: Record<string, GraphInputValue> = {},
-		configurationControls: ConfigurationPanelControl[] = [],
-		configurationConstraints: ConfigurationConstraintDefinition[] = []
+		rootGraphs: RootGraph[],
+		enumDefinitions: EnumDefinitionSnapshot[],
+		graphs: GraphDefinition[]
 	) {
+		for (const definition of enumDefinitions) {
+			if (this.enumDefinitions.has(definition.id)) {
+				throw new Error(`Duplicate choice-set ID "${definition.id}"`)
+			}
+			this.enumDefinitions.set(
+				definition.id,
+				new EnumDefinition(definition.id, definition.name, definition.options)
+			)
+		}
 		for (const graph of graphs) {
 			if (this.graphs.has(graph.id)) throw new Error(`Duplicate graph ID "${graph.id}"`)
 			this.graphs.set(graph.id, graph)
 		}
-		if (!this.graphs.has(entryGraphId)) throw new Error(`Unknown entry graph "${entryGraphId}"`)
-		for (const [inputId, value] of Object.entries(entryInputValues)) {
-			const input = this.getEntryGraph().inputs.find((candidate) => candidate.id === inputId)
-			if (!input || !isInputValueCompatible(input, value)) {
-				throw new Error(`Invalid value for entry input "${inputId}"`)
+		if (rootGraphs.length === 0) throw new Error('Graph document requires at least one root graph')
+		for (const root of rootGraphs) {
+			const graphId = root.getGraphId()
+			if (this.rootGraphs.has(graphId)) throw new Error(`Duplicate root graph "${graphId}"`)
+			const graph = this.graphs.get(graphId)
+			if (!graph) throw new Error(`Root references unknown graph "${graphId}"`)
+			for (const [inputId, value] of Object.entries(root.getInputValues())) {
+				const input = graph.inputs.find((candidate) => candidate.id === inputId)
+				if (!input || !this.isInputValueCompatible(input, value)) {
+					throw new Error(
+						`Root graph "${graphId}" has invalid value ${JSON.stringify(value)} ` +
+							`for input "${inputId}"`
+					)
+				}
 			}
-			this.entryInputValues.set(inputId, value)
+			for (const control of root.getConfigurationControls()) assertColorControlOptions(control)
+			this.rootGraphs.set(graphId, root)
 		}
-		this.configurationControls = configurationControls.map((control) => ({ ...control }))
-		this.configurationConstraints = configurationConstraints.map(createConfigurationConstraint)
-		this.validateReferences()
-		this.validateConfigurationValues()
+		for (const root of this.rootGraphs.values()) {
+			this.validateReferences(root)
+			this.validateConfigurationValues(root)
+		}
 	}
 
-	public getEntryGraphId(): string {
-		return this.entryGraphId
+	public getDefaultRootGraphId(): string {
+		const graphId = this.rootGraphs.keys().next().value
+		if (!graphId) throw new Error('Graph document has no root graphs')
+		return graphId
 	}
 
-	public getEntryGraph(): GraphDefinition {
-		return this.requireGraph(this.entryGraphId)
+	public getRootGraphs(): RootGraph[] {
+		return [...this.rootGraphs.values()]
+	}
+
+	public getRootGraph(graphId: string): RootGraph | undefined {
+		return this.rootGraphs.get(graphId)
+	}
+
+	public requireRootGraph(graphId: string): RootGraph {
+		const root = this.rootGraphs.get(graphId)
+		if (!root) throw new Error(`Graph "${graphId}" is not a root graph`)
+		return root
+	}
+
+	public isRootGraph(graphId: string): boolean {
+		return this.rootGraphs.has(graphId)
+	}
+
+	public getEnumDefinitions(): EnumDefinitionSnapshot[] {
+		return [...this.enumDefinitions.values()].map((definition) => definition.toSnapshot())
+	}
+
+	public getEnumDefinition(enumId: string): EnumDefinitionSnapshot | undefined {
+		return this.enumDefinitions.get(enumId)?.toSnapshot()
+	}
+
+	public requireEnumDefinition(enumId: string): EnumDefinitionSnapshot {
+		const definition = this.getEnumDefinition(enumId)
+		if (!definition) throw new Error(`Unknown choice set "${enumId}"`)
+		return definition
+	}
+
+	public getEnumOptions(enumId: string): string[] {
+		return this.requireEnumEntity(enumId).getOptions()
+	}
+
+	public getInputOptions(input: GraphInputDefinition): string[] {
+		if (input.valueType === 'enum') return this.getEnumOptions(input.enumId ?? '')
+		return []
+	}
+
+	public getEnumUsageCount(enumId: string): number {
+		return this.getGraphs().reduce(
+			(count, graph) => count + graph.inputs.filter((input) => input.enumId === enumId).length,
+			0
+		)
+	}
+
+	public addEnumDefinition(definition: EnumDefinitionSnapshot): void {
+		if (this.enumDefinitions.has(definition.id)) {
+			throw new Error(`Cannot add duplicate choice set "${definition.id}".`)
+		}
+		if (
+			!definition.id.trim()
+			|| !definition.name.trim()
+			|| definition.options.length === 0
+			|| definition.options.some((option) => !option || option.trim() !== option)
+			|| new Set(definition.options).size !== definition.options.length
+		) {
+			throw new Error(
+				`Cannot add choice set ${JSON.stringify(definition)}: ID and name must be non-empty, and `
+				+ 'options must be non-empty, trimmed, and unique.'
+			)
+		}
+		this.enumDefinitions.set(
+			definition.id,
+			new EnumDefinition(definition.id, definition.name, definition.options)
+		)
+	}
+
+	public renameEnum(enumId: string, name: string): void {
+		this.requireEnumEntity(enumId).setName(name)
+	}
+
+	public addEnumOption(enumId: string, option: string): void {
+		this.requireEnumEntity(enumId).addOption(option)
+		for (const root of this.rootGraphs.values()) this.reconcileConfigurationConstraints(root)
+	}
+
+	public renameEnumOption(enumId: string, index: number, option: string): string {
+		const definition = this.requireEnumEntity(enumId)
+		const normalizedOption = option.trim()
+		const previousOption = definition.renameOption(index, normalizedOption)
+		if (previousOption === normalizedOption) return previousOption
+		this.reconcileEnumInputValues(enumId, previousOption, normalizedOption)
+		for (const root of this.rootGraphs.values()) {
+			this.reconcileConfigurationConstraints(root, {
+				enumId,
+				previousOption,
+				nextOption: normalizedOption,
+			})
+		}
+		return previousOption
+	}
+
+	public removeEnumOption(enumId: string, index: number): string {
+		const definition = this.requireEnumEntity(enumId)
+		const removedOption = definition.removeOption(index)
+		this.reconcileEnumInputValues(enumId)
+		for (const root of this.rootGraphs.values()) this.reconcileConfigurationConstraints(root)
+		return removedOption
+	}
+
+	public setInputEnum(graphId: string, inputId: string, enumId: string): string | undefined {
+		this.requireEnumEntity(enumId)
+		const input = this.graphs.get(graphId)?.inputs.find((candidate) => candidate.id === inputId)
+		if (input?.valueType !== 'enum') return undefined
+		const previousEnumId = input.enumId
+		input.enumId = enumId
+		const options = this.getEnumOptions(enumId)
+		if (typeof input.defaultValue !== 'string' || !options.includes(input.defaultValue)) {
+			input.defaultValue = options[0]
+		}
+		const root = this.rootGraphs.get(graphId)
+		if (root) {
+			const current = root.getInputValue(inputId)
+			if (current !== undefined && !this.isInputValueCompatible(input, current)) {
+				root.setInputValue(inputId, input.defaultValue)
+			}
+			this.reconcileConfigurationConstraints(root)
+		}
+		if (previousEnumId && previousEnumId !== enumId) this.removeEnumIfUnused(previousEnumId)
+		return previousEnumId
 	}
 
 	public getGraphs(): GraphDefinition[] {
@@ -137,6 +282,14 @@ export class GraphDocumentModel {
 		this.graphs.set(graph.id, graph)
 	}
 
+	public addRootGraph(graphId: string): void {
+		if (!this.graphs.has(graphId)) throw new Error(`Cannot add unknown graph "${graphId}" as a root`)
+		if (this.rootGraphs.has(graphId)) throw new Error(`Graph "${graphId}" is already a root`)
+		const root = new RootGraph(graphId, {}, [], [])
+		this.rootGraphs.set(graphId, root)
+		this.validateReferences(root)
+	}
+
 	public renameGraph(graphId: string, label: string): boolean {
 		const graph = this.graphs.get(graphId)
 		if (!graph || !label.trim()) return false
@@ -145,8 +298,14 @@ export class GraphDocumentModel {
 	}
 
 	public removeGraph(graphId: string): boolean {
-		if (graphId === this.entryGraphId || !this.graphs.has(graphId)) return false
+		if (!this.graphs.has(graphId)) return false
+		if (this.rootGraphs.has(graphId) && this.rootGraphs.size === 1) return false
+		const enumIds = this.graphs.get(graphId)?.inputs.flatMap((input) => (
+			input.enumId ? [input.enumId] : []
+		)) ?? []
+		this.rootGraphs.delete(graphId)
 		this.graphs.delete(graphId)
+		for (const enumId of enumIds) this.removeEnumIfUnused(enumId)
 		return true
 	}
 
@@ -166,18 +325,29 @@ export class GraphDocumentModel {
 		if (!input) return false
 		if (update.label !== undefined) input.label = update.label
 		if (update.defaultValue !== undefined) input.defaultValue = update.defaultValue
-		if (update.options !== undefined) input.options = [...update.options]
-		if (graphId === this.entryGraphId) {
-			const current = this.entryInputValues.get(inputId)
-			if (current !== undefined && !isInputValueCompatible(input, current)) {
-				if (input.defaultValue !== undefined && isInputValueCompatible(input, input.defaultValue)) {
-					this.entryInputValues.set(inputId, input.defaultValue)
+		const root = this.rootGraphs.get(graphId)
+		if (root) {
+			const current = root.getInputValue(inputId)
+			if (current !== undefined && !this.isInputValueCompatible(input, current)) {
+				if (input.defaultValue !== undefined && this.isInputValueCompatible(input, input.defaultValue)) {
+					root.setInputValue(inputId, input.defaultValue)
 				} else {
-					this.entryInputValues.delete(inputId)
+					root.removeInputValue(inputId)
 				}
 			}
-			this.validateReferences()
-			this.validateConfigurationValues()
+			const colorControl = input.valueType === 'color'
+				? root.getConfigurationControls()
+					.filter(isColorConfigurationControl)
+					.find((control) => control.inputId === input.id)
+				: undefined
+			if (
+				colorControl
+				&& !colorControl.options.includes(this.getRootInputValue(graphId, input.id) as string)
+			) {
+				root.setInputValue(input.id, colorControl.options[0])
+			}
+			this.validateReferences(root)
+			this.validateConfigurationValues(root)
 		}
 		return true
 	}
@@ -187,65 +357,81 @@ export class GraphDocumentModel {
 		if (!graph) return false
 		const index = graph.inputs.findIndex((input) => input.id === inputId)
 		if (index < 0) return false
-		graph.inputs.splice(index, 1)
-		if (graphId === this.entryGraphId) {
-			this.entryInputValues.delete(inputId)
-			this.configurationControls = this.configurationControls.filter(
+		const [removedInput] = graph.inputs.splice(index, 1)
+		const root = this.rootGraphs.get(graphId)
+		if (root) {
+			root.removeInputValue(inputId)
+			root.setConfigurationControls(root.getConfigurationControls().filter(
 				(control) => control.inputId !== inputId
-			)
-			this.configurationConstraints = this.configurationConstraints.filter(
+			))
+			root.setConfigurationConstraints(root.getConfigurationConstraints().filter(
 				(constraint) => !constraint.referencesInput(inputId)
-			)
+			))
 		}
+		if (removedInput?.enumId) this.removeEnumIfUnused(removedInput.enumId)
 		return true
 	}
 
-	public getEntryInputValue(inputId: string): GraphInputValue | undefined {
-		const input = this.getEntryGraph().inputs.find((candidate) => candidate.id === inputId)
+	public getRootInputValue(graphId: string, inputId: string): GraphInputValue | undefined {
+		const input = this.requireGraph(graphId).inputs.find((candidate) => candidate.id === inputId)
 		if (!input) return undefined
-		return this.entryInputValues.get(inputId) ?? input.defaultValue
+		return this.requireRootGraph(graphId).getInputValue(inputId) ?? input.defaultValue
 	}
 
-	public setEntryInputValue(inputId: string, value: GraphInputValue): boolean {
-		const input = this.getEntryGraph().inputs.find((candidate) => candidate.id === inputId)
-		if (!input || !isInputValueCompatible(input, value)) return false
-		this.entryInputValues.set(inputId, value)
-		for (const constraint of this.configurationConstraints) {
-			const updates = constraint.reconcile(this.getResolvedEntryInputValues(), inputId)
+	public setRootInputValue(graphId: string, inputId: string, value: GraphInputValue): boolean {
+		const root = this.requireRootGraph(graphId)
+		const input = this.requireGraph(graphId).inputs.find((candidate) => candidate.id === inputId)
+		if (!input || !this.isInputValueCompatible(input, value)) return false
+		const colorControl = root.getConfigurationControls()
+			.filter(isColorConfigurationControl)
+			.find((control) => control.inputId === inputId)
+		if (colorControl && !colorControl.options.includes(value as string)) return false
+		root.setInputValue(inputId, value)
+		for (const constraint of root.getConfigurationConstraints()) {
+			const updates = constraint.reconcile(this.getResolvedRootInputValues(root), inputId)
 			for (const [constrainedInputId, constrainedValue] of Object.entries(updates)) {
-				this.entryInputValues.set(constrainedInputId, constrainedValue)
+				root.setInputValue(constrainedInputId, constrainedValue)
 			}
 		}
 		return true
 	}
 
-	public getEntryInputValues(): Record<string, GraphInputValue> {
-		return Object.fromEntries(this.entryInputValues)
+	public getRootInputValues(graphId: string): Record<string, GraphInputValue> {
+		return this.requireRootGraph(graphId).getInputValues()
 	}
 
-	public getConfigurationControls(): ConfigurationPanelControl[] {
-		return this.configurationControls.map((control) => ({ ...control }))
+	public getConfigurationControls(graphId: string): ConfigurationPanelControl[] {
+		return this.requireRootGraph(graphId).getConfigurationControls()
 	}
 
-	public getConfigurationConstraints(): ConfigurationConstraintDefinition[] {
-		return this.configurationConstraints.map((constraint) => constraint.toDefinition())
+	public getConfigurationConstraints(graphId: string): ConfigurationConstraintDefinition[] {
+		return this.requireRootGraph(graphId).getConfigurationConstraints().map(
+			(constraint) => constraint.toDefinition()
+		)
 	}
 
 	public getConfigurationConstraintState(
+		graphId: string,
 		inputId: string
 	): ConfigurationConstraintState | undefined {
-		const constraint = this.configurationConstraints.find(
+		const root = this.requireRootGraph(graphId)
+		const constraint = root.getConfigurationConstraints().find(
 			(candidate) => candidate.getConstrainedInputIds().includes(inputId)
 		)
-		return constraint?.getState(inputId, this.getResolvedEntryInputValues())
+		return constraint?.getState(inputId, this.getResolvedRootInputValues(root))
 	}
 
-	public setConfigurationControls(controls: ConfigurationPanelControl[]): void {
-		const entryInputs = new Map(this.getEntryGraph().inputs.map((input) => [input.id, input]))
+	public setConfigurationControls(
+		graphId: string,
+		controls: ConfigurationPanelControl[]
+	): void {
+		const root = this.requireRootGraph(graphId)
+		for (const control of controls) assertColorControlOptions(control)
+		const rootInputs = new Map(this.requireGraph(graphId).inputs.map((input) => [input.id, input]))
 		const controlIds = new Set<string>()
 		const controlledInputs = new Set<string>()
-		this.configurationControls = controls.flatMap((control) => {
-			const input = entryInputs.get(control.inputId)
+		const configurationControls = controls.flatMap((control) => {
+			const input = rootInputs.get(control.inputId)
 			if (
 				!input
 				|| input.valueType === 'geometry'
@@ -257,17 +443,28 @@ export class GraphDocumentModel {
 			}
 			controlIds.add(control.id)
 			controlledInputs.add(control.inputId)
-			return [{ ...control }]
+			return [copyConfigurationControl(control)]
 		})
+		root.setConfigurationControls(configurationControls)
+		for (const control of configurationControls) {
+			if (control.type !== 'color') continue
+			const value = this.getRootInputValue(graphId, control.inputId)
+			if (!control.options.includes(value as string)) {
+				root.setInputValue(control.inputId, control.options[0])
+			}
+		}
+		this.validateReferences(root)
 	}
 
 	public setConfigurationConstraints(
+		graphId: string,
 		definitions: ConfigurationConstraintDefinition[]
 	): void {
+		const root = this.requireRootGraph(graphId)
 		const constraints = definitions.map(createConfigurationConstraint)
-		this.validateConfigurationConstraints(constraints)
+		this.validateConfigurationConstraints(root, constraints)
 
-		const values = this.getResolvedEntryInputValues()
+		const values = this.getResolvedRootInputValues(root)
 		const updates: Record<string, number> = {}
 		for (const constraint of constraints) {
 			const constraintUpdates = constraint.reconcile(
@@ -279,60 +476,86 @@ export class GraphDocumentModel {
 			constraint.assertSatisfied(values)
 		}
 
-		this.configurationConstraints = constraints
+		root.setConfigurationConstraints(constraints)
 		for (const [inputId, value] of Object.entries(updates)) {
-			this.entryInputValues.set(inputId, value)
+			root.setInputValue(inputId, value)
 		}
 	}
 
-	private validateReferences(): void {
-		const entry = this.getEntryGraph()
-		const entryInputIds = new Set(entry.inputs.map((input) => input.id))
+	public isInputValueCompatible(
+		input: GraphInputDefinition,
+		value: GraphInputValue
+	): boolean {
+		return isInputValueCompatible(input, value, this.getInputOptions(input))
+	}
+
+	private validateReferences(root: RootGraph): void {
+		const graphId = root.getGraphId()
+		const graph = this.requireGraph(graphId)
+		const rootInputIds = new Set(graph.inputs.map((input) => input.id))
 		const controlIds = new Set<string>()
 		const controlledInputs = new Set<string>()
-		for (const control of this.configurationControls) {
+		for (const control of root.getConfigurationControls()) {
 			if (!control.id || !control.inputId || typeof control.label !== 'string') {
-				throw new Error('Invalid configuration control')
+				throw new Error(`Root graph "${graphId}" has an invalid configuration control`)
 			}
-			if (!entryInputIds.has(control.inputId)) {
+			if (!rootInputIds.has(control.inputId)) {
 				throw new Error(
-					`Configuration control "${control.id}" references unknown entry input "${control.inputId}"`
+					`Configuration control "${control.id}" on root graph "${graphId}" references ` +
+						`unknown root input "${control.inputId}"`
 				)
 			}
-			const input = entry.inputs.find((candidate) => candidate.id === control.inputId)
+			const input = graph.inputs.find((candidate) => candidate.id === control.inputId)
 			if (input?.valueType === 'geometry') {
 				throw new Error(`Geometry input "${control.inputId}" cannot be shown in configuration`)
 			}
 			if (input && !isControlCompatible(input, control)) {
 				throw new Error(
 					`Configuration control "${control.id}" of type "${control.type}" is incompatible with `
-					+ `entry input "${control.inputId}" of type "${input.valueType}"`
+					+ `root input "${control.inputId}" of type "${input.valueType}" on graph "${graphId}"`
 				)
+			}
+			assertColorControlOptions(control)
+			if (control.type === 'color') {
+				const value = this.getRootInputValue(graphId, control.inputId)
+				if (!control.options.includes(value as string)) {
+					throw new Error(
+						`Color configuration control "${control.id}" for root input `
+						+ `"${control.inputId}" cannot display its current value ${JSON.stringify(value)}. `
+						+ `Available colors: ${JSON.stringify(control.options)}.`
+					)
+				}
 			}
 			if (controlIds.has(control.id)) {
 				throw new Error(`Duplicate configuration control ID "${control.id}"`)
 			}
 			if (controlledInputs.has(control.inputId)) {
-				throw new Error(`Entry input "${control.inputId}" has multiple configuration controls`)
+				throw new Error(
+					`Root input "${control.inputId}" on graph "${graphId}" has multiple ` +
+						'configuration controls'
+				)
 			}
 			controlIds.add(control.id)
 			controlledInputs.add(control.inputId)
 		}
 
-		this.validateConfigurationConstraints(this.configurationConstraints)
+		this.validateConfigurationConstraints(root, root.getConfigurationConstraints())
 	}
 
 	private validateConfigurationConstraints(
+		root: RootGraph,
 		constraints: SumMaximumByEnumConstraint[]
 	): void {
-		const inputs = this.getEntryGraph().inputs
+		const graphId = root.getGraphId()
+		const inputs = this.requireGraph(graphId).inputs
 		const constrainedInputIds = new Set<string>()
 		for (const constraint of constraints) {
-			constraint.validate(inputs)
+			constraint.validate(inputs, (enumId) => this.getEnumOptions(enumId))
 			for (const inputId of constraint.getConstrainedInputIds()) {
 				if (constrainedInputIds.has(inputId)) {
 					throw new Error(
-						`Entry input "${inputId}" belongs to multiple configuration constraints.`
+						`Root input "${inputId}" on graph "${graphId}" belongs to multiple ` +
+							'configuration constraints.'
 					)
 				}
 				constrainedInputIds.add(inputId)
@@ -340,16 +563,97 @@ export class GraphDocumentModel {
 		}
 	}
 
-	private validateConfigurationValues(): void {
-		const values = this.getResolvedEntryInputValues()
-		for (const constraint of this.configurationConstraints) constraint.assertSatisfied(values)
+	private validateConfigurationValues(root: RootGraph): void {
+		const values = this.getResolvedRootInputValues(root)
+		for (const constraint of root.getConfigurationConstraints()) constraint.assertSatisfied(values)
 	}
 
-	private getResolvedEntryInputValues(): Record<string, GraphInputValue> {
-		return Object.fromEntries(this.getEntryGraph().inputs.flatMap((input) => {
-			const value = this.getEntryInputValue(input.id)
+	private getResolvedRootInputValues(root: RootGraph): Record<string, GraphInputValue> {
+		const graphId = root.getGraphId()
+		return Object.fromEntries(this.requireGraph(graphId).inputs.flatMap((input) => {
+			const value = this.getRootInputValue(graphId, input.id)
 			return value === undefined ? [] : [[input.id, value]]
 		}))
+	}
+
+	private requireEnumEntity(enumId: string): EnumDefinition {
+		const definition = this.enumDefinitions.get(enumId)
+		if (!definition) throw new Error(`Unknown choice set "${enumId}"`)
+		return definition
+	}
+
+	private reconcileEnumInputValues(
+		enumId: string,
+		previousOption?: string,
+		nextOption?: string
+	): void {
+		const options = this.getEnumOptions(enumId)
+		for (const graph of this.graphs.values()) {
+			for (const input of graph.inputs) {
+				if (input.valueType !== 'enum' || input.enumId !== enumId) continue
+				if (previousOption && nextOption && input.defaultValue === previousOption) {
+					input.defaultValue = nextOption
+				} else if (
+					typeof input.defaultValue !== 'string'
+					|| !options.includes(input.defaultValue)
+				) {
+					input.defaultValue = options[0]
+				}
+				const root = this.rootGraphs.get(graph.id)
+				if (!root) continue
+				const current = root.getInputValue(input.id)
+				if (previousOption && nextOption && current === previousOption) {
+					root.setInputValue(input.id, nextOption)
+				} else if (current !== undefined && !this.isInputValueCompatible(input, current)) {
+					root.setInputValue(input.id, input.defaultValue)
+				}
+			}
+		}
+	}
+
+	private reconcileConfigurationConstraints(root: RootGraph, rename?: {
+		enumId: string
+		previousOption: string
+		nextOption: string
+	}): void {
+		const graphId = root.getGraphId()
+		const rootInputs = this.requireGraph(graphId).inputs
+		const values = this.getResolvedRootInputValues(root)
+		const definitions = root.getConfigurationConstraints().map((constraint) => {
+			const definition = constraint.toDefinition()
+			const selector = rootInputs.find((input) => input.id === definition.selectorInputId)
+			if (selector?.valueType !== 'enum') return definition
+			const options = this.getInputOptions(selector)
+			const currentTotal = definition.inputIds.reduce((total, inputId) => {
+				const value = values[inputId]
+				return total + (typeof value === 'number' ? value : 0)
+			}, 0)
+			return {
+				...definition,
+				maximums: Object.fromEntries(options.map((option) => {
+					const previousKey = rename
+						&& selector.enumId === rename.enumId
+						&& option === rename.nextOption
+						? rename.previousOption
+						: option
+					return [option, definition.maximums[previousKey] ?? currentTotal]
+				})),
+			}
+		})
+		const constraints = definitions.map(createConfigurationConstraint)
+		this.validateConfigurationConstraints(root, constraints)
+		for (const constraint of constraints) {
+			const updates = constraint.reconcile(values, constraint.getSelectorInputId())
+			Object.assign(values, updates)
+			for (const [inputId, value] of Object.entries(updates)) {
+				root.setInputValue(inputId, value)
+			}
+		}
+		root.setConfigurationConstraints(constraints)
+	}
+
+	private removeEnumIfUnused(enumId: string): void {
+		if (this.getEnumUsageCount(enumId) === 0) this.enumDefinitions.delete(enumId)
 	}
 }
 
@@ -377,22 +681,55 @@ function isControlCompatible(
 }
 
 function copyGraphInput(input: GraphInputDefinition): GraphInputDefinition {
-	return {
-		...input,
-		options: input.options ? [...input.options] : undefined,
+	return { ...input }
+}
+
+function copyConfigurationControl(
+	control: ConfigurationPanelControl
+): ConfigurationPanelControl {
+	return control.type === 'color'
+		? { ...control, options: [...control.options] }
+		: { ...control }
+}
+
+function isColorConfigurationControl(
+	control: ConfigurationPanelControl
+): control is Extract<ConfigurationPanelControl, { type: 'color' }> {
+	return control.type === 'color'
+}
+
+function assertColorControlOptions(control: ConfigurationPanelControl): void {
+	if (control.type !== 'color') return
+	const options = Array.isArray(control.options) ? control.options : []
+	const invalidOptions = options.filter((option) => (
+		typeof option !== 'string' || !isRgbColor(option)
+	))
+	if (
+		!Array.isArray(control.options)
+		|| options.length === 0
+		|| new Set(options).size !== options.length
+		|| invalidOptions.length > 0
+	) {
+		throw new Error(
+			`Color configuration control "${control.id}" for root input "${control.inputId}" `
+			+ 'requires a non-empty, unique list of #RRGGBB colors. '
+			+ `Received ${JSON.stringify(control.options)}; invalid colors: `
+			+ `${JSON.stringify(invalidOptions)}.`
+		)
 	}
 }
 
 export function isInputValueCompatible(
 	input: GraphInputDefinition,
-	value: GraphInputValue
+	value: GraphInputValue,
+	options: readonly string[] = []
 ): boolean {
 	if (input.valueType === 'number') return typeof value === 'number' && Number.isFinite(value)
 	if (input.valueType === 'enum') {
-		return typeof value === 'string' && Boolean(input.options?.includes(value))
+		return typeof value === 'string' && options.includes(value)
 	}
 	if (input.valueType === 'color') {
-		return typeof value === 'string' && Boolean(input.options?.includes(value))
+		return typeof value === 'string' && isRgbColor(value)
 	}
 	if (input.valueType === 'boolean') return typeof value === 'boolean'
 	return false

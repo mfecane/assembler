@@ -13,12 +13,14 @@ export interface GraphStateSnapshot {
 	documentVersion: number
 	document: GraphDocumentModel
 	activeGraphId: string
+	activeRootGraphId: string
 	model: GraphModel
 }
 
 export interface GraphStateCheckpoint {
 	document: GraphDocument
 	activeGraphId: string
+	activeRootGraphId: string
 	documentVersion: number
 }
 
@@ -31,13 +33,15 @@ export class GraphState {
 	private documentVersion = 0
 	private nextDocumentVersion = 1
 	private activeGraphId: string
+	private activeRootGraphId: string
 	private snapshot: GraphStateSnapshot
 
 	public constructor(
 		private document: GraphDocumentModel,
 		private readonly nodeRegistry: NodeRegistry
 	) {
-		this.activeGraphId = document.getEntryGraphId()
+		this.activeRootGraphId = document.getDefaultRootGraphId()
+		this.activeGraphId = this.activeRootGraphId
 		this.snapshot = this.createSnapshot()
 	}
 
@@ -56,12 +60,23 @@ export class GraphState {
 		return this.activeGraphId
 	}
 
+	public getActiveRootGraphId(): string {
+		return this.activeRootGraphId
+	}
+
 	public getActiveModel(): GraphModel {
 		return this.document.requireGraph(this.activeGraphId).model
 	}
 
-	public openGraph(graphId: string): boolean {
-		if (!this.document.getGraph(graphId) || graphId === this.activeGraphId) return false
+	public openGraph(graphId: string, rootGraphId?: string): boolean {
+		if (!this.document.getGraph(graphId)) return false
+		const nextRootGraphId = rootGraphId
+			? this.document.requireRootGraph(rootGraphId).getGraphId()
+			: this.document.isRootGraph(graphId)
+				? graphId
+				: this.activeRootGraphId
+		if (graphId === this.activeGraphId && nextRootGraphId === this.activeRootGraphId) return false
+		this.activeRootGraphId = nextRootGraphId
 		this.activeGraphId = graphId
 		return true
 	}
@@ -69,12 +84,14 @@ export class GraphState {
 	public setActiveGraph(graphId: string): void {
 		this.activeGraphId = this.document.getGraph(graphId)
 			? graphId
-			: this.document.getEntryGraphId()
+			: this.document.getDefaultRootGraphId()
+		if (this.document.isRootGraph(this.activeGraphId)) this.activeRootGraphId = this.activeGraphId
 	}
 
 	public replaceDocument(document: GraphDocumentModel): void {
 		this.document = document
-		this.activeGraphId = document.getEntryGraphId()
+		this.activeRootGraphId = document.getDefaultRootGraphId()
+		this.activeGraphId = this.activeRootGraphId
 	}
 
 	public serialize(): GraphDocument {
@@ -85,15 +102,19 @@ export class GraphState {
 		return {
 			document: this.serialize(),
 			activeGraphId: this.activeGraphId,
+			activeRootGraphId: this.activeRootGraphId,
 			documentVersion: this.documentVersion,
 		}
 	}
 
 	public restore(checkpoint: GraphStateCheckpoint): void {
 		this.document = deserializeGraph(checkpoint.document, this.nodeRegistry)
+		this.activeRootGraphId = this.document.isRootGraph(checkpoint.activeRootGraphId)
+			? checkpoint.activeRootGraphId
+			: this.document.getDefaultRootGraphId()
 		this.activeGraphId = this.document.getGraph(checkpoint.activeGraphId)
 			? checkpoint.activeGraphId
-			: this.document.getEntryGraphId()
+			: this.activeRootGraphId
 		this.documentVersion = checkpoint.documentVersion
 	}
 
@@ -118,6 +139,7 @@ export class GraphState {
 			documentVersion: this.documentVersion,
 			document: this.document,
 			activeGraphId: this.activeGraphId,
+			activeRootGraphId: this.activeRootGraphId,
 			model: this.getActiveModel(),
 		}
 	}

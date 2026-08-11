@@ -18,22 +18,18 @@ export const presetColors: readonly PresetColor[] = [
 export const defaultMaterialColor = presetColors[0].value
 export const presetColorValues = presetColors.map((color) => color.value)
 
-export function normalizePresetColorOptions(options: readonly string[]): string[] {
-	const selected = new Set(options)
-	const normalized = presetColors
-		.filter((color) => selected.has(color.value))
-		.map((color) => color.value)
-	return normalized.length > 0 ? normalized : [defaultMaterialColor]
+const rgbColorPattern = /^#[0-9a-f]{6}$/i
+
+export function isRgbColor(value: string): boolean {
+	return rgbColorPattern.test(value)
 }
 
-export function getPresetColors(options?: readonly string[]): readonly PresetColor[] {
-	if (!options) return presetColors
-	const selected = new Set(options)
-	return presetColors.filter((color) => selected.has(color.value))
+export function normalizeRgbColor(color: string): string {
+	const normalized = color.trim().toLowerCase()
+	return isRgbColor(normalized) ? normalized : defaultMaterialColor
 }
 
-export function normalizePresetColor(color: string): string {
-	return presetColors.some((preset) => preset.value === color)
-		? color
-		: defaultMaterialColor
+export function getColorLabel(color: string): string {
+	return presetColors.find((preset) => preset.value === color.toLowerCase())?.label
+		?? color.toUpperCase()
 }

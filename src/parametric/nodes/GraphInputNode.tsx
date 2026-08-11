@@ -1,25 +1,15 @@
 import { Position, type NodeProps } from '@xyflow/react'
-import { Plus, Trash2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from '@/components/ui/select'
 import { DraftNumberInput } from '@/parametric/components/DraftNumberInput'
+import { EnumDefinitionFields } from '@/parametric/components/EnumDefinitionFields'
+import { RgbColorInput } from '@/parametric/components/RgbColorInput'
 import { Switch } from '@/components/ui/switch'
 import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { GeometryPreviewButton } from '@/parametric/components/GeometryPreviewButton'
-import { PresetColorSelect } from '@/parametric/components/PresetColorSelect'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import { useEditorController } from '@/parametric/editor/react/EditorContext'
 import { GraphInputGraphNode } from '@/parametric/model/GraphNode'
-import { presetColors } from '@/parametric/model/ColorPalette'
+import { defaultMaterialColor } from '@/parametric/model/ColorPalette'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
 
@@ -31,7 +21,6 @@ export function GraphInputNode({ id }: NodeProps<ParametricFlowNode>) {
 	const graph = document.requireGraph(activeGraphId)
 	const input = graph.inputs.find((candidate) => candidate.id === node.getInputId())
 	if (!input) return null
-	const colorOptions = input.valueType === 'color' ? input.options ?? [] : []
 
 	return (
 		<div
@@ -43,7 +32,7 @@ export function GraphInputNode({ id }: NodeProps<ParametricFlowNode>) {
 				actions={input.valueType === 'geometry' ? <GeometryPreviewButton nodeId={id} /> : undefined}
 			/>
 			<div className="mb-2 text-[11px] capitalize text-muted-foreground">
-				{input.valueType} input
+				{input.valueType === 'enum' ? 'choice' : input.valueType} input
 			</div>
 			<div className="flex flex-col gap-2">
 				{input.valueType === 'number' && (
@@ -58,51 +47,17 @@ export function GraphInputNode({ id }: NodeProps<ParametricFlowNode>) {
 					/>
 				)}
 				{input.valueType === 'color' && (
-					<>
-						<div
-							data-id={`graph-input-color-options-${input.id}`}
-							className="flex flex-col gap-1.5"
-						>
-							<div className="text-[11px] text-muted-foreground">Allowed colors</div>
-							{presetColors.map((color) => {
-								const optionId = `graph-input-color-${input.id}-${color.value.slice(1)}`
-								const selected = colorOptions.includes(color.value)
-								return (
-									<div key={color.value} className="flex items-center gap-2">
-										<Checkbox
-											id={optionId}
-											data-id={optionId}
-											className="nodrag"
-											checked={selected}
-											disabled={selected && colorOptions.length <= 1}
-											onCheckedChange={(checked) => controller.setGraphInputColorOptions(
-												input.id,
-												checked === true
-													? [...colorOptions, color.value]
-													: colorOptions.filter((value) => value !== color.value)
-											)}
-										/>
-										<Label htmlFor={optionId} className="flex cursor-pointer items-center gap-2 text-xs">
-											<span
-												className="h-3 w-3 rounded-full border border-white/20"
-												style={{ backgroundColor: color.value }}
-											/>
-											{color.label}
-										</Label>
-									</div>
-								)
-							})}
-						</div>
-						<div className="text-[11px] text-muted-foreground">Default color</div>
-						<PresetColorSelect
-							id={`graph-input-default-${input.id}`}
-							value={typeof input.defaultValue === 'string' ? input.defaultValue : colorOptions[0]}
-							onValueChange={(value) => controller.updateGraphInput(input.id, {
-								defaultValue: value,
-							})}
-							options={colorOptions}
-						/>
-					</>
+					<RgbColorInput
+						id={`graph-input-default-${input.id}`}
+						dataId={`graph-input-default-${input.id}`}
+						value={typeof input.defaultValue === 'string'
+							? input.defaultValue
+							: defaultMaterialColor}
+						onValueChange={(defaultValue) => controller.updateGraphInput(input.id, {
+							defaultValue,
+						})}
+						ariaLabel={`Default color for ${input.label || input.id}`}
+					/>
 				)}
 				{input.valueType === 'boolean' && (
 					<div className="flex h-8 items-center justify-between gap-3">
@@ -125,70 +80,7 @@ export function GraphInputNode({ id }: NodeProps<ParametricFlowNode>) {
 					</div>
 				)}
 				{input.valueType === 'enum' && (
-					<>
-						<div className="flex items-center justify-between text-[11px] text-muted-foreground">
-							<span>Options</span>
-							<Button
-								data-id={`add-option-${input.id}`}
-								type="button"
-								variant="ghost"
-								size="icon"
-								className="nodrag h-6 w-6"
-									onClick={() => controller.addGraphInputOption(input.id)}
-								aria-label="Add enum option"
-							>
-								<Plus />
-							</Button>
-						</div>
-						{(input.options ?? []).map((option, index) => (
-							<div key={`${index}:${option}`} className="flex items-center gap-1">
-								<Input
-									data-id={`graph-input-option-${input.id}-${index}`}
-									className="nodrag h-7 px-2 text-xs"
-									defaultValue={option}
-									onBlur={(event) => controller.updateGraphInputOption(
-										input.id,
-										index,
-										event.currentTarget.value
-									)}
-									onKeyDown={(event) => {
-										if (event.key === 'Enter') event.currentTarget.blur()
-									}}
-									aria-label={`Enum option ${index + 1}`}
-								/>
-								<Button
-									type="button"
-									variant="ghost"
-									size="icon"
-									className="nodrag h-7 w-7 text-muted-foreground hover:text-destructive"
-									disabled={(input.options?.length ?? 0) <= 1}
-									onClick={() => controller.removeGraphInputOption(input.id, index)}
-									aria-label={`Remove enum option ${index + 1}`}
-								>
-									<Trash2 />
-								</Button>
-							</div>
-						))}
-						<Select
-							value={String(input.defaultValue ?? '')}
-							onValueChange={(value) => controller.updateGraphInput(input.id, {
-								defaultValue: value,
-							})}
-						>
-							<SelectTrigger
-								data-id={`graph-input-default-${input.id}`}
-								className="nodrag h-8 px-2 text-xs"
-								aria-label="Default enum option"
-							>
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								{(input.options ?? []).map((option) => (
-									<SelectItem key={option} value={option}>{option}</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					</>
+					<EnumDefinitionFields inputId={input.id} />
 				)}
 			</div>
 			<TypedHandle

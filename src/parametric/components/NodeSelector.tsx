@@ -114,7 +114,7 @@ export function NodeSelector({ selectedEdges }: { selectedEdges: Edge[] }) {
 							/>
 							<InputNodeButton
 								icon={ListFilter}
-								label="Enum"
+								label="Choice"
 								onClick={() => addSelectedInput('enum')}
 							/>
 							<InputNodeButton

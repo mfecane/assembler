@@ -11,6 +11,75 @@ const projectName = 'Seeded MaxShelf configurator'
 const defaultGraph = JSON.parse(
 	readFileSync(new URL('../src/data/defaultGraph.json', import.meta.url), 'utf8')
 )
+if (!Array.isArray(defaultGraph.enums) || defaultGraph.enums.length === 0) {
+	throw new Error(
+		'The default graph seed must contain at least one document-level enum definition. '
+		+ `Received top-level keys: ${JSON.stringify(Object.keys(defaultGraph))}.`
+	)
+}
+if (!Array.isArray(defaultGraph.graphs) || defaultGraph.graphs.length === 0) {
+	throw new Error(
+		'The default graph seed must contain at least one graph definition. '
+		+ `Received graphs: ${JSON.stringify(defaultGraph.graphs)}.`
+	)
+}
+if (!Array.isArray(defaultGraph.rootGraphs) || defaultGraph.rootGraphs.length === 0) {
+	throw new Error(
+		'The default graph seed must contain at least one root graph configuration. '
+		+ `Received rootGraphs: ${JSON.stringify(defaultGraph.rootGraphs)}.`
+	)
+}
+const graphIds = new Set(defaultGraph.graphs.map((graph) => graph.id))
+const rootGraphIds = defaultGraph.rootGraphs.map((rootGraph) => rootGraph.graphId)
+const invalidRootGraphs = defaultGraph.rootGraphs.filter((rootGraph, index) => (
+	typeof rootGraph.graphId !== 'string'
+	|| !graphIds.has(rootGraph.graphId)
+	|| rootGraphIds.indexOf(rootGraph.graphId) !== index
+	|| !rootGraph.inputValues
+	|| !Array.isArray(rootGraph.configurationPanel?.controls)
+	|| !Array.isArray(rootGraph.configurationPanel?.constraints)
+))
+if (invalidRootGraphs.length > 0) {
+	throw new Error(
+		'The default graph seed contains invalid root graph configurations. '
+		+ 'Every root must reference one unique graph and contain inputValues plus a configuration panel; '
+		+ `received invalid roots ${JSON.stringify(invalidRootGraphs)} from root ids ${JSON.stringify(rootGraphIds)} `
+		+ `and graph ids ${JSON.stringify([...graphIds])}.`
+	)
+}
+const rgbColorPattern = /^#[0-9a-f]{6}$/i
+const colorInputs = defaultGraph.graphs.flatMap((graph) => graph.inputs
+	.filter((input) => input.valueType === 'color')
+	.map((input) => ({ graphId: graph.id, input })))
+const invalidColorInputs = colorInputs.filter(({ input }) => (
+	'options' in input
+	|| typeof input.defaultValue !== 'string'
+	|| !rgbColorPattern.test(input.defaultValue)
+))
+if (invalidColorInputs.length > 0) {
+	throw new Error(
+		'The default graph seed contains color inputs with local options or invalid RGB defaults. '
+		+ `Every color input must store only a #RRGGBB default; received ${JSON.stringify(invalidColorInputs)}.`
+	)
+}
+const colorControls = defaultGraph.rootGraphs.flatMap((rootGraph) => (
+	rootGraph.configurationPanel.controls
+		.filter((control) => control.type === 'color')
+		.map((control) => ({ graphId: rootGraph.graphId, control }))
+))
+const invalidColorControls = colorControls.filter(({ control }) => (
+	!Array.isArray(control.options)
+	|| control.options.length === 0
+	|| new Set(control.options).size !== control.options.length
+	|| control.options.some((color) => typeof color !== 'string' || !rgbColorPattern.test(color))
+))
+if (invalidColorControls.length > 0) {
+	throw new Error(
+		'The default graph seed contains invalid configuration color palettes. '
+		+ 'Every color control requires a non-empty, unique list of #RRGGBB colors; '
+		+ `received ${JSON.stringify(invalidColorControls)}.`
+	)
+}
 const apiUrl = process.env.SUPABASE_INTERNAL_URL
 const secretKey = process.env.SUPABASE_SECRET_KEY
 if (!apiUrl || !secretKey) {

@@ -167,6 +167,17 @@ export function ProjectToolbar({
 							disabled={projectRenamePending || saveState === 'saving'}
 						/>
 						<Button
+							data-id="add-root-graph-button"
+							type="button"
+							variant="outline"
+							size="sm"
+							disabled={projectRenamePending || saveState === 'saving'}
+							onClick={() => controller.addRootGraph()}
+						>
+							<Plus />
+							New root
+						</Button>
+						<Button
 							data-id="add-graph-button"
 							type="button"
 							variant="outline"
@@ -336,7 +347,8 @@ function AssemblyHeaderControls({
 	)
 	const activeGraph = document.requireGraph(activeGraphId)
 	const canRemoveGraph = controller.canRemoveGraph(activeGraphId)
-	const isEntryGraph = activeGraphId === document.getEntryGraphId()
+	const isRootGraph = document.isRootGraph(activeGraphId)
+	const isLastRootGraph = isRootGraph && document.getRootGraphs().length === 1
 	const referencingGraphs = document.getGraphs().flatMap((graph) => {
 		const instanceCount = graph.model.getNodes().filter(
 			(node) => node instanceof GraphInstanceGraphNode && node.getGraphId() === activeGraphId
@@ -347,8 +359,8 @@ function AssemblyHeaderControls({
 		(total, graph) => total + graph.instanceCount,
 		0
 	)
-	const deleteDisabledReason = isEntryGraph
-		? `“${activeGraph.label}” is the project entry assembly and cannot be deleted.`
+	const deleteDisabledReason = isLastRootGraph
+		? `“${activeGraph.label}” is the project's only root assembly and cannot be deleted.`
 		: !canRemoveGraph
 			? `“${activeGraph.label}” is used by ${graphInstanceCount} instance${graphInstanceCount === 1 ? '' : 's'} in ${referencingGraphs.map((graph) => `“${graph.label}”`).join(', ')}. Remove ${graphInstanceCount === 1 ? 'that instance' : 'those instances'} before deleting the assembly.`
 			: 'Delete current assembly'

@@ -109,8 +109,12 @@ export function ProjectDashboard({
 				</form>
 
 				{error && (
-					<div role="alert" className="mb-5 rounded-md border border-danger/50 bg-danger/10 p-4">
-						<p className="m-0 text-sm text-danger">{error}</p>
+					<div
+						data-id="project-dashboard-error"
+						role="alert"
+						className="mb-5 rounded-md border border-danger/50 bg-danger/10 p-4"
+					>
+						<p className="m-0 whitespace-pre-wrap break-words text-sm text-danger">{error}</p>
 						<Button className="mt-3" size="sm" variant="outline" onClick={() => void loadProjects()}>
 							Retry
 						</Button>
@@ -189,5 +193,16 @@ function formatDate(value: string): string {
 }
 
 function errorMessage(cause: unknown, fallback: string): string {
-	return cause instanceof Error ? cause.message : fallback
+	return `${fallback}\n${describeError(cause)}`
+}
+
+function describeError(cause: unknown): string {
+	if (cause instanceof Error) {
+		return `${cause.name}: ${cause.message}${cause.stack ? `\n${cause.stack}` : ''}`
+	}
+	try {
+		return JSON.stringify(cause, null, 2) ?? String(cause)
+	} catch {
+		return String(cause)
+	}
 }

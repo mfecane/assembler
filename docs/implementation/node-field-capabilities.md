@@ -49,7 +49,7 @@ export interface NodeField<T> {
 ```
 
 Add `NumberField`, `BooleanField`, `ColorField`, `EnumField` alongside it (one small class each,
-same directory). `ColorField` owns the `normalizePresetColor` normalization that today is
+same directory). `ColorField` owns the `normalizeRgbColor` normalization that today is
 duplicated in `ColorGraphNode.setColor` and `MaterialGraphNode.setColor`. `EnumField` owns the
 "clamp current value to the option list" logic duplicated across `SelectorGraphNode` and the
 `graphInput` enum handling. `Vector3Value` already satisfies this shape structurally (`get`/`set`

@@ -2,11 +2,12 @@
 
 ## Model
 
-Each project document owns a flat collection of reusable graph definitions. `entryGraphId`
-selects the definition rendered as the product. A Graph Instance node references another
-definition by its document-local ID; there is no external graph address or loading mechanism.
+Each project document owns a flat collection of reusable graph definitions. `rootGraphs` selects
+one or more independently configurable top-level definitions. A Graph Instance node references
+another definition by its document-local ID; there is no external graph address or loading
+mechanism.
 
-Entry and child graphs share the same model:
+Root and child graphs share the same definition model:
 
 - a label and document-local ID;
 - public input declarations;
@@ -26,31 +27,36 @@ the referenced declaration's defaults last. Graph Instance nodes evaluate their 
 definitions recursively and scope both rendered asset identity and origin-node instance identity,
 keeping repeated instances distinct in scene metadata.
 
-Only the graph open in React Flow is used for node previews. The entry graph remains the product
-result shown by the normal viewport.
+Only the graph open in React Flow is used for node previews. When that graph is a root, its own
+saved root inputs are used; non-root previews use declaration defaults.
 
 ## Editing and navigation
 
-React Flow projects only the open definition. The graph tree is rooted at the entry graph, derives
-children from Graph Instance nodes, and lists unreachable definitions under **Unused definitions**.
-Repeated instances appear as separate tree rows while opening their shared definition.
+React Flow projects only the open definition. The graph tree lists each root assembly and derives
+its descendants from Graph Instance nodes. Definitions unreachable from every root appear under
+**Unused assemblies**. Repeated instances appear as separate tree rows while opening their shared
+definition in the selected root's navigation context.
 
-Definitions can be created, selected, and removed from the tree, and the active definition can be
-renamed by double-clicking its name in the graph toolbar. A definition cannot be
-removed while another definition references it, and an instance cannot be added if it would create
-a recursive dependency.
+Root definitions and reusable assemblies can be created separately, selected, renamed, and
+removed. The project's final root cannot be removed. Any definition referenced by an instance is
+also protected, and an instance cannot be added if it would create a recursive dependency.
 
 ## Public inputs
 
-Number, enum, color, boolean, and geometry inputs are created as Graph Input nodes. Their labels,
-defaults, and enum options are edited on the node. Removing the node also removes its declaration,
-affected instance edges and values, saved entry value, and configuration control. Assembly Instance
+Number, enum, color, boolean, and geometry inputs are created as Graph Input nodes. Their labels and
+defaults are edited on the node; color defaults and disconnected color instance values use
+arbitrary `#RRGGBB` pickers. Enum inputs select a document-level enum definition whose name and
+options are shared by every referencing graph input; the same node edits that shared definition and
+shows its usage count. Removing the node also removes its declaration, affected instance edges and
+values, saved root value, and configuration control. An enum definition is removed when its last
+referencing input is removed or rebound. Assembly Instance
 nodes expose inline editors for disconnected number, enum, color, and boolean inputs. Connected
 inputs are disabled because their incoming edge takes precedence; geometry inputs remain
 connection-only.
 
-Configuration controls bind only to compatible public inputs of the entry graph. Inner nodes,
-child inputs, instance ports, and instance paths are not binding targets. See
+Each root owns configuration controls that bind only to compatible public inputs of that root.
+Inner nodes, child inputs, instance ports, and instance paths are not binding targets. Color
+controls own the curated RGB option list shown to customers. See
 [Editor UI](./editor-ui.md) for panel behavior.
 
 ## Persistence
@@ -62,5 +68,5 @@ use the same nested document shape. See the
 ## Verification
 
 Static TypeScript validation covers the implementation. The project owner still needs to verify
-import/export, independent repeated instances, nested mesh identity, tree navigation, entry
-controls, and invalid-reference errors in the running application.
+import/export, independent repeated instances, nested mesh identity, multi-root tree navigation,
+per-root controls, and invalid-reference errors in the running application.

@@ -20,7 +20,13 @@ behavior; only files under **Planned work** are pending.
 ## Implemented features
 
 - [Nested graphs](./implementation/nested-graphs.md) — graph definitions, instances, boundaries,
-  navigation, and entry inputs.
+  navigation, and public inputs.
+- [Root graphs](./implementation/root-graphs.md) — multiple top-level assemblies, active-root
+  navigation, independent values, and per-root configuration panels.
+- [Shared document enums](./implementation/shared-enums.md) — reusable enum definitions, graph-input
+  references, dialog editing, and dependent-value reconciliation.
+- [Configuration color options](./implementation/configuration-color-options.md) — unrestricted RGB
+  graph values and customer-facing palettes owned by configuration controls.
 - [Viewport editor](./implementation/viewport-editor.md) — viewport ownership, node previews,
   transform tools, and asset selection.
 - [Graph editor architecture](./implementation/graph-editor-architecture.md) — root ownership,

@@ -85,6 +85,10 @@ The transaction deletes all rows in `public.projects`, then recreates the table,
 trigger, RLS policies, and grants from the current source tree. If any schema statement fails,
 the transaction is rolled back instead of leaving a partially rebuilt application schema.
 
+The current `graph_document` constraint accepts only the root-graph document shape: top-level
+`rootGraphs`, `enums`, and `graphs` arrays are required. The former singular `entryGraphId`,
+`entryInputValues`, and top-level `configurationPanel` shape is intentionally unsupported.
+
 Do not run [`scripts/seed-local-supabase.mjs`](../../scripts/seed-local-supabase.mjs) against
 production. It is local-development tooling that creates a fixed developer account and seeded
 project.

@@ -255,7 +255,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 
 	registry.register<SelectorGraphNode>({
 		type: 'selector',
-		label: 'Enum',
+		label: 'Choice',
 		creatable: true,
 		create: (id, position) =>
 			new SelectorGraphNode(id, position, ['Cube', 'Cone', 'Ring'], 'Cube'),
@@ -283,7 +283,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 
 	registry.register<EnumNumberMapGraphNode>({
 		type: 'enumNumberMap',
-		label: 'Enum to Number',
+		label: 'Choice to Number',
 		creatable: true,
 		create: (id, position) => new EnumNumberMapGraphNode(id, position, []),
 		ports: {
@@ -680,7 +680,9 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			getOutputOptions: (node, portId, context) => {
 				const graph = context?.getGraphInterface(context.containingGraphId)
 				const input = graph?.inputs.find((candidate) => candidate.id === node.getInputId())
-				return input?.id === portId && input.valueType === 'enum' ? input.options : undefined
+				return input?.id === portId && input.valueType === 'enum'
+					? context?.getEnumOptions(input.enumId ?? '')
+					: undefined
 			},
 		},
 		serialize: (node) => ({ inputId: node.getInputId() }),

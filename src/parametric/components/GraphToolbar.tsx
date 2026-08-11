@@ -24,7 +24,7 @@ export function GraphToolbar({ selectedEdges }: { selectedEdges: Edge[] }) {
 	const controller = useEditorController()
 	const { canUndo, canRedo } = useReactBridgeSnapshot()
 	const { document, activeGraphId } = useGraphSnapshot()
-	const isEntryGraph = activeGraphId === document.getEntryGraphId()
+	const isRootGraph = document.isRootGraph(activeGraphId)
 
 	return (
 		<>
@@ -86,7 +86,7 @@ export function GraphToolbar({ selectedEdges }: { selectedEdges: Edge[] }) {
 							<NodeSelector selectedEdges={selectedEdges} />
 							<AssetHelperDialog />
 						</div>
-						{isEntryGraph && (
+						{isRootGraph && (
 							<>
 								<Separator orientation="vertical" className="h-5" />
 								<Tooltip>
@@ -136,7 +136,7 @@ export function GraphToolbar({ selectedEdges }: { selectedEdges: Edge[] }) {
 				</div>
 			</Panel>
 			<ConfigurationPanelEditorDialog
-				open={isEntryGraph && editingInterface}
+				open={isRootGraph && editingInterface}
 				onClose={() => setEditingInterface(false)}
 			/>
 		</>

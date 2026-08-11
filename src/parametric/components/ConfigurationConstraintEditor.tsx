@@ -23,7 +23,7 @@ export function ConfigurationConstraintEditor() {
 				<div>
 					<h3 className="text-sm font-semibold">Constraints</h3>
 					<p className="text-xs text-muted-foreground">
-						Limit the combined value of number inputs from an enum selection.
+						Limit the combined value of number inputs from a selected choice.
 					</p>
 				</div>
 				<Button
@@ -46,7 +46,7 @@ export function ConfigurationConstraintEditor() {
 				>
 					{editor.canAddConstraint
 						? 'No constraints configured.'
-						: 'Add at least two unused number inputs and one enum input to create a constraint.'}
+						: 'Add at least two unused number inputs and one choice input to create a constraint.'}
 				</div>
 			) : (
 				<div data-id="configuration-constraint-list" className="space-y-3">
@@ -57,6 +57,7 @@ export function ConfigurationConstraintEditor() {
 							index={index}
 							enumInputs={editor.enumInputs}
 							numberInputs={editor.numberInputs}
+							enumOptions={editor.getEnumOptions(constraint.selectorInputId)}
 							onRemove={() => editor.removeConstraint(index)}
 							onSelectorChange={(inputId) => editor.setSelector(index, inputId)}
 							onInputToggle={(inputId, checked) => (
@@ -84,6 +85,7 @@ function ConstraintCard({
 	index,
 	enumInputs,
 	numberInputs,
+	enumOptions,
 	onRemove,
 	onSelectorChange,
 	onInputToggle,
@@ -95,6 +97,7 @@ function ConstraintCard({
 	index: number
 	enumInputs: GraphInputDefinition[]
 	numberInputs: GraphInputDefinition[]
+	enumOptions: string[]
 	onRemove: () => void
 	onSelectorChange: (inputId: string) => void
 	onInputToggle: (inputId: string, checked: boolean) => void
@@ -105,8 +108,8 @@ function ConstraintCard({
 	const selector = enumInputs.find((input) => input.id === constraint.selectorInputId)
 	if (!selector) {
 		throw new Error(
-			`Cannot render configuration constraint ${index + 1}: enum selector `
-			+ `"${constraint.selectorInputId}" is missing from the entry graph.`
+			`Cannot render configuration constraint ${index + 1}: choice selector `
+			+ `"${constraint.selectorInputId}" is missing from the active root graph.`
 		)
 	}
 	const selectedInputs = constraint.inputIds.map((inputId) => {
@@ -114,7 +117,7 @@ function ConstraintCard({
 		if (!input) {
 			throw new Error(
 				`Cannot render configuration constraint ${index + 1}: numeric input `
-				+ `"${inputId}" is missing from the entry graph.`
+				+ `"${inputId}" is missing from the active root graph.`
 			)
 		}
 		return input
@@ -128,7 +131,7 @@ function ConstraintCard({
 		>
 			<div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
 				<div>
-					<div className="text-sm font-medium">Total maximum by enum</div>
+					<div className="text-sm font-medium">Total maximum by choice</div>
 					<div className="text-[10px] text-muted-foreground">
 						Earlier inputs keep priority when the maximum decreases.
 					</div>
@@ -233,7 +236,7 @@ function ConstraintCard({
 				<div className="space-y-2">
 					<Label className="text-xs text-muted-foreground">Maximum by option</Label>
 					<div className="grid gap-2 sm:grid-cols-2">
-						{(selector.options ?? []).map((option) => (
+						{enumOptions.map((option) => (
 							<div key={option} className="grid grid-cols-[1fr_5rem] items-center gap-2">
 								<Label
 									htmlFor={`configuration-constraint-${index}-maximum-${option}`}

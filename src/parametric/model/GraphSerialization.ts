@@ -16,13 +16,20 @@ import {
 	type GraphPoint,
 } from '@/parametric/model/GraphNode'
 import type { NodeRegistry } from '@/parametric/model/NodeDefinition'
-import { presetColorValues } from '@/parametric/model/ColorPalette'
+import { isRgbColor } from '@/parametric/model/ColorPalette'
 import type { ConfigurationConstraintDefinition } from '@/parametric/model/ConfigurationConstraint'
+import type { EnumDefinitionSnapshot } from '@/parametric/model/EnumDefinition'
+import { RootGraph } from '@/parametric/model/RootGraph'
 
 export interface GraphDocument {
-	entryGraphId: string
-	entryInputValues: Record<string, GraphInputValue>
+	rootGraphs: RootGraphDocument[]
+	enums: EnumDefinitionSnapshot[]
 	graphs: GraphDefinitionDocument[]
+}
+
+export interface RootGraphDocument {
+	graphId: string
+	inputValues: Record<string, GraphInputValue>
 	configurationPanel: {
 		controls: ConfigurationPanelControl[]
 		constraints: ConfigurationConstraintDefinition[]
@@ -59,8 +66,17 @@ export function serializeGraph(
 	registry: NodeRegistry
 ): GraphDocument {
 	return {
-		entryGraphId: document.getEntryGraphId(),
-		entryInputValues: document.getEntryInputValues(),
+		rootGraphs: document.getRootGraphs().map((root) => ({
+			graphId: root.getGraphId(),
+			inputValues: root.getInputValues(),
+			configurationPanel: {
+				controls: root.getConfigurationControls(),
+				constraints: root.getConfigurationConstraints().map(
+					(constraint) => constraint.toDefinition()
+				),
+			},
+		})),
+		enums: document.getEnumDefinitions(),
 		graphs: document.getGraphs().map((graph) => ({
 			id: graph.id,
 			label: graph.label,
@@ -85,20 +101,25 @@ export function serializeGraph(
 					: []
 			),
 		})),
-		configurationPanel: {
-			controls: document.getConfigurationControls(),
-			constraints: document.getConfigurationConstraints(),
-		},
 	}
 }
 
 export function deserializeGraph(value: unknown, registry: NodeRegistry): GraphDocumentModel {
-	if (!isGraphDocument(value)) throw new Error('Unsupported graph document')
+	if (!isGraphDocument(value)) {
+		const topLevelKeys = value && typeof value === 'object' ? Object.keys(value) : []
+		throw new Error(
+			'Unsupported graph document. Expected rootGraphs, enums, and graphs. Each rootGraphs item '
+			+ 'must contain graphId, inputValues, and configurationPanel with controls and constraints. '
+			+ `Received ${typeof value} with top-level keys ${JSON.stringify(topLevelKeys)}.`
+		)
+	}
+	assertEnumDefinitions(value.enums)
+	const enumDefinitions = new Map(value.enums.map((definition) => [definition.id, definition]))
 
 	const interfaces = new Map<string, GraphInterface>()
 	for (const graph of value.graphs) {
 		if (interfaces.has(graph.id)) throw new Error(`Duplicate graph ID "${graph.id}"`)
-		assertUniqueInterfaceIds(graph)
+		assertUniqueInterfaceIds(graph, enumDefinitions)
 		assertUniqueIds(graph)
 		interfaces.set(graph.id, {
 			id: graph.id,
@@ -133,6 +154,7 @@ export function deserializeGraph(value: unknown, registry: NodeRegistry): GraphD
 		const model = new GraphModel(registry, nodes, edges, {
 			containingGraphId: graph.id,
 			getGraphInterface,
+			getEnumOptions: (enumId) => enumDefinitions.get(enumId)?.options ?? [],
 		})
 		if (model.getNodes().length !== graph.nodes.length || model.getEdges().length !== graph.edges.length) {
 			throw new Error(`Graph "${graph.id}" contains invalid nodes, edges, or ports`)
@@ -143,28 +165,47 @@ export function deserializeGraph(value: unknown, registry: NodeRegistry): GraphD
 		}
 	})
 
-	assertLocalAcyclicReferences(definitions)
-	return new GraphDocumentModel(
-		value.entryGraphId,
-		definitions,
-		value.entryInputValues,
-		value.configurationPanel.controls,
-		value.configurationPanel.constraints
+	assertLocalAcyclicReferences(definitions, enumDefinitions)
+	const rootGraphs = value.rootGraphs.map((root) => new RootGraph(
+		root.graphId,
+		root.inputValues,
+		root.configurationPanel.controls,
+		root.configurationPanel.constraints
+	))
+	const document = new GraphDocumentModel(
+		rootGraphs,
+		value.enums,
+		definitions
 	)
+	for (const graph of document.getGraphs()) {
+		graph.model.setPortContext({
+			containingGraphId: graph.id,
+			getGraphInterface: (graphId) => document.getGraphInterface(graphId),
+			getEnumOptions: (enumId) => document.getEnumOptions(enumId),
+		})
+	}
+	return document
 }
 
-function assertUniqueInterfaceIds(graph: GraphDefinitionDocument): void {
+function assertUniqueInterfaceIds(
+	graph: GraphDefinitionDocument,
+	enumDefinitions: ReadonlyMap<string, EnumDefinitionSnapshot>
+): void {
 	const inputIds = new Set<string>()
 	for (const input of graph.inputs) {
 		if (inputIds.has(input.id)) {
 			throw new Error(`Graph "${graph.id}" has duplicate input "${input.id}"`)
 		}
 		inputIds.add(input.id)
-		assertInputDefinition(input, graph.id)
+		assertInputDefinition(input, graph.id, enumDefinitions)
 	}
 }
 
-function assertInputDefinition(input: GraphInputDefinition, graphId: string): void {
+function assertInputDefinition(
+	input: GraphInputDefinition,
+	graphId: string,
+	enumDefinitions: ReadonlyMap<string, EnumDefinitionSnapshot>
+): void {
 	if (!['number', 'enum', 'color', 'boolean', 'geometry'].includes(input.valueType)) {
 		throw new Error(`Input "${input.id}" in graph "${graphId}" has an unknown value type`)
 	}
@@ -183,32 +224,39 @@ function assertInputDefinition(input: GraphInputDefinition, graphId: string): vo
 		throw new Error(`Input "${input.id}" in graph "${graphId}" has an invalid number default`)
 	}
 	if (input.valueType === 'enum') {
-		const options = input.options ?? []
+		const definition = enumDefinitions.get(input.enumId ?? '')
+		const options = definition?.options ?? []
+		const localOptions = 'options' in input
+			? (input as GraphInputDefinition & { options?: unknown }).options
+			: undefined
 		if (
-			options.length === 0
-			|| new Set(options).size !== options.length
-			|| typeof input.defaultValue !== 'string'
-			|| !options.includes(input.defaultValue)
-		) {
-			throw new Error(`Input "${input.id}" in graph "${graphId}" has an invalid enum interface`)
-		}
-	}
-	if (input.valueType === 'color') {
-		const options = input.options ?? []
-		const invalidOptions = options.filter((option) => !presetColorValues.includes(option))
-		if (
-			options.length === 0
-			|| new Set(options).size !== options.length
-			|| invalidOptions.length > 0
+			!definition
+			|| localOptions !== undefined
 			|| typeof input.defaultValue !== 'string'
 			|| !options.includes(input.defaultValue)
 		) {
 			throw new Error(
-				`Color input "${input.id}" in graph "${graphId}" requires a non-empty, unique `
-				+ `options list containing only supported preset colors and a default from that list. `
-				+ `Received options ${JSON.stringify(options)}, default `
-				+ `${JSON.stringify(input.defaultValue)}, invalid options ${JSON.stringify(invalidOptions)}. `
-				+ `Supported colors: ${JSON.stringify(presetColorValues)}.`
+				`Choice input "${input.id}" in graph "${graphId}" must reference one document choice set `
+				+ `through enumId, must not define local options, and must use a default from that choice set. `
+				+ `Received enumId ${JSON.stringify(input.enumId)}, default `
+				+ `${JSON.stringify(input.defaultValue)}, local options ${JSON.stringify(localOptions)}.`
+			)
+		}
+	}
+	if (input.valueType === 'color') {
+		const localOptions = 'options' in input
+			? (input as GraphInputDefinition & { options?: unknown }).options
+			: undefined
+		if (
+			localOptions !== undefined
+			|| typeof input.defaultValue !== 'string'
+			|| !isRgbColor(input.defaultValue)
+		) {
+			throw new Error(
+				`Color input "${input.id}" in graph "${graphId}" requires a #RRGGBB default `
+				+ 'and must not define local options; available colors belong to its configuration control. '
+				+ `Received default ${JSON.stringify(input.defaultValue)} and local options `
+				+ `${JSON.stringify(localOptions)}.`
 			)
 		}
 	}
@@ -267,7 +315,10 @@ function assertBoundaryNodes(
 	}
 }
 
-function assertLocalAcyclicReferences(graphs: GraphDefinition[]): void {
+function assertLocalAcyclicReferences(
+	graphs: GraphDefinition[],
+	enumDefinitions: ReadonlyMap<string, EnumDefinitionSnapshot>
+): void {
 	const graphsById = new Map(graphs.map((graph) => [graph.id, graph]))
 	const dependencies = new Map<string, string[]>()
 	for (const graph of graphs) {
@@ -289,7 +340,10 @@ function assertLocalAcyclicReferences(graphs: GraphDefinition[]): void {
 						+ `input "${inputId}" on graph "${target.id}"`
 					)
 				}
-				if (!isInputValueCompatible(input, value)) {
+				const options = input.valueType === 'enum'
+					? enumDefinitions.get(input.enumId ?? '')?.options ?? []
+					: []
+				if (!isInputValueCompatible(input, value, options)) {
 					throw new Error(
 						`Graph "${graph.id}" instance "${instance.id}" has an incompatible value `
 						+ `for ${input.valueType} input "${inputId}" on graph "${target.id}"`
@@ -314,24 +368,94 @@ function assertLocalAcyclicReferences(graphs: GraphDefinition[]): void {
 }
 
 function copyInput(input: GraphInputDefinition): GraphInputDefinition {
-	return {
-		...input,
-		options: input.options ? [...input.options] : undefined,
-	}
+	return { ...input }
 }
 
 function isGraphDocument(value: unknown): value is GraphDocument {
 	if (!value || typeof value !== 'object') return false
 	const document = value as Partial<GraphDocument>
-	return typeof document.entryGraphId === 'string'
-		&& Boolean(document.entryInputValues)
-		&& typeof document.entryInputValues === 'object'
+	return Array.isArray(document.rootGraphs)
+		&& document.rootGraphs.length > 0
+		&& document.rootGraphs.every(isRootGraphDocument)
+		&& Array.isArray(document.enums)
 		&& Array.isArray(document.graphs)
-		&& Boolean(document.configurationPanel)
-		&& Array.isArray(document.configurationPanel?.controls)
-		&& Array.isArray(document.configurationPanel?.constraints)
-		&& document.configurationPanel.constraints.every(isConfigurationConstraintDefinition)
 		&& document.graphs.every(isGraphDefinitionDocument)
+}
+
+function isRootGraphDocument(value: unknown): value is RootGraphDocument {
+	if (!value || typeof value !== 'object') return false
+	const root = value as Partial<RootGraphDocument>
+	return typeof root.graphId === 'string'
+		&& root.graphId.length > 0
+		&& Boolean(root.inputValues)
+		&& typeof root.inputValues === 'object'
+		&& !Array.isArray(root.inputValues)
+		&& Object.values(root.inputValues).every((inputValue) => (
+			typeof inputValue === 'number'
+			|| typeof inputValue === 'string'
+			|| typeof inputValue === 'boolean'
+		))
+		&& Boolean(root.configurationPanel)
+		&& Array.isArray(root.configurationPanel?.controls)
+		&& root.configurationPanel.controls.every(isConfigurationPanelControl)
+		&& Array.isArray(root.configurationPanel?.constraints)
+		&& root.configurationPanel.constraints.every(isConfigurationConstraintDefinition)
+}
+
+function isConfigurationPanelControl(value: unknown): value is ConfigurationPanelControl {
+	if (!value || typeof value !== 'object') return false
+	const control = value as Record<string, unknown>
+	if (
+		typeof control.id !== 'string'
+		|| !control.id
+		|| typeof control.inputId !== 'string'
+		|| !control.inputId
+		|| typeof control.label !== 'string'
+	) {
+		return false
+	}
+	if (control.type === 'number') {
+		return typeof control.step === 'number' && Number.isFinite(control.step)
+	}
+	if (control.type === 'slider') {
+		return typeof control.min === 'number'
+			&& Number.isFinite(control.min)
+			&& typeof control.max === 'number'
+			&& Number.isFinite(control.max)
+			&& typeof control.step === 'number'
+			&& Number.isFinite(control.step)
+	}
+	if (control.type === 'color') {
+		return Array.isArray(control.options)
+			&& control.options.every((option) => typeof option === 'string')
+	}
+	return control.type === 'select' || control.type === 'switch'
+}
+
+function assertEnumDefinitions(definitions: EnumDefinitionSnapshot[]): void {
+	const ids = new Set<string>()
+	for (const definition of definitions) {
+		if (
+			!definition
+			|| typeof definition !== 'object'
+			|| typeof definition.id !== 'string'
+			|| !definition.id
+			|| definition.id.trim() !== definition.id
+			|| typeof definition.name !== 'string'
+			|| !definition.name
+			|| definition.name.trim() !== definition.name
+			|| !Array.isArray(definition.options)
+			|| definition.options.length === 0
+			|| definition.options.some((option) => (
+				typeof option !== 'string' || option.trim() !== option || !option
+			))
+			|| new Set(definition.options).size !== definition.options.length
+		) {
+			throw new Error(`Invalid document choice-set definition: ${JSON.stringify(definition)}`)
+		}
+		if (ids.has(definition.id)) throw new Error(`Duplicate choice-set ID "${definition.id}"`)
+		ids.add(definition.id)
+	}
 }
 
 function isConfigurationConstraintDefinition(

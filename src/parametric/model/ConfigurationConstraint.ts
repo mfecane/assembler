@@ -28,7 +28,10 @@ export class SumMaximumByEnumConstraint {
 		this.maximums = { ...definition.maximums }
 	}
 
-	public validate(inputs: GraphInputDefinition[]): void {
+	public validate(
+		inputs: GraphInputDefinition[],
+		getEnumOptions: (enumId: string) => readonly string[]
+	): void {
 		if (this.inputIds.length < 2 || new Set(this.inputIds).size !== this.inputIds.length) {
 			throw new Error(
 				'Sum-maximum configuration constraint requires at least two unique numeric input IDs. '
@@ -41,7 +44,7 @@ export class SumMaximumByEnumConstraint {
 			if (input?.valueType !== 'number') {
 				throw new Error(
 					`Sum-maximum configuration constraint input "${inputId}" must reference a numeric `
-					+ 'entry input.'
+					+ 'root input.'
 				)
 			}
 		}
@@ -50,11 +53,11 @@ export class SumMaximumByEnumConstraint {
 		if (selector?.valueType !== 'enum') {
 			throw new Error(
 				`Sum-maximum configuration constraint selector "${this.definition.selectorInputId}" `
-				+ 'must reference an enum entry input.'
+				+ 'must reference a choice root input.'
 			)
 		}
 
-		const options = selector.options ?? []
+		const options = getEnumOptions(selector.enumId ?? '')
 		const maximumOptions = Object.keys(this.maximums)
 		const missingOptions = options.filter((option) => !(option in this.maximums))
 		const unknownOptions = maximumOptions.filter((option) => !options.includes(option))
@@ -64,8 +67,8 @@ export class SumMaximumByEnumConstraint {
 		if (missingOptions.length > 0 || unknownOptions.length > 0 || invalidMaximums.length > 0) {
 			throw new Error(
 				`Sum-maximum configuration constraint for selector "${selector.id}" must define one `
-				+ `non-negative finite maximum for every enum option. Missing options: `
-				+ `${JSON.stringify(missingOptions)}. Unknown options: ${JSON.stringify(unknownOptions)}. `
+				+ `non-negative finite maximum for every choice. Missing choices: `
+				+ `${JSON.stringify(missingOptions)}. Unknown choices: ${JSON.stringify(unknownOptions)}. `
 				+ `Invalid maximums: ${JSON.stringify(invalidMaximums)}.`
 			)
 		}

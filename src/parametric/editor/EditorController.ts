@@ -9,7 +9,6 @@ import {
 	GraphDocumentModel,
 	type GraphInputDefinition,
 	type GraphInputValue,
-	isInputValueCompatible,
 } from '@/parametric/model/GraphDocumentModel'
 import type { ConfigurationConstraintDefinition } from '@/parametric/model/ConfigurationConstraint'
 import { GraphModel } from '@/parametric/model/GraphModel'
@@ -37,12 +36,7 @@ import {
 } from '@/parametric/model/GraphSerialization'
 import type { MeshCatalog, MeshDescriptor } from '@/parametric/model/MeshCatalog'
 import type { CreatableNodeDefinition, NodeRegistry } from '@/parametric/model/NodeDefinition'
-import { EnumField } from '@/parametric/model/fields/EnumField'
-import {
-	defaultMaterialColor,
-	normalizePresetColorOptions,
-	presetColorValues,
-} from '@/parametric/model/ColorPalette'
+import { defaultMaterialColor } from '@/parametric/model/ColorPalette'
 
 export type EditorControllerSnapshot = GraphStateSnapshot
 
@@ -83,8 +77,8 @@ export class EditorController {
 		this.state.subscribe(listener)
 	)
 
-	public openGraph(graphId: string): void {
-		if (!this.state.openGraph(graphId)) return
+	public openGraph(graphId: string, rootGraphId?: string): void {
+		if (!this.state.openGraph(graphId, rootGraphId)) return
 		this.state.publish()
 	}
 
@@ -165,7 +159,15 @@ export class EditorController {
 	}
 
 	public addGraph(): void {
-		this.execute('Add assembly', () => {
+		this.addGraphDefinition(false)
+	}
+
+	public addRootGraph(): void {
+		this.addGraphDefinition(true)
+	}
+
+	private addGraphDefinition(root: boolean): void {
+		this.execute(root ? 'Add root assembly' : 'Add assembly', () => {
 			const id = this.createGraphId()
 			const outputNode = new OutputGraphNode(`${id}-output`, { x: 500, y: 120 })
 			outputNode.setName('Assembly Output')
@@ -175,7 +177,9 @@ export class EditorController {
 			)
 			this.document.addGraph({
 				id,
-				label: `Assembly ${this.document.getGraphs().length + 1}`,
+				label: root
+					? `Root ${this.document.getRootGraphs().length + 1}`
+					: `Assembly ${this.document.getGraphs().length + 1}`,
 				inputs: [],
 				output: { id: 'geometry', label: 'Geometry', valueType: 'geometry' },
 				model,
@@ -183,7 +187,9 @@ export class EditorController {
 			model.setPortContext({
 				containingGraphId: id,
 				getGraphInterface: (graphId) => this.document.getGraphInterface(graphId),
+				getEnumOptions: (enumId) => this.document.getEnumOptions(enumId),
 			})
+			if (root) this.document.addRootGraph(id)
 			this.state.setActiveGraph(id)
 		})
 	}
@@ -196,14 +202,17 @@ export class EditorController {
 		if (!this.canRemoveGraph(graphId)) return
 		this.execute(`Remove graph "${graphId}"`, () => {
 			if (!this.document.removeGraph(graphId)) return
-			if (this.activeGraphId === graphId) {
-				this.state.setActiveGraph(this.document.getEntryGraphId())
+			if (
+				this.activeGraphId === graphId
+				|| this.state.getActiveRootGraphId() === graphId
+			) {
+				this.state.setActiveGraph(this.document.getDefaultRootGraphId())
 			}
 		})
 	}
 
 	public canRemoveGraph(graphId: string): boolean {
-		if (graphId === this.document.getEntryGraphId()) return false
+		if (this.document.isRootGraph(graphId) && this.document.getRootGraphs().length === 1) return false
 		return !this.document.getGraphs().some((graph) =>
 			graph.model.getNodes().some(
 				(node) => node instanceof GraphInstanceGraphNode && node.getGraphId() === graphId
@@ -215,10 +224,12 @@ export class EditorController {
 		valueType: GraphInputDefinition['valueType'],
 		position: GraphPoint
 	): void {
-		this.execute(`Add ${valueType} graph input`, () => {
+		const displayedType = valueType === 'enum' ? 'choice' : valueType
+		this.execute(`Add ${displayedType} graph input`, () => {
 			const graph = this.document.requireGraph(this.activeGraphId)
 			const inputId = this.createInputId(valueType)
-			const input = createInputDefinition(inputId, valueType)
+			const enumId = valueType === 'enum' ? this.createEnumDefinition() : undefined
+			const input = createInputDefinition(inputId, valueType, enumId)
 			if (!this.document.addInput(graph.id, input)) return
 			const boundaryId = this.createNodeId('graphInput')
 			const node = new GraphInputGraphNode(boundaryId, position, inputId)
@@ -241,58 +252,61 @@ export class EditorController {
 		)
 	}
 
-	public setGraphInputOptions(inputId: string, options: string[]): void {
-		const input = this.document.requireGraph(this.activeGraphId).inputs.find(
-			(candidate) => candidate.id === inputId
-		)
-		if (!input) return
-		const field = new EnumField(String(input.defaultValue), options)
-		this.updateGraphInput(inputId, {
-			options: field.getOptions(),
-			defaultValue: field.get(),
+	public setGraphInputEnum(inputId: string, enumId: string): void {
+		const input = this.getGraphInput(inputId)
+		if (input?.valueType !== 'enum' || input.enumId === enumId) return
+		this.execute(`Use choice set "${enumId}" for graph input "${inputId}"`, () => {
+			this.document.setInputEnum(this.activeGraphId, inputId, enumId)
+			this.reconcileGraphInstanceInputValues(this.activeGraphId, inputId)
+			this.reconcileEnumMappingsForInput(this.activeGraphId, inputId)
 		})
 	}
 
-	public addGraphInputOption(inputId: string): void {
+	public createEnumForGraphInput(inputId: string): void {
 		const input = this.getGraphInput(inputId)
-		if (!input) return
-		const options = input.options ?? []
+		if (input?.valueType !== 'enum') return
+		this.execute(`Create choice set for graph input "${inputId}"`, () => {
+			const enumId = this.createEnumDefinition()
+			this.document.setInputEnum(this.activeGraphId, inputId, enumId)
+			this.reconcileGraphInstanceInputValues(this.activeGraphId, inputId)
+			this.reconcileEnumMappingsForInput(this.activeGraphId, inputId)
+		})
+	}
+
+	public renameEnum(enumId: string, name: string): void {
+		this.execute(
+			`Rename choice set "${enumId}" to "${name.trim()}"`,
+			() => this.document.renameEnum(enumId, name),
+			`enum-name:${enumId}`
+		)
+	}
+
+	public addEnumOption(enumId: string): void {
+		const options = this.document.requireEnumDefinition(enumId).options
 		let sequence = options.length + 1
 		let option = `Option ${sequence}`
 		while (options.includes(option)) {
 			sequence += 1
 			option = `Option ${sequence}`
 		}
-		this.setGraphInputOptions(inputId, [...options, option])
+		this.execute(`Add choice to choice set "${enumId}"`, () => {
+			this.document.addEnumOption(enumId, option)
+		})
 	}
 
-	public updateGraphInputOption(inputId: string, index: number, value: string): void {
-		const input = this.getGraphInput(inputId)
-		if (!input?.options?.[index]) return
-		this.setGraphInputOptions(
-			inputId,
-			input.options.map((option, optionIndex) => optionIndex === index ? value : option)
-		)
+	public renameEnumOption(enumId: string, index: number, option: string): void {
+		this.execute(`Rename choice ${index + 1} in choice set "${enumId}"`, () => {
+			const previousOption = this.document.renameEnumOption(enumId, index, option)
+			if (previousOption === option.trim()) return
+			this.reconcileEnumOptionReferences(enumId, previousOption, option.trim())
+		})
 	}
 
-	public removeGraphInputOption(inputId: string, index: number): void {
-		const input = this.getGraphInput(inputId)
-		if (!input?.options || input.options.length <= 1 || !input.options[index]) return
-		this.setGraphInputOptions(
-			inputId,
-			input.options.filter((_, optionIndex) => optionIndex !== index)
-		)
-	}
-
-	public setGraphInputColorOptions(inputId: string, options: string[]): void {
-		const input = this.getGraphInput(inputId)
-		if (input?.valueType !== 'color') return
-		const normalizedOptions = normalizePresetColorOptions(options)
-		const defaultValue = typeof input.defaultValue === 'string'
-			&& normalizedOptions.includes(input.defaultValue)
-			? input.defaultValue
-			: normalizedOptions[0]
-		this.updateGraphInput(inputId, { options: normalizedOptions, defaultValue })
+	public removeEnumOption(enumId: string, index: number): void {
+		this.execute(`Remove choice ${index + 1} from choice set "${enumId}"`, () => {
+			this.document.removeEnumOption(enumId, index)
+			this.reconcileEnumOptionReferences(enumId)
+		})
 	}
 
 	public removeGraphInput(inputId: string): void {
@@ -389,7 +403,7 @@ export class EditorController {
 		const input = this.document.getGraph(node.getGraphId())?.inputs.find(
 			(candidate) => candidate.id === inputId
 		)
-		if (!input || !isInputValueCompatible(input, value)) return
+		if (!input || !this.document.isInputValueCompatible(input, value)) return
 		this.execute(
 			`Set input "${inputId}" on assembly instance "${nodeId}"`,
 			() => node.setInputValue(inputId, value),
@@ -574,23 +588,33 @@ export class EditorController {
 		this.execute(label, () => update(node as TNode), mergeKey)
 	}
 
-	public setEntryInputValue(inputId: string, value: GraphInputValue): void {
+	public setRootInputValue(
+		rootGraphId: string,
+		inputId: string,
+		value: GraphInputValue
+	): void {
 		this.execute(
-			`Set entry input "${inputId}"`,
-			() => this.document.setEntryInputValue(inputId, value),
-			`entry-input:${inputId}`
+			`Set input "${inputId}" on root graph "${rootGraphId}"`,
+			() => this.document.setRootInputValue(rootGraphId, inputId, value),
+			`root-input:${rootGraphId}:${inputId}`
 		)
 	}
 
-	public setConfigurationControls(controls: ConfigurationPanelControl[]): void {
-		this.execute('Update configuration panel', () => {
-			this.document.setConfigurationControls(controls)
+	public setConfigurationControls(
+		rootGraphId: string,
+		controls: ConfigurationPanelControl[]
+	): void {
+		this.execute(`Update configuration panel for root graph "${rootGraphId}"`, () => {
+			this.document.setConfigurationControls(rootGraphId, controls)
 		})
 	}
 
-	public setConfigurationConstraints(constraints: ConfigurationConstraintDefinition[]): void {
-		this.execute('Update configuration constraints', () => {
-			this.document.setConfigurationConstraints(constraints)
+	public setConfigurationConstraints(
+		rootGraphId: string,
+		constraints: ConfigurationConstraintDefinition[]
+	): void {
+		this.execute(`Update configuration constraints for root graph "${rootGraphId}"`, () => {
+			this.document.setConfigurationConstraints(rootGraphId, constraints)
 		})
 	}
 
@@ -640,9 +664,79 @@ export class EditorController {
 			for (const node of graph.model.getNodes()) {
 				if (!(node instanceof GraphInstanceGraphNode) || node.getGraphId() !== graphId) continue
 				const value = node.getInputValue(inputId)
-				if (value !== undefined && (!input || !isInputValueCompatible(input, value))) {
+				if (value !== undefined && (!input || !this.document.isInputValueCompatible(input, value))) {
 					node.removeInputValue(inputId)
 				}
+			}
+		}
+	}
+
+	private reconcileEnumOptionReferences(
+		enumId: string,
+		previousOption?: string,
+		nextOption?: string
+	): void {
+		for (const graph of this.document.getGraphs()) {
+			for (const input of graph.inputs) {
+				if (input.valueType !== 'enum' || input.enumId !== enumId) continue
+				for (const containingGraph of this.document.getGraphs()) {
+					for (const node of containingGraph.model.getNodes()) {
+						if (!(node instanceof GraphInstanceGraphNode) || node.getGraphId() !== graph.id) {
+							continue
+						}
+						const value = node.getInputValue(input.id)
+						if (previousOption && nextOption && value === previousOption) {
+							node.setInputValue(input.id, nextOption)
+						} else if (
+							value !== undefined
+							&& !this.document.isInputValueCompatible(input, value)
+						) {
+							node.removeInputValue(input.id)
+						}
+					}
+				}
+				this.reconcileEnumMappingsForInput(
+					graph.id,
+					input.id,
+					previousOption,
+					nextOption
+				)
+			}
+		}
+	}
+
+	private reconcileEnumMappingsForInput(
+		graphId: string,
+		inputId: string,
+		previousOption?: string,
+		nextOption?: string
+	): void {
+		const graph = this.document.requireGraph(graphId)
+		const input = graph.inputs.find((candidate) => candidate.id === inputId)
+		if (input?.valueType !== 'enum') return
+		const options = this.document.getInputOptions(input)
+		const boundary = graph.model.getNodes().find(
+			(node) => node instanceof GraphInputGraphNode && node.getInputId() === inputId
+		)
+		if (!boundary) return
+		for (const edge of graph.model.getEdges()) {
+			if (edge.sourceNodeId !== boundary.id || edge.sourcePort !== inputId) continue
+			const target = graph.model.getNode(edge.targetNodeId)
+			if (target instanceof MeshSelectorGraphNode) {
+				target.setSelections(target.getSelections().flatMap((selection) => {
+					const enumValue = previousOption && nextOption && selection.enumValue === previousOption
+						? nextOption
+						: selection.enumValue
+					return options.includes(enumValue) ? [{ ...selection, enumValue }] : []
+				}))
+			}
+			if (target instanceof EnumNumberMapGraphNode) {
+				target.setMappings(target.getMappings().flatMap((mapping) => {
+					const enumValue = previousOption && nextOption && mapping.enumValue === previousOption
+						? nextOption
+						: mapping.enumValue
+					return options.includes(enumValue) ? [{ ...mapping, enumValue }] : []
+				}))
 			}
 		}
 	}
@@ -689,6 +783,7 @@ export class EditorController {
 		const error = [
 			`Failed to ${action}.`,
 			`Active graph: "${snapshot.activeGraphId}".`,
+			`Active root graph: "${snapshot.activeRootGraphId}".`,
 			`Document version: ${snapshot.documentVersion}.`,
 			`Undo available: ${this.history.canUndo()}.`,
 			`Redo available: ${this.history.canRedo()}.`,
@@ -698,6 +793,7 @@ export class EditorController {
 			cause,
 			action,
 			activeGraphId: snapshot.activeGraphId,
+			activeRootGraphId: snapshot.activeRootGraphId,
 			documentVersion: snapshot.documentVersion,
 			canUndo: this.history.canUndo(),
 			canRedo: this.history.canRedo(),
@@ -721,6 +817,7 @@ export class EditorController {
 		const portContext = {
 			containingGraphId: this.activeGraphId,
 			getGraphInterface: (graphId: string) => this.document.getGraphInterface(graphId),
+			getEnumOptions: (enumId: string) => this.document.getEnumOptions(enumId),
 		}
 		const sourcePort = this.nodeRegistry.getOutputPorts(sourceNode, portContext)
 			.find((port) => port.id === edge.sourcePort)
@@ -781,6 +878,18 @@ export class EditorController {
 		return `${valueType}-${sequence}`
 	}
 
+	private createEnumDefinition(): string {
+		let sequence = 1
+		while (this.document.getEnumDefinition(`enum-${sequence}`)) sequence += 1
+		const enumId = `enum-${sequence}`
+		this.document.addEnumDefinition({
+			id: enumId,
+			name: `Choice ${sequence}`,
+			options: ['Option'],
+		})
+		return enumId
+	}
+
 	private wouldCreateReferenceCycle(targetGraphId: string): boolean {
 		const visited = new Set<string>()
 		const reachesActiveGraph = (graphId: string): boolean => {
@@ -799,17 +908,19 @@ export class EditorController {
 
 function createInputDefinition(
 	id: string,
-	valueType: GraphInputDefinition['valueType']
+	valueType: GraphInputDefinition['valueType'],
+	enumId?: string
 ): GraphInputDefinition {
 	if (valueType === 'number') {
 		return { id, label: 'Number', valueType, defaultValue: 1 }
 	}
 	if (valueType === 'enum') {
+		if (!enumId) throw new Error(`Cannot create choice graph input "${id}" without a choice-set ID.`)
 		return {
 			id,
 			label: 'Choice',
 			valueType,
-			options: ['Option'],
+			enumId,
 			defaultValue: 'Option',
 		}
 	}
@@ -818,7 +929,6 @@ function createInputDefinition(
 			id,
 			label: 'Color',
 			valueType,
-			options: [...presetColorValues],
 			defaultValue: defaultMaterialColor,
 		}
 	}

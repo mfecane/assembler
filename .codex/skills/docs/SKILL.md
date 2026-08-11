@@ -30,3 +30,7 @@ description: Use to keep track and update applicaiton's documentation. Log imple
 - Check and clean up obsolete doc files.
 
 - Review files regularly to keep them up to date.
+
+- Keep docs conceptually separated to strategy docs and tactics docs
+    - Strategy - concepts, philosiphy, purpose
+    - Tactics - implementation details, schemas, flows, short term implemetation plans

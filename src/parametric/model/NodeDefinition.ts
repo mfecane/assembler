@@ -20,6 +20,7 @@ export interface NodeCreationContext {
 export interface NodePortContext {
 	containingGraphId: string
 	getGraphInterface(graphId: string): GraphInterface | undefined
+	getEnumOptions(enumId: string): readonly string[]
 }
 
 export interface NodePortDefinition<TNode extends GraphNode> {

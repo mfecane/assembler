@@ -14,7 +14,7 @@ import { DraftNumberInput } from '@/parametric/components/DraftNumberInput'
 import { EmbeddedTransformSection } from '@/parametric/components/EmbeddedTransformSection'
 import { GeometryPreviewButton } from '@/parametric/components/GeometryPreviewButton'
 import { NodeHeader } from '@/parametric/components/NodeHeader'
-import { PresetColorSelect } from '@/parametric/components/PresetColorSelect'
+import { RgbColorInput } from '@/parametric/components/RgbColorInput'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 import { useEditorController } from '@/parametric/editor/react/EditorContext'
@@ -72,6 +72,7 @@ export function GraphInstanceNode({ id }: NodeProps<ParametricFlowNode>) {
 						key={input.id}
 						nodeId={id}
 						input={input}
+						options={document.getInputOptions(input)}
 						value={node.getInputValue(input.id) ?? input.defaultValue}
 						connected={connectedInputIds.has(input.id)}
 						onValueChange={(value) => controller.setGraphInstanceInputValue(
@@ -96,12 +97,14 @@ export function GraphInstanceNode({ id }: NodeProps<ParametricFlowNode>) {
 function GraphInstanceInput({
 	nodeId,
 	input,
+	options,
 	value,
 	connected,
 	onValueChange,
 }: {
 	nodeId: string
 	input: GraphInputDefinition
+	options: string[]
 	value: GraphInputValue | undefined
 	connected: boolean
 	onValueChange: (value: GraphInputValue) => void
@@ -111,7 +114,7 @@ function GraphInstanceInput({
 	return (
 		<div
 			data-id={controlId}
-			className="relative grid min-h-8 grid-cols-[minmax(5rem,1fr)_7rem] items-center gap-2"
+			className="relative grid min-h-8 grid-cols-[minmax(5rem,1fr)_9rem] items-center gap-2"
 			title={connected ? `${input.label} is controlled by a connection` : undefined}
 		>
 			<TypedHandle
@@ -138,7 +141,7 @@ function GraphInstanceInput({
 				/>
 			) : input.valueType === 'enum' ? (
 				<Select
-					value={typeof value === 'string' ? value : input.options?.[0] ?? ''}
+					value={typeof value === 'string' ? value : options[0] ?? ''}
 					onValueChange={onValueChange}
 					disabled={connected}
 				>
@@ -150,18 +153,18 @@ function GraphInstanceInput({
 						<SelectValue />
 					</SelectTrigger>
 					<SelectContent>
-						{(input.options ?? []).map((option) => (
+						{options.map((option) => (
 							<SelectItem key={option} value={option}>{option}</SelectItem>
 						))}
 					</SelectContent>
 				</Select>
 			) : input.valueType === 'color' ? (
-				<PresetColorSelect
+				<RgbColorInput
 					id={controlId}
 					value={typeof value === 'string' ? value : '#eaceac'}
 					onValueChange={onValueChange}
 					disabled={connected}
-					options={input.options}
+					ariaLabel={input.label}
 				/>
 			) : input.valueType === 'boolean' ? (
 				<div className="flex h-8 items-center justify-end">

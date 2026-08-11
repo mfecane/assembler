@@ -6,10 +6,12 @@ create table public.projects (
   graph_document jsonb not null
     check (
       jsonb_typeof(graph_document) = 'object'
-      and graph_document ? 'entryGraphId'
-      and graph_document ? 'entryInputValues'
+      and graph_document ? 'rootGraphs'
+      and jsonb_typeof(graph_document -> 'rootGraphs') = 'array'
+      and graph_document ? 'enums'
+      and jsonb_typeof(graph_document -> 'enums') = 'array'
       and graph_document ? 'graphs'
-      and graph_document ? 'configurationPanel'
+      and jsonb_typeof(graph_document -> 'graphs') = 'array'
     ),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

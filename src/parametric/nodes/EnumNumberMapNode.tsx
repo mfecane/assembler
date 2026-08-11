@@ -55,7 +55,7 @@ export function EnumNumberMapNode({ id }: NodeProps<ParametricFlowNode>) {
 				})}
 				{binding.availableEnumValues.length === 0 && (
 					<div className="px-2 py-1 text-xs text-muted-foreground">
-						Connect an enum output to configure mappings.
+						Connect a choice output to configure mappings.
 					</div>
 				)}
 			</div>

@@ -41,7 +41,7 @@ export class GraphEvaluator {
 	) {}
 
 	public evaluate(document: GraphDocumentModel): SceneMetadata {
-		return this.evaluateGraphOutput(document, document.getEntryGraphId())
+		return this.evaluateGraphOutput(document, document.getDefaultRootGraphId())
 	}
 
 	public evaluateGraphOutput(
@@ -262,10 +262,10 @@ export class GraphEvaluator {
 		document: GraphDocumentModel,
 		graph: GraphDefinition
 	): Map<string, GraphValue> {
-		if (graph.id !== document.getEntryGraphId()) return this.defaultInputs(graph)
+		if (!document.isRootGraph(graph.id)) return this.defaultInputs(graph)
 		const inputs = new Map<string, GraphValue>()
 		for (const input of graph.inputs) {
-			const value = document.getEntryInputValue(input.id)
+			const value = document.getRootInputValue(graph.id, input.id)
 			if (value !== undefined) inputs.set(input.id, { valueType: input.valueType, value })
 		}
 		return inputs

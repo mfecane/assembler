@@ -7,7 +7,7 @@ Ports are written as `port-id: value-type`. Built-in value types are:
 - `geometry` — a list of evaluated mesh instances.
 - `number` — a JavaScript number.
 - `enum` — one string selected from a source node's options.
-- `color` — a preset color string.
+- `color` — an RGB color string in `#RRGGBB` format.
 - `boolean` — a JavaScript boolean.
 
 Connections require exact value-type equality. Geometry inputs accept any number of incoming edges
@@ -41,6 +41,8 @@ Emits one registered catalog mesh.
 - Outputs: `geometry: geometry`.
 - Data: `meshId` string and an embedded `transform` (translation, rotation, scale, and origin).
 - Default: the first selectable mesh in the injected catalog, or an empty ID.
+- Editor: clicking the current mesh opens the shared preview picker; choosing an asset replaces the
+  mesh while preserving the embedded transform.
 - Evaluation: emits one instance using catalog bounds and applies the embedded transform. An
   unknown asset ID produces no output.
 
@@ -51,6 +53,7 @@ Maps an enum value to a registered mesh.
 - Inputs: `enum: enum`.
 - Outputs: `geometry: geometry`.
 - Data: `selections`, an array of `{ enumValue, meshId }` mappings, and an embedded `transform`.
+- Editor: each choice mapping opens the shared preview picker and replaces only that row's mesh.
 - Default: one mapping per selectable mesh, using the mesh label as the enum value.
 - Evaluation: looks up the incoming enum value, emits the matching mesh, and applies the embedded
   transform. A missing input, mapping, or catalog asset produces no output.
@@ -74,7 +77,7 @@ Emits one stored string choice inside a graph. It does not create a configuratio
 - Inputs: none.
 - Outputs: `enum: enum`.
 - Data: non-empty `options` string array; `value`, which must be one of the options.
-- Default: name `Enum`, options `Cube`, `Cone`, and `Ring`, with `Cube` selected.
+- Default: name `Choice`, options `Cube`, `Cone`, and `Ring`, with `Cube` selected.
 - Normalization: options are trimmed, empty and duplicate values are removed, and an empty list becomes `["Option"]`. An invalid current value becomes the first option.
 
 ### Color Input (`color`)
@@ -92,7 +95,7 @@ Supported persisted colors are `#eaceac`, `#f4f4f5`, `#27272a`, `#dc5a5a`, `#e89
 
 ## Value operations
 
-### Enum to Number (`enumNumberMap`)
+### Choice to Number (`enumNumberMap`)
 
 Maps an enum value to a number for driving numeric operation inputs.
 
@@ -186,13 +189,16 @@ Exposes one public input of the containing graph.
 - Data: `inputId`, referencing an input declared by the containing graph.
 - Inputs: none.
 - Output: the referenced input ID and value type.
-- Placement: add a Number, Enum, Color, Boolean, or Geometry graph input from the node menu.
-- Editing: default values, enum options, and the allowed preset list for color inputs are edited
-  directly on the node. A color input must keep at least one option, and its default must be one of
-  the enabled colors. The public input label is managed separately by the configuration-panel
-  mapping UI; the node's own name is edited from its header like every other node.
+- Placement: add a Number, Choice, Color, Boolean, or Geometry graph input from the node menu.
+- Editing: number, boolean, and arbitrary RGB color defaults are edited directly on the node.
+  Choice inputs select a document choice set and open a separate dialog to edit its shared name and
+  values. A choice set must keep at least one value, and the input default must be one of them.
+  Customer-facing color choices are edited on the color item in the configuration-panel dialog.
+  The public input label is managed separately by the
+  configuration-panel mapping UI; the node's own name is edited from its header like every other
+  node.
 - Deletion: deleting the node also removes its public input declaration, configuration control,
-  saved entry value, and affected graph-instance connections.
+  saved root value when applicable, and affected graph-instance connections.
 
 ### Graph Output (`graphOutput`)
 
@@ -203,8 +209,8 @@ Defines the geometry result of its containing graph.
 - Data: empty object.
 - Creation/deletion: not available through the node menu.
 
-Every graph contains exactly one Graph Output. The entry graph result is displayed in the main
-viewport; child graph results are returned through graph instances.
+Every graph contains exactly one Graph Output. An open root graph uses its saved root values in the
+main viewport; child graph results are returned through graph instances.
 
 ### Graph Instance (`graphInstance`)
 

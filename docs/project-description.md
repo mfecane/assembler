@@ -14,7 +14,7 @@ The application has three coordinated views:
 
 - A node canvas for authoring the product graph.
 - A 3D viewport that shows the evaluated result.
-- A configuration panel generated from explicit bindings to entry graph inputs.
+- A configuration panel generated from explicit bindings to the selected root graph's inputs.
 
 Graph authors build the graph and decide which values are exposed. Product configurators then change those exposed values without editing graph topology. Graphs can be imported from and exported to JSON.
 
@@ -47,14 +47,15 @@ The graph has one non-creatable, non-removable Output node. It resolves the comb
 
 Every graph declares a public interface. Authors create its declarations by placing Number,
 Enum, Color, or Geometry Graph Input nodes and edit their labels and defaults directly on those
-nodes. Color inputs also define a required, non-empty allowed subset of the standard preset palette;
-their configuration controls and unconnected graph-instance controls show only that subset. The
-entry graph receives saved values from `entryInputValues`; graph instances receive connected parent
-values and declaration defaults.
+nodes. Color inputs and unconnected graph instances use arbitrary RGB pickers. Customer-facing
+available colors live only on a root input's configuration control. Each `rootGraphs` record owns
+the saved values supplied to its graph; graph instances receive connected parent values and
+declaration defaults.
 
 The configuration panel is an independent presentation layer. Its controls bind only to public
-inputs of the entry graph and never to inner nodes or child graph paths. Its root-only editor
-maps those inputs to compatible number field, slider, select, and color-picker controls.
+inputs of its owning root and never to inner nodes or child graph paths. Each root has an independent
+root-only editor that maps those inputs to compatible number field, slider, select, color-picker,
+and switch controls.
 
 ## Architecture
 
@@ -66,7 +67,7 @@ GraphState ← commands → EditorController
      │                       ├─ GraphEvaluator
      │                       └─ services and repositories
      ├─ React hooks → React Flow editor
-     ├─ Entry input bindings → configurator panel
+     ├─ Active-root input bindings → configurator panel
      └─ scene metadata → Three.js viewport
 
 Editor → EditorController + ReactBridge + viewport lifetime
@@ -94,9 +95,9 @@ Unconnected inputs may have node-defined local fallbacks. Array uses its stored 
 
 ## Persistence
 
-The graph document contains an entry graph ID, saved entry input values, every document-local
-graph definition, and configuration-panel controls. Each definition owns its interface, nodes,
-and edges. Runtime-only values such as scene metadata and evaluated asset instances,
+The graph document contains one or more root records with saved input values and UI configuration,
+plus every document-local graph definition. Each definition owns its interface, nodes, and edges.
+Runtime-only values such as scene metadata and evaluated asset instances,
 subscriptions, controller revisions, selection, and graph-tree state are not persisted.
 
 Graph instances reference definitions only by IDs resolved inside the current document.

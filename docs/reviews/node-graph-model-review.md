@@ -59,7 +59,7 @@ registry metadata for any node that holds a `Vector3Value`, generically, without
 type it is. Numbers, enums, booleans, and colors have no equivalent value type, so every node that
 holds one re-derives get/set/normalize logic by hand. `ColorGraphNode.setColor` and
 `MaterialGraphNode.setColor` (`GraphNode.ts:175` and `:310`) are the same three lines of
-`normalizePresetColor` normalization, copy-pasted because there is no `ColorField` value object to
+`normalizeRgbColor` normalization, copy-pasted because there is no `ColorField` value object to
 own that behavior once.
 
 **Why this breaks at hundreds of types:** the copy-paste is currently ~14×small; at hundreds of
