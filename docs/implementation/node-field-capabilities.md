@@ -20,6 +20,7 @@ and the [Node graph model review](../reviews/node-graph-model-review.md).
   explicitly declares its single number input as multi-connect. The numbered dynamic-port model
   was removed.
 - Transform opts into the generic enabled field and registry-level input/output bypass behavior.
+  Its Boolean input can override the persisted fallback without adding node-specific evaluation logic.
 - The retained default graph and seed now use the implemented persisted node and port shapes.
 
 ## Goal

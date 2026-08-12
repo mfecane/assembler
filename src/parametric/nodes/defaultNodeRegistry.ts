@@ -537,13 +537,21 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			false,
 			true
 		),
-		ports: { inputs: geometryInput, outputs: geometryOutput },
+		ports: {
+			inputs: [
+				{ id: 'enabled', valueType: 'boolean' },
+				...geometryInput,
+			],
+			outputs: geometryOutput,
+			getInputDefault: (node, portId) =>
+				portId === 'enabled' ? { valueType: 'boolean', value: node.getEnabled() } : undefined,
+		},
 		fields: {
 			...transformFields('', (node) => node.getTransform()),
 			copy: booleanField((node) => node.getCopy(), (node, value) => node.setCopy(value)),
 			enabled: booleanField((node) => node.getEnabled(), (node, value) => node.setEnabled(value)),
 		},
-		bypass: { input: 'geometry', output: 'geometry' },
+		bypass: { enabledInput: 'enabled', input: 'geometry', output: 'geometry' },
 		serialize: (node) => ({
 			translation: node.getTranslation().toSnapshot(),
 			rotation: node.getRotation().toSnapshot(),

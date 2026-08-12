@@ -1,30 +1,36 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { type Edge, useReactFlow } from '@xyflow/react'
 import {
-	ChevronDown,
 	Circle,
 	Hash,
 	ListFilter,
-	Network,
 	ListPlus,
+	Network,
 	Palette,
 	Plus,
+	Search,
 	Shapes,
 	ToggleLeft,
+	type LucideIcon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from '@/components/ui/popover'
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
 import { useGraphActions } from '@/parametric/hooks/useGraphActions'
+import { useNodeSelectorShortcut } from '@/parametric/hooks/useNodeSelectorShortcut'
+import type { GraphInputDefinition } from '@/parametric/model/GraphDocumentModel'
 import {
 	type NodeMenuGroup,
 	nodeViewPresentation,
@@ -32,7 +38,37 @@ import {
 
 const groupOrder: NodeMenuGroup[] = ['Inputs', 'Geometry', 'Appearance', 'Operations', 'Other']
 
+const graphInputOptions: Array<{
+	valueType: GraphInputDefinition['valueType']
+	label: string
+	description: string
+	icon: LucideIcon
+}> = [
+	{ valueType: 'number', label: 'Number input', description: 'Expose a numeric assembly input', icon: Hash },
+	{
+		valueType: 'numberArray',
+		label: 'Number array input',
+		description: 'Expose a numeric list assembly input',
+		icon: ListPlus,
+	},
+	{ valueType: 'enum', label: 'Choice input', description: 'Expose a choice assembly input', icon: ListFilter },
+	{ valueType: 'color', label: 'Color input', description: 'Expose a color assembly input', icon: Palette },
+	{ valueType: 'boolean', label: 'Boolean input', description: 'Expose a toggle assembly input', icon: ToggleLeft },
+	{ valueType: 'geometry', label: 'Geometry input', description: 'Expose a geometry assembly input', icon: Shapes },
+]
+
+interface NodeSelectionOption {
+	id: string
+	group: string
+	label: string
+	description: string
+	icon: LucideIcon
+	select: () => void
+}
+
 export function NodeSelector({ selectedEdges }: { selectedEdges: Edge[] }) {
+	const [open, setOpen] = useState(false)
+	const [filter, setFilter] = useState('')
 	const {
 		addNode,
 		addGraphInput,
@@ -41,29 +77,10 @@ export function NodeSelector({ selectedEdges }: { selectedEdges: Edge[] }) {
 		nodeDefinitions,
 	} = useGraphActions()
 	const { getNodes, screenToFlowPosition } = useReactFlow()
-	const [open, setOpen] = useState(false)
-
-	const addSelectedNode = (type: string) => {
-		const position = getInsertPosition()
-		addNode(type, position, getSelectedEdgeId())
-		setOpen(false)
-	}
-
-	const addSelectedGraph = (graphId: string) => {
-		const position = getInsertPosition()
-		addGraphInstance(graphId, position, getSelectedEdgeId())
-		setOpen(false)
-	}
+	useNodeSelectorShortcut(setOpen)
 
 	const getSelectedEdgeId = () =>
 		selectedEdges.length === 1 ? selectedEdges[0].id : undefined
-
-	const addSelectedInput = (
-		valueType: 'number' | 'numberArray' | 'enum' | 'color' | 'boolean' | 'geometry'
-	) => {
-		addGraphInput(valueType, getInsertPosition())
-		setOpen(false)
-	}
 
 	const getInsertPosition = () => {
 		const cascadeOffset = (getNodes().length % 8) * 18
@@ -73,167 +90,195 @@ export function NodeSelector({ selectedEdges }: { selectedEdges: Edge[] }) {
 		})
 	}
 
+	const close = () => {
+		setOpen(false)
+		setFilter('')
+	}
+
+	const options: NodeSelectionOption[] = [
+		...graphInputOptions.map((option) => ({
+			id: `input:${option.valueType}`,
+			group: 'Assembly inputs',
+			label: option.label,
+			description: option.description,
+			icon: option.icon,
+			select: () => {
+				addGraphInput(option.valueType, getInsertPosition())
+				close()
+			},
+		})),
+		...graphDefinitions.map((graph) => ({
+			id: `graph:${graph.id}`,
+			group: 'Assemblies in this project',
+			label: graph.label,
+			description: 'Add an instance of this assembly',
+			icon: Network,
+			select: () => {
+				addGraphInstance(graph.id, getInsertPosition(), getSelectedEdgeId())
+				close()
+			},
+		})),
+		...groupOrder.flatMap((group) => nodeDefinitions
+			.filter((definition) => (nodeViewPresentation[definition.type]?.group ?? 'Other') === group)
+			.map((definition) => {
+				const presentation = nodeViewPresentation[definition.type]
+				return {
+					id: `node:${definition.type}`,
+					group,
+					label: definition.label,
+					description: presentation?.description ?? 'Add node',
+					icon: presentation?.icon ?? Circle,
+					select: () => {
+						addNode(definition.type, getInsertPosition(), getSelectedEdgeId())
+						close()
+					},
+				}
+			})),
+	]
+	const normalizedFilter = filter.trim().toLocaleLowerCase()
+	const filteredOptions = normalizedFilter
+		? options.filter((option) => (
+			`${option.label} ${option.description} ${option.group}`
+				.toLocaleLowerCase()
+				.includes(normalizedFilter)
+		))
+		: options
+
+	const submitFirstResult = (event: FormEvent) => {
+		event.preventDefault()
+		filteredOptions[0]?.select()
+	}
+
 	return (
-		<Tooltip>
-			<Popover open={open} onOpenChange={setOpen}>
+		<>
+			<Tooltip>
 				<TooltipTrigger asChild>
-					<PopoverTrigger asChild>
-						<Button
-							data-id="add-node-trigger"
-							type="button"
-							variant="ghost"
-							size="icon"
-							className="nodrag nopan relative h-8 w-8"
-							aria-label="Add node"
-						>
-							<Plus />
-							<ChevronDown
-								className="absolute bottom-0.5 right-0.5 !size-2.5 text-muted-foreground"
+					<Button
+						data-id="add-node-trigger"
+						type="button"
+						variant="ghost"
+						size="icon"
+						className="nodrag nopan h-8 w-8"
+						aria-label="Add node"
+						aria-keyshortcuts="Space"
+						onClick={() => setOpen(true)}
+					>
+						<Plus />
+					</Button>
+				</TooltipTrigger>
+				<TooltipContent side="top">Add node (Space)</TooltipContent>
+			</Tooltip>
+
+			<Dialog
+				open={open}
+				onOpenChange={(nextOpen) => {
+					setOpen(nextOpen)
+					if (!nextOpen) setFilter('')
+				}}
+			>
+				<DialogContent
+					data-id="node-selection-dialog"
+					className="gap-0 p-0 sm:max-w-xl"
+				>
+					<DialogHeader className="px-6 pb-4 pt-6">
+						<DialogTitle>Add node</DialogTitle>
+						<DialogDescription>
+							Filter the available nodes, then press Enter to add the first result.
+						</DialogDescription>
+					</DialogHeader>
+					<form data-id="node-selection-form" onSubmit={submitFirstResult}>
+						<div className="relative border-y border-border px-6 py-3">
+							<Search
+								className="pointer-events-none absolute left-9 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
 								aria-hidden="true"
 							/>
-						</Button>
-					</PopoverTrigger>
-				</TooltipTrigger>
-				<PopoverContent
-					data-id="add-node-menu"
-					align="start"
-					collisionPadding={8}
-					className={cn(
-						'nodrag nopan w-72 max-w-[var(--radix-popover-content-available-width)] p-2',
-						'max-h-[var(--radix-popover-content-available-height)] overflow-y-auto'
-					)}
-				>
-					<div className="mb-2 border-b border-border pb-2" data-id="graph-input-node-options">
-						<div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-							Assembly inputs
-						</div>
-						<div className="grid grid-cols-2 gap-1">
-							<InputNodeButton
-								icon={Hash}
-								label="Number"
-								onClick={() => addSelectedInput('number')}
-							/>
-							<InputNodeButton
-								icon={ListPlus}
-								label="Number array"
-								onClick={() => addSelectedInput('numberArray')}
-							/>
-							<InputNodeButton
-								icon={ListFilter}
-								label="Choice"
-								onClick={() => addSelectedInput('enum')}
-							/>
-							<InputNodeButton
-								icon={Palette}
-								label="Color"
-								onClick={() => addSelectedInput('color')}
-							/>
-							<InputNodeButton
-								icon={ToggleLeft}
-								label="Boolean"
-								onClick={() => addSelectedInput('boolean')}
-							/>
-							<InputNodeButton
-								icon={Shapes}
-								label="Geometry"
-								onClick={() => addSelectedInput('geometry')}
+							<Input
+								data-id="node-filter-input"
+								value={filter}
+								onChange={(event) => setFilter(event.target.value)}
+								placeholder="Filter nodes..."
+								aria-label="Filter nodes"
+								className="pl-9"
+								autoFocus
 							/>
 						</div>
-					</div>
-					{graphDefinitions.length > 0 && (
-						<div className="mb-2 border-b border-border pb-2">
-							<div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-								Assemblies in this project
-							</div>
-							<div className="flex flex-col gap-0.5">
-								{graphDefinitions.map((graph) => (
-									<Button
-										key={graph.id}
-										type="button"
-										variant="ghost"
-										className="h-auto w-full justify-start gap-3 px-2 py-2 text-left"
-										onClick={() => addSelectedGraph(graph.id)}
+						<div
+							data-id="node-selection-results"
+							className="max-h-[min(60vh,32rem)] overflow-y-auto p-2"
+						>
+							{filteredOptions.length === 0 ? (
+								<p className="px-3 py-8 text-center text-sm text-muted-foreground">
+									No nodes match “{filter}”.
+								</p>
+							) : (
+								groupOptions(filteredOptions).map(([group, groupOptions], groupIndex) => (
+									<section
+										key={group}
+										data-id="node-selection-group"
+										className={cn(groupIndex > 0 && 'mt-2 border-t border-border pt-2')}
 									>
-										<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-input text-primary">
-											<Network />
-										</span>
-										<span className="text-xs font-semibold text-foreground">{graph.label}</span>
-									</Button>
-								))}
-							</div>
+										<h3 className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+											{group}
+										</h3>
+										<div className="grid grid-cols-1 gap-0.5 sm:grid-cols-2">
+											{groupOptions.map((option, optionIndex) => (
+												<NodeOptionButton
+													key={option.id}
+													option={option}
+													first={groupIndex === 0 && optionIndex === 0}
+												/>
+											))}
+										</div>
+									</section>
+								))
+							)}
 						</div>
-					)}
-					{groupOrder.map((group, groupIndex) => {
-						const definitions = nodeDefinitions.filter(
-							(definition) => (nodeViewPresentation[definition.type]?.group ?? 'Other') === group
-						)
-						if (definitions.length === 0) return null
-
-						return (
-							<div
-								key={group}
-								className={groupIndex === 0 ? '' : 'mt-2 border-t border-border pt-2'}
-							>
-								<div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-									{group}
-								</div>
-								<div className="flex flex-col gap-0.5">
-									{definitions.map((definition) => {
-										const presentation = nodeViewPresentation[definition.type]
-										const Icon = presentation?.icon ?? Circle
-
-										return (
-											<Button
-												key={definition.type}
-												type="button"
-												variant="ghost"
-												className="h-auto w-full justify-start gap-3 px-2 py-2 text-left"
-												onClick={() => addSelectedNode(definition.type)}
-											>
-												<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-input text-primary">
-													<Icon />
-												</span>
-												<span className="flex min-w-0 flex-col items-start">
-													<span className="text-xs font-semibold text-foreground">
-														{definition.label}
-													</span>
-													<span className="text-[11px] font-normal text-muted-foreground">
-														{presentation?.description ?? 'Add node'}
-													</span>
-												</span>
-											</Button>
-										)
-									})}
-								</div>
-							</div>
-						)
-					})}
-				</PopoverContent>
-			</Popover>
-			<TooltipContent side="top">Add node</TooltipContent>
-		</Tooltip>
+					</form>
+				</DialogContent>
+			</Dialog>
+		</>
 	)
 }
 
-function InputNodeButton({
-	icon: Icon,
-	label,
-	onClick,
+function groupOptions(options: NodeSelectionOption[]): Array<[string, NodeSelectionOption[]]> {
+	const groups = new Map<string, NodeSelectionOption[]>()
+	for (const option of options) {
+		const group = groups.get(option.group)
+		if (group) group.push(option)
+		else groups.set(option.group, [option])
+	}
+	return [...groups.entries()]
+}
+
+function NodeOptionButton({
+	option,
+	first,
 }: {
-	icon: typeof Hash
-	label: string
-	onClick: () => void
+	option: NodeSelectionOption
+	first: boolean
 }) {
+	const Icon = option.icon
 	return (
 		<Button
-			data-id={`add-${label.toLowerCase()}-graph-input`}
+			data-id="node-selection-option"
+			data-first-result={first || undefined}
 			type="button"
 			variant="ghost"
-			className="h-9 justify-start gap-2 px-2 text-xs"
-			onClick={onClick}
+			className="h-auto min-w-0 justify-start gap-3 px-2 py-2 text-left"
+			onClick={option.select}
 		>
-			<Icon className="text-primary" />
-			{label}
+			<span
+				className={cn(
+					'flex size-8 shrink-0 items-center justify-center rounded-md',
+					'border border-border bg-input text-primary'
+				)}
+			>
+				<Icon />
+			</span>
+			<span className="flex min-w-0 flex-col items-start">
+				<span className="text-xs font-semibold text-foreground">{option.label}</span>
+				<span className="text-[11px] font-normal text-muted-foreground">{option.description}</span>
+			</span>
 		</Button>
 	)
 }

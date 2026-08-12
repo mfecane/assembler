@@ -117,20 +117,14 @@ export function useEnumNumberMapNode(nodeId: string): EnumNumberMapNodeBinding |
 
 export interface GeometrySwitchNodeBinding {
 	cases: GeometrySwitchCase[]
-	setCases: (cases: GeometrySwitchCase[]) => void
 }
 
 export function useGeometrySwitchNode(nodeId: string): GeometrySwitchNodeBinding | undefined {
-	const controller = useEditorController()
 	const { model } = useGraphSnapshot()
 	const node = model.getNode(nodeId)
-	const setCases = useCallback(
-		(cases: GeometrySwitchCase[]) => controller.setGeometrySwitchCases(nodeId, cases),
-		[controller, nodeId]
-	)
 
 	if (!(node instanceof GeometrySwitchGraphNode)) return undefined
-	return { cases: node.getCases(), setCases }
+	return { cases: node.getCases() }
 }
 
 export interface GeometryToggleNodeBinding {
@@ -264,6 +258,7 @@ export interface TransformNodeBinding {
 	copy: boolean
 	uniformScale: boolean
 	enabled: boolean
+	enabledConnected: boolean
 	setScale: (value: Vector3Snapshot) => void
 	setOrigin: (value: TransformOrigin) => void
 	setCopy: (value: boolean) => void
@@ -273,7 +268,7 @@ export interface TransformNodeBinding {
 
 export function useTransformNode(nodeId: string): TransformNodeBinding | undefined {
 	const controller = useEditorController()
-	const { model } = useGraphSnapshot()
+	const { activeGraphId, model } = useGraphSnapshot()
 	const node = model.getNode(nodeId)
 	const setScale = useCallback(
 		(value: Vector3Snapshot) => controller.setTransformScale(nodeId, value),
@@ -304,12 +299,23 @@ export function useTransformNode(nodeId: string): TransformNodeBinding | undefin
 	)
 
 	if (!(node instanceof TransformGraphNode)) return undefined
+	const enabledEdge = model.getEdges().find(
+		(edge) => edge.targetNodeId === nodeId && edge.targetPort === 'enabled'
+	)
+	const connectedValue = enabledEdge?.sourcePort
+		? controller.evaluateOutput(activeGraphId, enabledEdge.sourceNodeId, enabledEdge.sourcePort)
+		: undefined
+	const connectedEnabled = connectedValue?.valueType === 'boolean'
+		&& typeof connectedValue.value === 'boolean'
+		? connectedValue.value
+		: undefined
 	return {
 		scale: node.getScale().toSnapshot(),
 		origin: node.getOrigin(),
 		copy: node.getCopy(),
 		uniformScale: node.getUniformScale(),
-		enabled: node.getEnabled(),
+		enabled: connectedEnabled ?? node.getEnabled(),
+		enabledConnected: connectedEnabled !== undefined,
 		setScale,
 		setOrigin,
 		setCopy,

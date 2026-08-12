@@ -24,6 +24,11 @@ export class GraphModel {
 		return this.nodes.get(nodeId)
 	}
 
+	public getNodeTypeLabel(nodeId: string): string | undefined {
+		const node = this.nodes.get(nodeId)
+		return node ? this.nodeRegistry.getLabel(node.type) : undefined
+	}
+
 	public getEdges(): GraphEdge[] {
 		return [...this.edges.values()]
 	}

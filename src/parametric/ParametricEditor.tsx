@@ -1,6 +1,7 @@
 import { Background, Controls, ReactFlow, SelectionMode } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { ResizableSplitView } from '@/components/ResizableSplitView'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { GraphToolbar } from '@/parametric/components/GraphToolbar'
 import { useFlowGraph } from '@/parametric/hooks/useFlowGraph'
 import { ThreeViewport } from '@/parametric/three/ThreeViewport'
@@ -40,6 +41,7 @@ function GraphCanvas() {
 			fitView
 			maxZoom={4}
 			minZoom={0.2}
+			panActivationKeyCode={null}
 			selectionMode={SelectionMode.Partial}
 		>
 			<GraphToolbar selectedEdges={selectedEdges} />
@@ -58,9 +60,11 @@ export function ParametricEditor({
 }) {
 	return (
 		<div data-id="parametric-editor" className={cn('h-screen w-screen', className)}>
-			<EditorProvider editor={editor}>
-				<ParametricEditorContent />
-			</EditorProvider>
+			<TooltipProvider>
+				<EditorProvider editor={editor}>
+					<ParametricEditorContent />
+				</EditorProvider>
+			</TooltipProvider>
 		</div>
 	)
 }

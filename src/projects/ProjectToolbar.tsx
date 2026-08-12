@@ -423,6 +423,20 @@ function AssemblyHeaderControls({
 								Edit graph…
 							</Button>
 							<Button
+								data-id="copy-assembly-menu-item"
+								type="button"
+								variant="ghost"
+								className="h-9 w-full justify-start px-2 font-normal"
+								role="menuitem"
+								onClick={() => {
+									setActionMenuOpen(false)
+									controller.copyGraph(activeGraph.id)
+								}}
+							>
+								<Copy />
+								Copy assembly
+							</Button>
+							<Button
 								data-id="clear-assembly-menu-item"
 								type="button"
 								variant="ghost"

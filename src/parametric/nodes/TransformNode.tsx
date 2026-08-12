@@ -26,12 +26,14 @@ export function TransformNode({ id }: NodeProps<ParametricFlowNode>) {
 			<TypedHandle id="geometry" type="target" position={Position.Left} valueType="geometry" />
 			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} />} />
 			<div className="flex flex-col gap-2">
-				<div className="nodrag flex items-center justify-between gap-3">
+				<div className="nodrag relative flex items-center justify-between gap-3">
+					<TypedHandle id="enabled" type="target" position={Position.Left} valueType="boolean" />
 					<Label htmlFor={`${id}-enabled`} className="text-xs text-muted-foreground">Enabled</Label>
 					<Switch
 						data-id="transform-enabled-switch"
 						id={`${id}-enabled`}
 						checked={binding.enabled}
+						disabled={binding.enabledConnected}
 						onCheckedChange={binding.setEnabled}
 						aria-label="Enable transform"
 					/>

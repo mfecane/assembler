@@ -55,7 +55,7 @@ export interface NodeDefinition<TNode extends GraphNode = GraphNode> {
 	ports: NodePortDefinition<TNode>
 	isOutput?: boolean
 	fields?: Record<string, FieldDefinition<TNode>>
-	bypass?: { enabledField?: string; input: string; output: string }
+	bypass?: { enabledField?: string; enabledInput?: string; input: string; output: string }
 	serialize(node: TNode): unknown
 	deserialize(id: string, position: GraphPoint, data: unknown): TNode
 	evaluate?: (node: TNode, context: NodeEvaluationContext) => EvaluatedNodeOutputs
@@ -79,6 +79,10 @@ export class NodeRegistry {
 
 	public getDefinition(type: string): NodeDefinition | undefined {
 		return this.definitions.get(type)
+	}
+
+	public getLabel(type: string): string {
+		return this.requireDefinition(type).label
 	}
 
 	public getCreatableDefinitions(): CreatableNodeDefinition[] {
@@ -165,7 +169,11 @@ export class NodeRegistry {
 	public evaluate(node: GraphNode, context: NodeEvaluationContext): EvaluatedNodeOutputs {
 		const definition = this.requireDefinition(node.type)
 		if (definition.bypass) {
-			const enabled = this.getFieldValue(node, definition.bypass.enabledField ?? 'enabled')
+			const enabledInput = definition.bypass.enabledInput
+			const inputValue = enabledInput ? context.resolveInput(node, enabledInput) : undefined
+			const enabled = inputValue?.valueType === 'boolean'
+				? inputValue.value
+				: this.getFieldValue(node, definition.bypass.enabledField ?? 'enabled')
 			if (enabled === false) {
 				const input = context.resolveInput(node, definition.bypass.input)
 				return input ? new Map([[definition.bypass.output, input]]) : new Map()

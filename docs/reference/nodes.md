@@ -121,8 +121,9 @@ Selects one geometry input using an incoming choice value.
 - Outputs: `geometry: geometry`.
 - Data: `cases`, a non-empty array of unique `{ id, enumValue }` entries. The stable `id` owns the
   geometry port; `enumValue` is the exact incoming choice value that selects it.
-- Editor: cases can be added, renamed, and removed. Renaming a choice value preserves its geometry
-  connection because the input ID remains stable. Removing a case removes its connection.
+- Editor: cases mirror the connected choice output and are displayed as labeled geometry ports.
+  Adding, renaming, or removing an upstream choice updates the cases automatically. Existing geometry
+  connections keep their stable input IDs across renames; removing a choice removes its connection.
 - Evaluation: passes through the selected case's complete geometry bundle. Missing choices,
   unmatched values, and unconnected selected cases produce no output.
 
@@ -142,7 +143,7 @@ Enables or disables one geometry branch using a boolean value.
 
 Applies translation, rotation, scale, and a selectable pivot to every incoming instance.
 
-- Inputs: `geometry: geometry`.
+- Inputs: `enabled: boolean`; `geometry: geometry`.
 - Outputs: `geometry: geometry`.
 - Data:
   - `translation`, `rotation`, and `scale` vectors (`{ x, y, z }`).
@@ -154,7 +155,9 @@ Applies translation, rotation, scale, and a selectable pivot to every incoming i
   `uniformScale: true`, and `enabled: true`.
 - Units: rotation values are degrees. Translation uses scene units.
 - Evaluation: transforms all instances. When `copy` is true, both original and transformed instances are emitted.
-- Toggle: when disabled, the geometry input is passed through without running transform evaluation.
+- Toggle: the stored value is used while `enabled` is disconnected. A connected boolean controls
+  the node and disables the fallback switch. When disabled, the geometry input is passed through
+  without running transform evaluation.
 - Compatibility: missing `copy` defaults to false. Missing `uniformScale` is inferred by checking whether all persisted scale components are equal.
 
 ### Material (`material`)

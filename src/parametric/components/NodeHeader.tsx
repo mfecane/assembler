@@ -1,5 +1,10 @@
 import type { ReactNode } from 'react'
 import { Circle } from 'lucide-react'
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { NodeActionsMenu } from '@/parametric/components/NodeActionsMenu'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
@@ -20,6 +25,7 @@ export function NodeHeader({
 
 	if (!node) return null
 	const colorCategory = getNodeColorCategory(node.type)
+	const nodeTypeLabel = model.getNodeTypeLabel(nodeId)
 
 	return (
 		<div
@@ -31,11 +37,19 @@ export function NodeHeader({
 			)}
 		>
 			<div className="flex min-w-0 flex-1 items-center gap-1.5">
-				<Icon
-					data-id={`node-type-icon-${nodeId}`}
-					className="size-4 shrink-0 text-current"
-					aria-label={`${presentation?.description ?? node.type} node type`}
-				/>
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Icon
+							data-id={`node-type-icon-${nodeId}`}
+							className="size-4 shrink-0 text-current"
+							aria-label={`${nodeTypeLabel} node type`}
+							tabIndex={0}
+						/>
+					</TooltipTrigger>
+					<TooltipContent data-id={`node-type-tooltip-${nodeId}`} side="top">
+						{nodeTypeLabel}
+					</TooltipContent>
+				</Tooltip>
 				<div
 					data-id={`node-name-${nodeId}`}
 					className="min-w-0 truncate text-sm font-semibold text-current"

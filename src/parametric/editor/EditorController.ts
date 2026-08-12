@@ -167,6 +167,89 @@ export class EditorController {
 		this.addGraphDefinition(true)
 	}
 
+	public copyGraph(graphId: string): void {
+		const sourceLabel = this.document.getGraph(graphId)?.label ?? graphId
+		this.execute(`Copy assembly "${sourceLabel}"`, () => {
+			const source = this.document.getGraph(graphId)
+			if (!source) {
+				throw new Error(
+					`Cannot copy assembly "${graphId}": no graph with that ID exists in the current document. `
+					+ `Available graph IDs: ${JSON.stringify(
+						this.document.getGraphs().map((graph) => graph.id)
+					)}.`
+				)
+			}
+			const copyId = this.createGraphId()
+			const nodes = source.model.getNodes().map((sourceNode) => {
+				const node = this.nodeRegistry.deserialize(
+					sourceNode.type,
+					sourceNode.id,
+					sourceNode.getPosition(),
+					this.nodeRegistry.serialize(sourceNode)
+				)
+				node.setName(sourceNode.getName())
+				return node
+			})
+			const model = new GraphModel(this.nodeRegistry, nodes)
+			this.document.addGraph({
+				id: copyId,
+				label: this.createGraphCopyLabel(source.label),
+				inputs: source.inputs.map((input) => ({
+					...input,
+					defaultValue: Array.isArray(input.defaultValue)
+						? [...input.defaultValue]
+						: input.defaultValue,
+				})),
+				output: { ...source.output },
+				model,
+			})
+			model.setPortContext({
+				containingGraphId: copyId,
+				getGraphInterface: (referencedGraphId) => (
+					this.document.getGraphInterface(referencedGraphId)
+				),
+				getEnumOptions: (enumId) => this.document.getEnumOptions(enumId),
+			})
+			const sourceEdges = source.model.getEdges()
+			for (const edge of sourceEdges) {
+				model.connect(new GraphEdge(
+					edge.id,
+					edge.sourceNodeId,
+					edge.targetNodeId,
+					edge.sourcePort,
+					edge.targetPort
+				))
+			}
+			if (model.getEdges().length !== sourceEdges.length) {
+				throw new Error(
+					`Cannot copy assembly "${source.label}" (${source.id}) to "${copyId}": `
+					+ `only ${model.getEdges().length} of ${sourceEdges.length} connections were valid `
+					+ 'after cloning its nodes and interface.'
+				)
+			}
+			if (this.document.isRootGraph(source.id)) {
+				this.document.addRootGraph(copyId)
+				this.document.setConfigurationControls(
+					copyId,
+					this.document.getConfigurationControls(source.id)
+				)
+				for (const [inputId, value] of Object.entries(
+					this.document.getRootInputValues(source.id)
+				)) {
+					if (!this.document.setRootInputValue(copyId, inputId, value)) {
+						throw new Error(
+							`Cannot copy root assembly "${source.label}" (${source.id}) to "${copyId}": `
+							+ `root input "${inputId}" rejected its copied value ${JSON.stringify(value)}.`
+						)
+					}
+				}
+				this.state.openGraph(copyId, copyId)
+				return
+			}
+			this.state.openGraph(copyId)
+		})
+	}
+
 	private addGraphDefinition(root: boolean): void {
 		this.execute(root ? 'Add root assembly' : 'Add assembly', () => {
 			const id = this.createGraphId()
@@ -325,6 +408,7 @@ export class EditorController {
 		}
 		this.execute(`Add choice to choice set "${enumId}"`, () => {
 			this.document.addEnumOption(enumId, option)
+			this.reconcileEnumOptionReferences(enumId)
 		})
 	}
 
@@ -466,6 +550,16 @@ export class EditorController {
 			this.activeModel.connect(
 				new GraphEdge(id, sourceNodeId, targetNodeId, sourcePort, targetPort)
 			)
+			if (targetPort === 'choice') {
+				const target = this.activeModel.getNode(targetNodeId)
+				if (target instanceof GeometrySwitchGraphNode) {
+					this.reconcileGeometrySwitchCases(
+						this.activeModel,
+						target,
+						this.activeModel.getInputOptions(targetNodeId, targetPort)
+					)
+				}
+			}
 		})
 	}
 
@@ -512,12 +606,29 @@ export class EditorController {
 	}
 
 	public setSelectorOptions(nodeId: string, options: string[]): void {
-		this.updateNode<SelectorGraphNode>(
-			nodeId,
-			'selector',
-			`Set options on selector node "${nodeId}"`,
-			(node) => node.setOptions(options)
-		)
+		const node = this.activeModel.getNode(nodeId)
+		if (!(node instanceof SelectorGraphNode)) return
+		this.execute(`Set options on selector node "${nodeId}"`, () => {
+			const previousOptions = node.getOptions()
+			node.setOptions(options)
+			for (const edge of this.activeModel.getEdges()) {
+				if (
+					edge.sourceNodeId !== nodeId
+					|| edge.sourcePort !== 'enum'
+					|| edge.targetPort !== 'choice'
+				) continue
+				const target = this.activeModel.getNode(edge.targetNodeId)
+				if (!(target instanceof GeometrySwitchGraphNode)) continue
+				this.reconcileGeometrySwitchCases(
+					this.activeModel,
+					target,
+					node.getOptions(),
+					undefined,
+					undefined,
+					previousOptions
+				)
+			}
+		})
 	}
 
 	public setMeshSelections(nodeId: string, selections: MeshSelection[]): void {
@@ -536,24 +647,6 @@ export class EditorController {
 			`Set number mappings on node "${nodeId}"`,
 			(node) => node.setMappings(mappings)
 		)
-	}
-
-	public setGeometrySwitchCases(nodeId: string, cases: GeometrySwitchCase[]): void {
-		const node = this.activeModel.getNode(nodeId)
-		if (!(node instanceof GeometrySwitchGraphNode)) return
-		this.execute(`Set cases on geometry switch node "${nodeId}"`, () => {
-			node.setCases(cases)
-			const inputIds = new Set(node.getCases().map((switchCase) => switchCase.id))
-			for (const edge of this.activeModel.getEdges()) {
-				if (
-					edge.targetNodeId === nodeId
-					&& edge.targetPort !== 'choice'
-					&& !inputIds.has(edge.targetPort ?? '')
-				) {
-					this.activeModel.removeEdge(edge.id)
-				}
-			}
-		})
 	}
 
 	public setTransformScale(nodeId: string, value: Vector3Snapshot): void {
@@ -781,6 +874,70 @@ export class EditorController {
 					return options.includes(enumValue) ? [{ ...mapping, enumValue }] : []
 				}))
 			}
+			if (target instanceof GeometrySwitchGraphNode && edge.targetPort === 'choice') {
+				this.reconcileGeometrySwitchCases(
+					graph.model,
+					target,
+					options,
+					previousOption,
+					nextOption
+				)
+			}
+		}
+	}
+
+	private reconcileGeometrySwitchCases(
+		model: GraphModel,
+		node: GeometrySwitchGraphNode,
+		options: string[],
+		previousOption?: string,
+		nextOption?: string,
+		previousOptions?: string[]
+	): void {
+		if (options.length === 0) return
+		const existingCases = node.getCases()
+		const usedCaseIds = new Set<string>()
+		const reservedInputIds = new Set(existingCases.map((switchCase) => switchCase.id))
+		let inputSequence = 1
+		const createInputId = () => {
+			while (reservedInputIds.has(`geometry-${inputSequence}`)) inputSequence += 1
+			const inputId = `geometry-${inputSequence}`
+			reservedInputIds.add(inputId)
+			inputSequence += 1
+			return inputId
+		}
+		const findUnusedCase = (enumValue: string | undefined) => enumValue
+			? existingCases.find(
+				(switchCase) => switchCase.enumValue === enumValue && !usedCaseIds.has(switchCase.id)
+			)
+			: undefined
+		const cases = options.map((enumValue, index) => {
+			const renamedCase = enumValue === nextOption ? findUnusedCase(previousOption) : undefined
+			const positionalCase = findUnusedCase(previousOptions?.[index])
+			const switchCase = findUnusedCase(enumValue)
+				?? renamedCase
+				?? positionalCase
+				?? existingCases.find((candidate) => !usedCaseIds.has(candidate.id))
+			if (!switchCase) return { id: createInputId(), enumValue }
+			usedCaseIds.add(switchCase.id)
+			return { id: switchCase.id, enumValue }
+		})
+		this.applyGeometrySwitchCases(model, node, cases)
+	}
+
+	private applyGeometrySwitchCases(
+		model: GraphModel,
+		node: GeometrySwitchGraphNode,
+		cases: GeometrySwitchCase[]
+	): void {
+		node.setCases(cases)
+		const inputIds = new Set(node.getCases().map((switchCase) => switchCase.id))
+		for (const edge of model.getEdges()) {
+			if (
+				edge.targetNodeId === node.id
+				&& edge.targetPort !== 'choice'
+				&& !inputIds.has(edge.targetPort ?? '')
+			) model.removeEdge(edge.id)
 		}
 	}
 
@@ -912,6 +1069,15 @@ export class EditorController {
 		let sequence = 1
 		while (this.document.getGraph(`graph-${sequence}`)) sequence += 1
 		return `graph-${sequence}`
+	}
+
+	private createGraphCopyLabel(sourceLabel: string): string {
+		const labels = new Set(this.document.getGraphs().map((graph) => graph.label))
+		const baseLabel = `${sourceLabel} copy`
+		if (!labels.has(baseLabel)) return baseLabel
+		let sequence = 2
+		while (labels.has(`${baseLabel} ${sequence}`)) sequence += 1
+		return `${baseLabel} ${sequence}`
 	}
 
 	private createInputId(valueType: string): string {
