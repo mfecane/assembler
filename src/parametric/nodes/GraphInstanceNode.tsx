@@ -42,7 +42,7 @@ export function GraphInstanceNode({ id }: NodeProps<ParametricFlowNode>) {
 	return (
 		<div
 			data-id={`graph-instance-node-${id}`}
-			className="min-w-60 rounded-md border border-primary/50 bg-surface px-3 py-2 shadow-md"
+			className="min-w-60 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
 		>
 			<NodeHeader
 				nodeId={id}

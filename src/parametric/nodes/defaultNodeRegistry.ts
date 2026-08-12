@@ -21,6 +21,9 @@ import {
 	ColorGraphNode,
 	EnumNumberMapGraphNode,
 	type EnumNumberMapping,
+	type GeometrySwitchCase,
+	GeometrySwitchGraphNode,
+	GeometryToggleGraphNode,
 	GraphInputGraphNode,
 	GraphInstanceGraphNode,
 	type GraphNode,
@@ -62,6 +65,33 @@ interface SelectorData {
 
 interface EnumNumberMapData {
 	mappings: EnumNumberMapping[]
+}
+
+interface GeometrySwitchData {
+	cases: GeometrySwitchCase[]
+}
+
+interface GeometryToggleData {
+	enabled: boolean
+}
+
+function parseGeometrySwitchCases(nodeId: string, data: unknown): GeometrySwitchCase[] {
+	const cases = (data as Partial<GeometrySwitchData> | undefined)?.cases
+	if (
+		!Array.isArray(cases)
+		|| cases.some((switchCase) => (
+			!switchCase
+			|| typeof switchCase !== 'object'
+			|| typeof switchCase.id !== 'string'
+			|| typeof switchCase.enumValue !== 'string'
+		))
+	) {
+		throw new Error(
+			`Cannot deserialize Geometry Switch node "${nodeId}": data.cases must be an array `
+			+ `of { id, enumValue } strings. Received ${JSON.stringify(data)}`
+		)
+	}
+	return cases
 }
 
 interface ColorData {
@@ -312,6 +342,79 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			return mappedNumber === undefined
 				? new Map()
 				: new Map([['number', number(mappedNumber)]])
+		},
+	})
+
+	registry.register<GeometrySwitchGraphNode>({
+		type: 'geometrySwitch',
+		label: 'Switch',
+		creatable: true,
+		create: (id, position) => new GeometrySwitchGraphNode(id, position, [
+			{ id: 'geometry-1', enumValue: 'Option 1' },
+			{ id: 'geometry-2', enumValue: 'Option 2' },
+		]),
+		ports: {
+			inputs: (node) => [
+				{ id: 'choice', valueType: 'enum' },
+				...node.getCases().map((switchCase) => ({
+					id: switchCase.id,
+					valueType: 'geometry' as const,
+				})),
+			],
+			outputs: geometryOutput,
+		},
+		serialize: (node) => ({ cases: node.getCases() }),
+		deserialize: (id, position, data) =>
+			new GeometrySwitchGraphNode(id, position, parseGeometrySwitchCases(id, data)),
+		evaluate: (node, context) => {
+			const choice = context.resolveInput(node, 'choice')
+			if (choice?.valueType !== 'enum' || typeof choice.value !== 'string') return new Map()
+			const inputId = node.getInputId(choice.value)
+			if (!inputId) return new Map()
+			const selectedGeometry = context.resolveInput(node, inputId)
+			return selectedGeometry?.valueType === 'geometry' && isSceneMetadata(selectedGeometry.value)
+				? new Map([['geometry', selectedGeometry]])
+				: new Map()
+		},
+	})
+
+	registry.register<GeometryToggleGraphNode>({
+		type: 'geometryToggle',
+		label: 'Toggle',
+		creatable: true,
+		create: (id, position) => new GeometryToggleGraphNode(id, position, true),
+		ports: {
+			inputs: [
+				{ id: 'enabled', valueType: 'boolean' },
+				...geometryInput,
+			],
+			outputs: geometryOutput,
+			getInputDefault: (node, portId) =>
+				portId === 'enabled' ? { valueType: 'boolean', value: node.getEnabled() } : undefined,
+		},
+		fields: {
+			enabled: booleanField((node) => node.getEnabled(), (node, value) => node.setEnabled(value)),
+		},
+		serialize: (node) => ({ enabled: node.getEnabled() }),
+		deserialize: (id, position, data) => {
+			const value = data as GeometryToggleData
+			if (typeof value?.enabled !== 'boolean') {
+				throw new Error(
+					`Cannot deserialize Geometry Toggle node "${id}": data.enabled must be a boolean. `
+					+ `Received ${JSON.stringify(data)}`
+				)
+			}
+			return new GeometryToggleGraphNode(id, position, value.enabled)
+		},
+		evaluate: (node, context) => {
+			const enabled = context.resolveInput(node, 'enabled')
+			if (enabled?.valueType !== 'boolean' || enabled.value !== true) {
+				return new Map([['geometry', geometry([])]])
+			}
+			const input = context.resolveInput(node, 'geometry')
+			return input?.valueType === 'geometry' && isSceneMetadata(input.value)
+				? new Map([['geometry', input]])
+				: new Map([['geometry', geometry([])]])
 		},
 	})
 

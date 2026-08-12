@@ -29,16 +29,23 @@ so all shelf sizes share one axis and step distance.
 
 ## MaxShelf fixture
 
-Root, Wing, and Wing Section now forward one `shelf-counts` value. Root exposes it as **Shelves by
-size**, with **Big shelves** and **Small shelves** entries, whole-number steps, and a combined maximum
-of six. Wing Section builds the two complete shelf bundles, collects them through Mesh Array, and
-places them through one y-axis Multi Array with a 0.2-unit step.
+Root, Wing, and Wing Section forward one `shelf-counts` value. Root exposes it as **Shelves by size**,
+with **Big shelves** and **Small shelves** entries, whole-number steps, and a combined maximum of six.
+
+The reusable `Shelf` subgraph owns the complete big and small shelf branches. Its `shelf-size` enum
+input accepts **Big** or **Small** and drives one Geometry Switch whose two inputs receive the
+complete shelf bundles. The selected branch retains its original shelf, near bracket, far bracket,
+and placement transforms. Wing Section contains one Big and one Small Shelf instance, collects
+their outputs through Mesh Array, and places them through one y-axis Multi Array with a 0.2-unit
+step.
 
 `projects/maxshelf/maxshelf.json` and `src/data/defaultGraph.json` are kept byte-identical. The local
-Supabase seed script validates the new number-array shape and requires both shelf node types.
+Supabase seed script validates the number-array shape and requires Mesh Array, Multi Array,
+Geometry Switch, and Geometry Toggle. Wing Section uses the Toggle directly for its optional
+mirrored shelves and bases instead of mapping the boolean through a Sum and zero-offset Array.
 
 ## Verification
 
-Static TypeScript, JSON, seed-script syntax, retained-graph identity, endpoint, and shelf-wiring
-checks cover the implementation. Runtime graph editing and rendering remain for the project owner
-to verify under the repository execution policy.
+Static TypeScript, JSON, retained-graph identity, graph-reference, and shelf-wiring checks cover the
+implementation. Runtime graph editing and rendering remain for the project owner to verify under
+the repository execution policy.

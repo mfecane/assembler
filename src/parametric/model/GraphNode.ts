@@ -50,6 +50,11 @@ export interface EnumNumberMapping {
 	value: number
 }
 
+export interface GeometrySwitchCase {
+	id: string
+	enumValue: string
+}
+
 export interface TransformOrigin {
 	x: OriginAxis
 	y: OriginAxis
@@ -200,6 +205,81 @@ export class EnumNumberMapGraphNode extends GraphNode {
 
 	public getNumber(enumValue: string): number | undefined {
 		return this.mappings.find((mapping) => mapping.enumValue === enumValue)?.value
+	}
+}
+
+export class GeometrySwitchGraphNode extends GraphNode {
+	public readonly type = 'geometrySwitch'
+	private cases: GeometrySwitchCase[]
+
+	public constructor(
+		id: string,
+		position: GraphPoint,
+		cases: GeometrySwitchCase[]
+	) {
+		super(id, position)
+		this.cases = GeometrySwitchGraphNode.validateCases(id, cases)
+	}
+
+	public getCases(): GeometrySwitchCase[] {
+		return this.cases.map((switchCase) => ({ ...switchCase }))
+	}
+
+	public setCases(cases: GeometrySwitchCase[]): void {
+		this.cases = GeometrySwitchGraphNode.validateCases(this.id, cases)
+	}
+
+	public getInputId(enumValue: string): string | undefined {
+		return this.cases.find((switchCase) => switchCase.enumValue === enumValue)?.id
+	}
+
+	private static validateCases(nodeId: string, cases: GeometrySwitchCase[]): GeometrySwitchCase[] {
+		if (cases.length === 0) {
+			throw new Error(`Geometry Switch node "${nodeId}" requires at least one case`)
+		}
+		const normalized = cases.map((switchCase, index) => {
+			const id = switchCase.id.trim()
+			const enumValue = switchCase.enumValue.trim()
+			if (!id || !enumValue) {
+				throw new Error(
+					`Geometry Switch node "${nodeId}" case ${index + 1} requires a non-empty `
+					+ `input ID and choice value. Received ${JSON.stringify(switchCase)}`
+				)
+			}
+			return { id, enumValue }
+		})
+		const inputIds = normalized.map((switchCase) => switchCase.id)
+		const enumValues = normalized.map((switchCase) => switchCase.enumValue)
+		if (
+			inputIds.includes('choice')
+			|| new Set(inputIds).size !== inputIds.length
+			|| new Set(enumValues).size !== enumValues.length
+		) {
+			throw new Error(
+				`Geometry Switch node "${nodeId}" requires unique input IDs other than "choice" `
+				+ 'and unique choice values. '
+				+ `Received ${JSON.stringify(normalized)}`
+			)
+		}
+		return normalized
+	}
+}
+
+export class GeometryToggleGraphNode extends GraphNode {
+	public readonly type = 'geometryToggle'
+	private readonly enabledField: BooleanField
+
+	public constructor(id: string, position: GraphPoint, enabled: boolean) {
+		super(id, position)
+		this.enabledField = new BooleanField(enabled)
+	}
+
+	public getEnabled(): boolean {
+		return this.enabledField.get()
+	}
+
+	public setEnabled(enabled: boolean): void {
+		this.enabledField.set(enabled)
 	}
 }
 

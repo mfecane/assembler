@@ -16,6 +16,8 @@ const nodeColorCategoryByType: Readonly<Record<string, NodeColorCategory>> = {
 	graphInstance: 'geometry',
 	material: 'appearance',
 	enumNumberMap: 'operation',
+	geometrySwitch: 'operation',
+	geometryToggle: 'operation',
 	transform: 'operation',
 	array: 'operation',
 	meshArray: 'operation',

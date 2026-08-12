@@ -3,6 +3,9 @@ import { useEditorController } from '@/parametric/editor/react/EditorContext'
 import {
 	EnumNumberMapGraphNode,
 	type EnumNumberMapping,
+	type GeometrySwitchCase,
+	GeometrySwitchGraphNode,
+	GeometryToggleGraphNode,
 	MaterialGraphNode,
 	type MeshSelection,
 	MeshSelectorGraphNode,
@@ -109,6 +112,58 @@ export function useEnumNumberMapNode(nodeId: string): EnumNumberMapNodeBinding |
 		mappings: node.getMappings(),
 		availableEnumValues: model.getInputOptions(nodeId, 'enum'),
 		setMappings,
+	}
+}
+
+export interface GeometrySwitchNodeBinding {
+	cases: GeometrySwitchCase[]
+	setCases: (cases: GeometrySwitchCase[]) => void
+}
+
+export function useGeometrySwitchNode(nodeId: string): GeometrySwitchNodeBinding | undefined {
+	const controller = useEditorController()
+	const { model } = useGraphSnapshot()
+	const node = model.getNode(nodeId)
+	const setCases = useCallback(
+		(cases: GeometrySwitchCase[]) => controller.setGeometrySwitchCases(nodeId, cases),
+		[controller, nodeId]
+	)
+
+	if (!(node instanceof GeometrySwitchGraphNode)) return undefined
+	return { cases: node.getCases(), setCases }
+}
+
+export interface GeometryToggleNodeBinding {
+	enabled: boolean
+	enabledConnected: boolean
+	setEnabled: (enabled: boolean) => void
+}
+
+export function useGeometryToggleNode(nodeId: string): GeometryToggleNodeBinding | undefined {
+	const controller = useEditorController()
+	const { activeGraphId, model } = useGraphSnapshot()
+	const node = model.getNode(nodeId)
+	const setEnabled = useCallback(
+		(enabled: boolean) => controller.setFieldValue(nodeId, 'enabled', enabled),
+		[controller, nodeId]
+	)
+
+	if (!(node instanceof GeometryToggleGraphNode)) return undefined
+	const enabledEdge = model.getEdges().find(
+		(edge) => edge.targetNodeId === nodeId && edge.targetPort === 'enabled'
+	)
+	const connectedValue = enabledEdge?.sourcePort
+		? controller.evaluateOutput(activeGraphId, enabledEdge.sourceNodeId, enabledEdge.sourcePort)
+		: undefined
+	const connectedEnabled = connectedValue?.valueType === 'boolean'
+		&& typeof connectedValue.value === 'boolean'
+		? connectedValue.value
+		: undefined
+
+	return {
+		enabled: connectedEnabled ?? node.getEnabled(),
+		enabledConnected: connectedEnabled !== undefined,
+		setEnabled,
 	}
 }
 

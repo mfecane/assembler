@@ -3,6 +3,7 @@ import {
 	Combine,
 	Cuboid,
 	Grid3X3,
+	GitBranch,
 	Hash,
 	Layers3,
 	LogIn,
@@ -14,6 +15,7 @@ import {
 	PaintBucket,
 	Palette,
 	Sigma,
+	ToggleLeft,
 	type LucideIcon,
 } from 'lucide-react'
 import { PrimitiveNode } from '@/parametric/nodes/PrimitiveNode'
@@ -33,12 +35,16 @@ import { GraphInstanceNode } from '@/parametric/nodes/GraphInstanceNode'
 import { EnumNumberMapNode } from '@/parametric/nodes/EnumNumberMapNode'
 import { MeshArrayNode } from '@/parametric/nodes/MeshArrayNode'
 import { MultiArrayNode } from '@/parametric/nodes/MultiArrayNode'
+import { GeometrySwitchNode } from '@/parametric/nodes/GeometrySwitchNode'
+import { GeometryToggleNode } from '@/parametric/nodes/GeometryToggleNode'
 
 export const nodeViewTypes = {
 	primitive: PrimitiveNode,
 	numberInput: NumberInputNode,
 	selector: SelectorNode,
 	enumNumberMap: EnumNumberMapNode,
+	geometrySwitch: GeometrySwitchNode,
+	geometryToggle: GeometryToggleNode,
 	color: ColorNode,
 	meshAsset: MeshAssetNode,
 	meshSelector: MeshSelectorNode,
@@ -77,6 +83,16 @@ export const nodeViewPresentation: Record<string, NodeViewPresentation> = {
 		group: 'Operations',
 		description: 'Map choices to numbers',
 		icon: ListFilter,
+	},
+	geometrySwitch: {
+		group: 'Operations',
+		description: 'Select one geometry input by choice',
+		icon: GitBranch,
+	},
+	geometryToggle: {
+		group: 'Operations',
+		description: 'Enable or disable a geometry branch',
+		icon: ToggleLeft,
 	},
 	color: {
 		group: 'Inputs',

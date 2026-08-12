@@ -5,14 +5,14 @@
       "inputValues": {
         "number-1": 3,
         "number-3": 4,
+        "boolean-1": true,
         "post-height": "1200 mm",
         "finish-color": "#f4f4f5",
         "shelf-counts": [
           3,
           3
         ],
-        "backplate-type": "Plain",
-        "boolean-1": true
+        "backplate-type": "Plain"
       },
       "configurationPanel": {
         "controls": [
@@ -77,9 +77,9 @@
           },
           {
             "id": "boolean-1-control",
-            "inputId": "boolean-1",
+            "type": "switch",
             "label": "MIrror shelves",
-            "type": "switch"
+            "inputId": "boolean-1"
           }
         ]
       }
@@ -275,8 +275,8 @@
               }
             },
             "inputValues": {
-              "include-last-support": false,
-              "boolean-1": false
+              "boolean-1": false,
+              "include-last-support": false
             }
           }
         },
@@ -1052,15 +1052,14 @@
           }
         },
         {
-          "id": "mirrored-shelves-and-base-count",
-          "name": "Optional mirrored side",
+          "id": "mirrored-shelves-and-base-toggle",
+          "name": "Mirrored shelves and bases",
           "position": {
-            "x": -582.0743289340191,
-            "y": 1090
+            "x": 1039.6959457343853,
+            "y": 314.5197316257862
           },
-          "type": "sum",
+          "type": "geometryToggle",
           "data": {
-            "constant": 1,
             "enabled": true
           }
         },
@@ -1120,20 +1119,6 @@
             "copy": false,
             "uniformScale": false,
             "enabled": true
-          }
-        },
-        {
-          "id": "optional-mirrored-shelves-and-base",
-          "name": "Mirrored shelves and bases",
-          "position": {
-            "x": 1039.6959457343853,
-            "y": 314.5197316257862
-          },
-          "type": "array",
-          "data": {
-            "count": 1,
-            "axis": "x",
-            "offset": 0
           }
         },
         {
@@ -1283,9 +1268,9 @@
           "targetPort": "count"
         },
         {
-          "id": "mirror-shelves-and-base-input:mirror-shelves-and-base->mirrored-shelves-and-base-count:enabled",
+          "id": "mirror-shelves-and-base-input:mirror-shelves-and-base->mirrored-shelves-and-base-toggle:enabled",
           "sourceNodeId": "mirror-shelves-and-base-input",
-          "targetNodeId": "mirrored-shelves-and-base-count",
+          "targetNodeId": "mirrored-shelves-and-base-toggle",
           "sourcePort": "mirror-shelves-and-base",
           "targetPort": "enabled"
         },
@@ -1318,22 +1303,15 @@
           "targetPort": "geometry"
         },
         {
-          "id": "mirror-shelves-and-base-transform:geometry->optional-mirrored-shelves-and-base:geometry",
+          "id": "mirror-shelves-and-base-transform:geometry->mirrored-shelves-and-base-toggle:geometry",
           "sourceNodeId": "mirror-shelves-and-base-transform",
-          "targetNodeId": "optional-mirrored-shelves-and-base",
+          "targetNodeId": "mirrored-shelves-and-base-toggle",
           "sourcePort": "geometry",
           "targetPort": "geometry"
         },
         {
-          "id": "mirrored-shelves-and-base-count:number->optional-mirrored-shelves-and-base:count",
-          "sourceNodeId": "mirrored-shelves-and-base-count",
-          "targetNodeId": "optional-mirrored-shelves-and-base",
-          "sourcePort": "number",
-          "targetPort": "count"
-        },
-        {
-          "id": "optional-mirrored-shelves-and-base:geometry->finish-geometry:geometry",
-          "sourceNodeId": "optional-mirrored-shelves-and-base",
+          "id": "mirrored-shelves-and-base-toggle:geometry->finish-geometry:geometry",
+          "sourceNodeId": "mirrored-shelves-and-base-toggle",
           "targetNodeId": "finish-geometry",
           "sourcePort": "geometry",
           "targetPort": "geometry"
@@ -2411,8 +2389,8 @@
           "id": "shelf-size-input",
           "name": "Shelf size",
           "position": {
-            "x": -3100,
-            "y": 180
+            "x": -1671.949678611105,
+            "y": 140.42562485207912
           },
           "type": "graphInput",
           "data": {
@@ -2712,91 +2690,32 @@
           }
         },
         {
-          "id": "big-shelf-count",
-          "name": "Show big shelf",
+          "id": "shelf-switch",
+          "name": "Shelf size",
           "position": {
-            "x": -1540,
-            "y": -300
-          },
-          "type": "enumNumberMap",
-          "data": {
-            "mappings": [
-              {
-                "value": 1,
-                "enumValue": "Big"
-              },
-              {
-                "value": 0,
-                "enumValue": "Small"
-              }
-            ]
-          }
-        },
-        {
-          "id": "small-shelf-count",
-          "name": "Show small shelf",
-          "position": {
-            "x": -1540,
-            "y": 420
-          },
-          "type": "enumNumberMap",
-          "data": {
-            "mappings": [
-              {
-                "value": 0,
-                "enumValue": "Big"
-              },
-              {
-                "value": 1,
-                "enumValue": "Small"
-              }
-            ]
-          }
-        },
-        {
-          "id": "selected-big-shelf",
-          "name": "Selected big shelf",
-          "position": {
-            "x": -1180,
-            "y": -300
-          },
-          "type": "array",
-          "data": {
-            "count": 1,
-            "axis": "x",
-            "offset": 0
-          }
-        },
-        {
-          "id": "selected-small-shelf",
-          "name": "Selected small shelf",
-          "position": {
-            "x": -1180,
-            "y": 420
-          },
-          "type": "array",
-          "data": {
-            "count": 1,
-            "axis": "x",
-            "offset": 0
-          }
-        },
-        {
-          "id": "selected-shelf",
-          "name": "Selected shelf",
-          "position": {
-            "x": -760,
+            "x": -1120,
             "y": 60
           },
-          "type": "group",
-          "data": {}
+          "type": "geometrySwitch",
+          "data": {
+            "cases": [
+              {
+                "id": "big-shelf",
+                "enumValue": "Big"
+              },
+              {
+                "id": "small-shelf",
+                "enumValue": "Small"
+              }
+            ]
+          }
         },
         {
           "id": "shelf-output",
           "name": "Shelf geometry",
           "position": {
-            "x": -400,
-            "y": 60
+            "x": -817.3297742871657,
+            "y": 108.5685513179029
           },
           "type": "graphOutput",
           "data": {}
@@ -2874,64 +2793,29 @@
           "targetPort": "geometry"
         },
         {
-          "id": "shelf-size-input:shelf-size->big-shelf-count:enum",
+          "id": "shelf-size-input:shelf-size->shelf-switch:choice",
           "sourceNodeId": "shelf-size-input",
-          "targetNodeId": "big-shelf-count",
+          "targetNodeId": "shelf-switch",
           "sourcePort": "shelf-size",
-          "targetPort": "enum"
+          "targetPort": "choice"
         },
         {
-          "id": "shelf-size-input:shelf-size->small-shelf-count:enum",
-          "sourceNodeId": "shelf-size-input",
-          "targetNodeId": "small-shelf-count",
-          "sourcePort": "shelf-size",
-          "targetPort": "enum"
-        },
-        {
-          "id": "transform-6:geometry->selected-big-shelf:geometry",
+          "id": "transform-6:geometry->shelf-switch:big-shelf",
           "sourceNodeId": "transform-6",
-          "targetNodeId": "selected-big-shelf",
+          "targetNodeId": "shelf-switch",
           "sourcePort": "geometry",
-          "targetPort": "geometry"
+          "targetPort": "big-shelf"
         },
         {
-          "id": "big-shelf-count:number->selected-big-shelf:count",
-          "sourceNodeId": "big-shelf-count",
-          "targetNodeId": "selected-big-shelf",
-          "sourcePort": "number",
-          "targetPort": "count"
-        },
-        {
-          "id": "small-shelf-base-height:geometry->selected-small-shelf:geometry",
+          "id": "small-shelf-base-height:geometry->shelf-switch:small-shelf",
           "sourceNodeId": "small-shelf-base-height",
-          "targetNodeId": "selected-small-shelf",
+          "targetNodeId": "shelf-switch",
           "sourcePort": "geometry",
-          "targetPort": "geometry"
+          "targetPort": "small-shelf"
         },
         {
-          "id": "small-shelf-count:number->selected-small-shelf:count",
-          "sourceNodeId": "small-shelf-count",
-          "targetNodeId": "selected-small-shelf",
-          "sourcePort": "number",
-          "targetPort": "count"
-        },
-        {
-          "id": "selected-big-shelf:geometry->selected-shelf:geometry",
-          "sourceNodeId": "selected-big-shelf",
-          "targetNodeId": "selected-shelf",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
-        },
-        {
-          "id": "selected-small-shelf:geometry->selected-shelf:geometry",
-          "sourceNodeId": "selected-small-shelf",
-          "targetNodeId": "selected-shelf",
-          "sourcePort": "geometry",
-          "targetPort": "geometry"
-        },
-        {
-          "id": "selected-shelf:geometry->shelf-output:geometry",
-          "sourceNodeId": "selected-shelf",
+          "id": "shelf-switch:geometry->shelf-output:geometry",
+          "sourceNodeId": "shelf-switch",
           "targetNodeId": "shelf-output",
           "sourcePort": "geometry",
           "targetPort": "geometry"

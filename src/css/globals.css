@@ -121,24 +121,32 @@ body {
 	outline-offset: 2px;
 }
 
-.react-flow__node.graph-node-color-input > div {
-	background-color: #241e30;
+.graph-node-header {
+	color: #111827;
 }
 
-.react-flow__node.graph-node-color-geometry > div {
-	background-color: #172735;
+.graph-node-header button {
+	color: inherit;
 }
 
-.react-flow__node.graph-node-color-appearance > div {
-	background-color: #302027;
+.graph-node-header-input {
+	background-color: #9b83ad;
 }
 
-.react-flow__node.graph-node-color-operation > div {
-	background-color: #2b2519;
+.graph-node-header-geometry {
+	background-color: #7296b3;
 }
 
-.react-flow__node.graph-node-color-output > div {
-	background-color: #192c27;
+.graph-node-header-appearance {
+	background-color: #b77d86;
+}
+
+.graph-node-header-operation {
+	background-color: #b79a59;
+}
+
+.graph-node-header-output {
+	background-color: #6f9c83;
 }
 
 @keyframes graph-node-focus-pulse {

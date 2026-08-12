@@ -15,6 +15,8 @@ import {
 	ArrayGraphNode,
 	EnumNumberMapGraphNode,
 	type EnumNumberMapping,
+	type GeometrySwitchCase,
+	GeometrySwitchGraphNode,
 	GraphInstanceGraphNode,
 	GraphInputGraphNode,
 	MeshAssetGraphNode,
@@ -534,6 +536,24 @@ export class EditorController {
 			`Set number mappings on node "${nodeId}"`,
 			(node) => node.setMappings(mappings)
 		)
+	}
+
+	public setGeometrySwitchCases(nodeId: string, cases: GeometrySwitchCase[]): void {
+		const node = this.activeModel.getNode(nodeId)
+		if (!(node instanceof GeometrySwitchGraphNode)) return
+		this.execute(`Set cases on geometry switch node "${nodeId}"`, () => {
+			node.setCases(cases)
+			const inputIds = new Set(node.getCases().map((switchCase) => switchCase.id))
+			for (const edge of this.activeModel.getEdges()) {
+				if (
+					edge.targetNodeId === nodeId
+					&& edge.targetPort !== 'choice'
+					&& !inputIds.has(edge.targetPort ?? '')
+				) {
+					this.activeModel.removeEdge(edge.id)
+				}
+			}
+		})
 	}
 
 	public setTransformScale(nodeId: string, value: Vector3Snapshot): void {

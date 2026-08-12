@@ -61,8 +61,9 @@ panel can be collapsed, but collapsed state is view-only and is not persisted in
 
 ## Node headers
 
-Every node uses the shared header treatment: a Lucide type icon, its persisted node name, any
-node-specific actions, and a three-dots actions menu. The header icon and title are drag surfaces;
+Every node uses the shared header treatment: a muted function-category background with dark text,
+a Lucide type icon, its persisted node name, any node-specific actions, and a three-dots actions
+menu. Node bodies remain neutral gray. The header icon and title are drag surfaces;
 renaming is intentionally available only from the actions menu so editing gestures do not compete
 with node movement. Copy duplicates a node with all of its current field values, gives it a fresh
 ID, offsets it slightly from the source, and leaves it disconnected. Copy is omitted for assembly

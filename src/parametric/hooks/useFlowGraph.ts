@@ -7,7 +7,6 @@ import {
 	type Node,
 	type NodeChange,
 } from '@xyflow/react'
-import { cn } from '@/lib/utils'
 import type { NodePositionUpdate } from '@/parametric/editor/EditorController'
 import {
 	useEditor,
@@ -15,7 +14,6 @@ import {
 	useReactBridgeSnapshot,
 } from '@/parametric/editor/react/EditorContext'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
-import { getNodeColorCategory } from '@/parametric/nodes/nodeColorCoding'
 
 interface FlowNodeData extends Record<string, unknown> {}
 
@@ -85,10 +83,7 @@ export function useFlowGraph(): FlowGraphBinding {
 				position: node.getPosition(),
 				data: {},
 				selected: selectedNodeIds.has(node.id),
-				className: cn(
-					`graph-node-color-${getNodeColorCategory(node.type)}`,
-					focusedNodeId === node.id && 'graph-node-focus-pulse'
-				),
+				className: focusedNodeId === node.id ? 'graph-node-focus-pulse' : undefined,
 				deletable: model.isNodeRemovable(node.id),
 			})),
 		[focusedNodeId, model, revision, selectedNodeIds]

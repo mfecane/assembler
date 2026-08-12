@@ -160,6 +160,11 @@ Documents from the former singular `entryGraphId` / `entryInputValues` shape and
 store choice or color options on graph inputs are intentionally unsupported. No compatibility
 migration is provided.
 
+Geometry Switch and Geometry Toggle add persisted `geometrySwitch` and `geometryToggle` node types.
+Switch stores stable case IDs and matching enum values; Toggle stores its disconnected boolean
+fallback. Builds predating these node types cannot import documents that contain them; no
+compatibility migration is provided.
+
 Evaluated meshes, Three.js objects, editor selection, graph-tree expansion, and viewport state
 are runtime data and are not serialized.
 
@@ -171,19 +176,22 @@ the full shelving example—including assets, required copy and assembly transfo
 configurable inputs, and connections—rather than a reduced smoke-test graph.
 `scripts/seed-local-supabase.mjs` reads the default copy directly instead of carrying embedded data.
 
-The fixture uses five graph definitions and two root records:
+The fixture uses six graph definitions and two root records:
 
 - `main` (`Root`) exposes left-section count, one labeled shelf-count array, right-section
   count, finish color, post height, and backplate type. It places two Wing instances and one corner
   assembly into the configured-shelving output.
 - `graph-4` (`Wing`) repeats and combines instances of `graph-1` (`Wing Section`).
-- `graph-1` (`Wing Section`) builds one shelving section with 470 mm and 300 mm shelf bundles. Mesh
-  Array preserves those ordered bundles, and Multi Array pairs them with the shelf-count array while
-  applying one shared 0.2-unit level step. Mesh Selector nodes choose its post
-  height and repeated backplate type from choice inputs forwarded by Wing. Its optional
-  `mirror-shelves-and-base` boolean input adds reflected shelf, bracket, and base geometry behind the
-  backplate without duplicating posts or panels. A Choice to Number node maps post height to the
-  repeated backplate count.
+- `graph-1` (`Wing Section`) builds one shelving section using Big and Small instances of the
+  reusable `shelf` (`Shelf`) subgraph. Mesh Array preserves those ordered bundles, and Multi Array
+  pairs them with the shelf-count array while applying one shared 0.2-unit level step. Mesh Selector
+  nodes choose its post height and repeated backplate type from choice inputs forwarded by Wing. Its
+  optional `mirror-shelves-and-base` boolean input controls a Geometry Toggle that adds reflected
+  shelf, bracket, and base geometry behind the backplate without duplicating posts or panels. A
+  Choice to Number node maps post height to the repeated backplate count.
+- `shelf` (`Shelf`) owns the original big and small shelf geometry branches. Its shared `shelf-size`
+  enum input selects exactly one branch through a Geometry Switch while preserving each branch's
+  asset and transform data.
 - `graph-3` (`Corner 2`) builds the corner assembly currently instantiated by Root. Its post Mesh
   Selectors share Root's post-height choice; its 665 × 400 mm back panels remain fixed because the
   catalog has no matching alternate backplate-type assets. Its own Choice to Number mapping repeats

@@ -112,9 +112,15 @@ if (invalidNumberArrayInputs.length > 0 || invalidNumberArrayControls.length > 0
 	)
 }
 const nodeTypes = defaultGraph.graphs.flatMap((graph) => graph.nodes.map((node) => node.type))
-if (!nodeTypes.includes('meshArray') || !nodeTypes.includes('multiArray')) {
+if (
+	!nodeTypes.includes('meshArray')
+	|| !nodeTypes.includes('multiArray')
+	|| !nodeTypes.includes('geometrySwitch')
+	|| !nodeTypes.includes('geometryToggle')
+) {
 	throw new Error(
-		'The default MaxShelf seed must exercise both shelf array node types. '
+		'The default MaxShelf seed must exercise Mesh Array, Multi Array, Geometry Switch, '
+		+ 'and Geometry Toggle. '
 		+ `Received node types ${JSON.stringify([...new Set(nodeTypes)])}.`
 	)
 }

@@ -17,10 +17,11 @@ and concatenate their scene instances before evaluation. Other inputs accept one
 port explicitly declares multi-connect behavior; Sum's `number` input does so.
 
 All nodes persist the common fields `id`, non-empty `name`, `type`, `position: { x, y }`, and
-type-specific `data`. Every node header displays a Lucide icon for its type. Node backgrounds are
-color-coded by function: purple for inputs, blue for geometry, red for appearance, amber for
-operations, and green for outputs. Double-click the node name to edit it; Enter or leaving the
-field saves the trimmed name, while Escape cancels.
+type-specific `data`. Every node header displays a Lucide icon for its type. Node bodies remain
+neutral gray, while muted mid-tone headers are color-coded by function: purple for inputs, blue for
+geometry, red for appearance, amber for operations, and green for outputs. Header icons, names, and
+actions use dark foregrounds for contrast. Double-click the node name to edit it; Enter or leaving
+the field saves the trimmed name, while Escape cancels.
 
 Geometry nodes with embedded transform capability can be opened in the 3D editor and edited with
 the same move, rotate, and scale widgets as a standalone Transform node.
@@ -111,6 +112,31 @@ Maps an enum value to a number for driving numeric operation inputs.
   produces no output.
 
 ## Geometry operations
+
+### Switch (`geometrySwitch`)
+
+Selects one geometry input using an incoming choice value.
+
+- Inputs: `choice: enum`; one geometry input for every persisted case.
+- Outputs: `geometry: geometry`.
+- Data: `cases`, a non-empty array of unique `{ id, enumValue }` entries. The stable `id` owns the
+  geometry port; `enumValue` is the exact incoming choice value that selects it.
+- Editor: cases can be added, renamed, and removed. Renaming a choice value preserves its geometry
+  connection because the input ID remains stable. Removing a case removes its connection.
+- Evaluation: passes through the selected case's complete geometry bundle. Missing choices,
+  unmatched values, and unconnected selected cases produce no output.
+
+### Toggle (`geometryToggle`)
+
+Enables or disables one geometry branch using a boolean value.
+
+- Inputs: `enabled: boolean`; `geometry: geometry`.
+- Outputs: `geometry: geometry`.
+- Data: `enabled` boolean fallback used while the boolean input is disconnected.
+- Editor: the fallback uses a Switch control and is disabled while a boolean connection controls
+  the node.
+- Evaluation: passes through the complete input bundle when enabled and emits explicit empty
+  geometry when disabled or when the enabled geometry input is missing.
 
 ### Transform (`transform`)
 
