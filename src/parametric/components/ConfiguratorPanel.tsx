@@ -135,9 +135,9 @@ export function ConfiguratorPanel() {
 									</span>
 								</div>
 							) : value.type === 'enum' ? (
-								<Select
-									value={value.value}
-									onValueChange={(next) => setEnumValue(value.id, next)}
+									<Select
+										value={String(value.value)}
+										onValueChange={(next) => setEnumValue(value.id, Number(next))}
 								>
 									<SelectTrigger
 										id={`configuration-${value.id}`}
@@ -146,8 +146,8 @@ export function ConfiguratorPanel() {
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
-										{value.options.map((option) => (
-											<SelectItem key={option} value={option}>{option}</SelectItem>
+											{value.options.map((option, index) => (
+												<SelectItem key={index} value={String(index)}>{option}</SelectItem>
 										))}
 									</SelectContent>
 								</Select>

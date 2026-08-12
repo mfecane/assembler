@@ -7,26 +7,27 @@ import { GraphEvaluator } from '@/parametric/evaluation/GraphEvaluator'
 import {
 	type ConfigurationPanelControl,
 	GraphDocumentModel,
+	remapMovedIndex,
 	type GraphInputDefinition,
 	type GraphInputValue,
 } from '@/parametric/model/GraphDocumentModel'
 import { GraphModel } from '@/parametric/model/GraphModel'
 import {
 	ArrayGraphNode,
-	EnumNumberMapGraphNode,
-	type EnumNumberMapping,
-	type GeometrySwitchCase,
-	GeometrySwitchGraphNode,
+	ChoiceToScalarMapGraphNode,
+	type ChoiceScalarMapping,
+	ChoiceToVector3MapGraphNode,
+	type ChoiceVector3Mapping,
+	type ChoiceMeshMapping,
+	ChoiceToMeshMapGraphNode,
 	GraphInstanceGraphNode,
 	GraphInputGraphNode,
 	MeshAssetGraphNode,
-	MeshSelectorGraphNode,
 	OutputGraphNode,
 	SelectorGraphNode,
 	TransformGraphNode,
 	type GraphNode,
 	type GraphPoint,
-	type MeshSelection,
 	isTransformableGraphNode,
 } from '@/parametric/model/GraphNode'
 import { Vector3Value, type Vector3Snapshot } from '@/parametric/model/Vector3Value'
@@ -414,17 +415,33 @@ export class EditorController {
 
 	public renameEnumOption(enumId: string, index: number, option: string): void {
 		this.execute(`Rename choice ${index + 1} in choice set "${enumId}"`, () => {
-			const previousOption = this.document.renameEnumOption(enumId, index, option)
-			if (previousOption === option.trim()) return
-			this.reconcileEnumOptionReferences(enumId, previousOption, option.trim())
+			this.document.renameEnumOption(enumId, index, option)
 		})
 	}
 
 	public removeEnumOption(enumId: string, index: number): void {
 		this.execute(`Remove choice ${index + 1} from choice set "${enumId}"`, () => {
 			this.document.removeEnumOption(enumId, index)
-			this.reconcileEnumOptionReferences(enumId)
+			this.reconcileEnumOptionReferences(
+				enumId,
+				(value) => value === index ? undefined : value > index ? value - 1 : value
+			)
 		})
+	}
+
+	public moveEnumOption(enumId: string, sourceIndex: number, targetIndex: number): void {
+		if (sourceIndex === targetIndex) return
+		this.execute(
+			`Move choice ${sourceIndex + 1} to position ${targetIndex + 1} in choice set "${enumId}"`,
+			() => {
+				this.document.moveEnumOption(enumId, sourceIndex, targetIndex)
+				this.reconcileEnumOptionReferences(
+					enumId,
+					(value) => remapMovedIndex(value, sourceIndex, targetIndex)
+				)
+			},
+			`enum-options:${enumId}`
+		)
 	}
 
 	public removeGraphInput(inputId: string): void {
@@ -550,13 +567,13 @@ export class EditorController {
 			this.activeModel.connect(
 				new GraphEdge(id, sourceNodeId, targetNodeId, sourcePort, targetPort)
 			)
-			if (targetPort === 'choice') {
+			if (targetPort === 'enum') {
 				const target = this.activeModel.getNode(targetNodeId)
-				if (target instanceof GeometrySwitchGraphNode) {
-					this.reconcileGeometrySwitchCases(
+				if (target instanceof ChoiceToMeshMapGraphNode) {
+					this.reconcileChoiceMeshMappings(
 						this.activeModel,
 						target,
-						this.activeModel.getInputOptions(targetNodeId, targetPort)
+						this.activeModel.getInputOptions(targetNodeId, targetPort).length
 					)
 				}
 			}
@@ -609,42 +626,38 @@ export class EditorController {
 		const node = this.activeModel.getNode(nodeId)
 		if (!(node instanceof SelectorGraphNode)) return
 		this.execute(`Set options on selector node "${nodeId}"`, () => {
-			const previousOptions = node.getOptions()
 			node.setOptions(options)
 			for (const edge of this.activeModel.getEdges()) {
 				if (
 					edge.sourceNodeId !== nodeId
 					|| edge.sourcePort !== 'enum'
-					|| edge.targetPort !== 'choice'
+					|| edge.targetPort !== 'enum'
 				) continue
 				const target = this.activeModel.getNode(edge.targetNodeId)
-				if (!(target instanceof GeometrySwitchGraphNode)) continue
-				this.reconcileGeometrySwitchCases(
+				if (!(target instanceof ChoiceToMeshMapGraphNode)) continue
+				this.reconcileChoiceMeshMappings(
 					this.activeModel,
 					target,
-					node.getOptions(),
-					undefined,
-					undefined,
-					previousOptions
+					node.getOptions().length
 				)
 			}
 		})
 	}
 
-	public setMeshSelections(nodeId: string, selections: MeshSelection[]): void {
-		this.updateNode<MeshSelectorGraphNode>(
+	public setChoiceScalarMappings(nodeId: string, mappings: ChoiceScalarMapping[]): void {
+		this.updateNode<ChoiceToScalarMapGraphNode>(
 			nodeId,
-			'meshSelector',
-			`Set mesh selections on node "${nodeId}"`,
-			(node) => node.setSelections(selections)
+			'choiceToScalarMap',
+			`Set scalar mappings on node "${nodeId}"`,
+			(node) => node.setMappings(mappings)
 		)
 	}
 
-	public setEnumNumberMappings(nodeId: string, mappings: EnumNumberMapping[]): void {
-		this.updateNode<EnumNumberMapGraphNode>(
+	public setChoiceVector3Mappings(nodeId: string, mappings: ChoiceVector3Mapping[]): void {
+		this.updateNode<ChoiceToVector3MapGraphNode>(
 			nodeId,
-			'enumNumberMap',
-			`Set number mappings on node "${nodeId}"`,
+			'choiceToVector3Map',
+			`Set vector mappings on node "${nodeId}"`,
 			(node) => node.setMappings(mappings)
 		)
 	}
@@ -809,8 +822,7 @@ export class EditorController {
 
 	private reconcileEnumOptionReferences(
 		enumId: string,
-		previousOption?: string,
-		nextOption?: string
+		remapIndex?: (value: number) => number | undefined
 	): void {
 		for (const graph of this.document.getGraphs()) {
 			for (const input of graph.inputs) {
@@ -821,8 +833,10 @@ export class EditorController {
 							continue
 						}
 						const value = node.getInputValue(input.id)
-						if (previousOption && nextOption && value === previousOption) {
-							node.setInputValue(input.id, nextOption)
+						if (typeof value === 'number' && remapIndex) {
+							const nextValue = remapIndex(value)
+							if (nextValue === undefined) node.removeInputValue(input.id)
+							else node.setInputValue(input.id, nextValue)
 						} else if (
 							value !== undefined
 							&& !this.document.isInputValueCompatible(input, value)
@@ -831,12 +845,7 @@ export class EditorController {
 						}
 					}
 				}
-				this.reconcileEnumMappingsForInput(
-					graph.id,
-					input.id,
-					previousOption,
-					nextOption
-				)
+				this.reconcileEnumMappingsForInput(graph.id, input.id, remapIndex)
 			}
 		}
 	}
@@ -844,13 +853,12 @@ export class EditorController {
 	private reconcileEnumMappingsForInput(
 		graphId: string,
 		inputId: string,
-		previousOption?: string,
-		nextOption?: string
+		remapIndex?: (value: number) => number | undefined
 	): void {
 		const graph = this.document.requireGraph(graphId)
 		const input = graph.inputs.find((candidate) => candidate.id === inputId)
 		if (input?.valueType !== 'enum') return
-		const options = this.document.getInputOptions(input)
+		const optionCount = this.document.getInputOptions(input).length
 		const boundary = graph.model.getNodes().find(
 			(node) => node instanceof GraphInputGraphNode && node.getInputId() === inputId
 		)
@@ -858,84 +866,70 @@ export class EditorController {
 		for (const edge of graph.model.getEdges()) {
 			if (edge.sourceNodeId !== boundary.id || edge.sourcePort !== inputId) continue
 			const target = graph.model.getNode(edge.targetNodeId)
-			if (target instanceof MeshSelectorGraphNode) {
-				target.setSelections(target.getSelections().flatMap((selection) => {
-					const enumValue = previousOption && nextOption && selection.enumValue === previousOption
-						? nextOption
-						: selection.enumValue
-					return options.includes(enumValue) ? [{ ...selection, enumValue }] : []
-				}))
-			}
-			if (target instanceof EnumNumberMapGraphNode) {
+			if (target instanceof ChoiceToScalarMapGraphNode) {
 				target.setMappings(target.getMappings().flatMap((mapping) => {
-					const enumValue = previousOption && nextOption && mapping.enumValue === previousOption
-						? nextOption
-						: mapping.enumValue
-					return options.includes(enumValue) ? [{ ...mapping, enumValue }] : []
+					const enumIndex = remapIndex ? remapIndex(mapping.enumIndex) : mapping.enumIndex
+					if (enumIndex === undefined) return []
+					return enumIndex >= 0 && enumIndex < optionCount ? [{ ...mapping, enumIndex }] : []
 				}))
 			}
-			if (target instanceof GeometrySwitchGraphNode && edge.targetPort === 'choice') {
-				this.reconcileGeometrySwitchCases(
-					graph.model,
-					target,
-					options,
-					previousOption,
-					nextOption
-				)
+			if (target instanceof ChoiceToVector3MapGraphNode) {
+				target.setMappings(target.getMappings().flatMap((mapping) => {
+					const enumIndex = remapIndex ? remapIndex(mapping.enumIndex) : mapping.enumIndex
+					if (enumIndex === undefined) return []
+					return enumIndex >= 0 && enumIndex < optionCount ? [{ ...mapping, enumIndex }] : []
+				}))
+			}
+			if (target instanceof ChoiceToMeshMapGraphNode && edge.targetPort === 'enum') {
+				this.reconcileChoiceMeshMappings(graph.model, target, optionCount, remapIndex)
 			}
 		}
 	}
 
-	private reconcileGeometrySwitchCases(
+	private reconcileChoiceMeshMappings(
 		model: GraphModel,
-		node: GeometrySwitchGraphNode,
-		options: string[],
-		previousOption?: string,
-		nextOption?: string,
-		previousOptions?: string[]
+		node: ChoiceToMeshMapGraphNode,
+		optionCount: number,
+		remapIndex?: (value: number) => number | undefined
 	): void {
-		if (options.length === 0) return
-		const existingCases = node.getCases()
-		const usedCaseIds = new Set<string>()
-		const reservedInputIds = new Set(existingCases.map((switchCase) => switchCase.id))
+		if (optionCount === 0) return
+		const existingMappings = node.getMappings().flatMap((mapping) => {
+			const enumIndex = remapIndex ? remapIndex(mapping.enumIndex) : mapping.enumIndex
+			if (enumIndex === undefined) return []
+			return enumIndex >= 0 && enumIndex < optionCount ? [{ ...mapping, enumIndex }] : []
+		})
+		const usedMappingIds = new Set<string>()
+		const reservedInputIds = new Set(existingMappings.map((mapping) => mapping.id))
 		let inputSequence = 1
 		const createInputId = () => {
-			while (reservedInputIds.has(`geometry-${inputSequence}`)) inputSequence += 1
-			const inputId = `geometry-${inputSequence}`
+			while (reservedInputIds.has(`mesh-${inputSequence}`)) inputSequence += 1
+			const inputId = `mesh-${inputSequence}`
 			reservedInputIds.add(inputId)
 			inputSequence += 1
 			return inputId
 		}
-		const findUnusedCase = (enumValue: string | undefined) => enumValue
-			? existingCases.find(
-				(switchCase) => switchCase.enumValue === enumValue && !usedCaseIds.has(switchCase.id)
-			)
-			: undefined
-		const cases = options.map((enumValue, index) => {
-			const renamedCase = enumValue === nextOption ? findUnusedCase(previousOption) : undefined
-			const positionalCase = findUnusedCase(previousOptions?.[index])
-			const switchCase = findUnusedCase(enumValue)
-				?? renamedCase
-				?? positionalCase
-				?? existingCases.find((candidate) => !usedCaseIds.has(candidate.id))
-			if (!switchCase) return { id: createInputId(), enumValue }
-			usedCaseIds.add(switchCase.id)
-			return { id: switchCase.id, enumValue }
+		const mappings = Array.from({ length: optionCount }, (_, enumIndex) => {
+			const mapping = existingMappings.find((candidate) => (
+				candidate.enumIndex === enumIndex && !usedMappingIds.has(candidate.id)
+			))
+			if (!mapping) return { id: createInputId(), enumIndex }
+			usedMappingIds.add(mapping.id)
+			return { id: mapping.id, enumIndex }
 		})
-		this.applyGeometrySwitchCases(model, node, cases)
+		this.applyChoiceMeshMappings(model, node, mappings)
 	}
 
-	private applyGeometrySwitchCases(
+	private applyChoiceMeshMappings(
 		model: GraphModel,
-		node: GeometrySwitchGraphNode,
-		cases: GeometrySwitchCase[]
+		node: ChoiceToMeshMapGraphNode,
+		mappings: ChoiceMeshMapping[]
 	): void {
-		node.setCases(cases)
-		const inputIds = new Set(node.getCases().map((switchCase) => switchCase.id))
+		node.setMappings(mappings)
+		const inputIds = new Set(node.getMappings().map((mapping) => mapping.id))
 		for (const edge of model.getEdges()) {
 			if (
 				edge.targetNodeId === node.id
-				&& edge.targetPort !== 'choice'
+				&& edge.targetPort !== 'enum'
 				&& !inputIds.has(edge.targetPort ?? '')
 			) model.removeEdge(edge.id)
 		}
@@ -1133,7 +1127,7 @@ function createInputDefinition(
 			label: 'Choice',
 			valueType,
 			enumId,
-			defaultValue: 'Option',
+			defaultValue: 0,
 		}
 	}
 	if (valueType === 'color') {

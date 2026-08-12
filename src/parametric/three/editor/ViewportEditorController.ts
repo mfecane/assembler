@@ -10,10 +10,16 @@ import {
 	InteractionHandlerRouter,
 	MeshSelectionInteractionHandler,
 } from '@/parametric/three/editor/InteractionSystem'
+import {
+	calculateAlignedTranslation,
+	type ViewportAlignmentRequest,
+	type ViewportBoundsSnapshot,
+} from '@/parametric/three/editor/ViewportAlignment'
 
 export class ViewportEditorController {
 	public readonly interactions = new InteractionHandlerRouter()
 	private activeGraphId: string
+	private alignmentSequence = 0
 
 	public constructor(
 		private readonly editorController: EditorController,
@@ -119,6 +125,36 @@ export class ViewportEditorController {
 	public applyArrayDistance(nodeId: string, value: number, historyGroup: string): void {
 		const graphId = this.editorController.getSnapshot().activeGraphId
 		this.editorController.setArrayDistance(graphId, nodeId, value, historyGroup)
+	}
+
+	public alignTransform(
+		nodeId: string,
+		bounds: ViewportBoundsSnapshot,
+		request: ViewportAlignmentRequest
+	): void {
+		const graphSnapshot = this.editorController.getSnapshot()
+		const node = graphSnapshot.model.getNode(nodeId)
+		if (!isTransformableGraphNode(node)) {
+			throw new Error(
+				`Cannot align node "${nodeId}" in graph "${graphSnapshot.activeGraphId}": `
+				+ 'the selected node does not have transform capability'
+			)
+		}
+		if (!Object.values(request.enabledAxes).some(Boolean)) {
+			throw new Error(`Cannot align node "${nodeId}": enable at least one alignment axis`)
+		}
+		const transform = node.getTransform()
+		const before: TransformNodeValues = {
+			translation: transform.getTranslation().toSnapshot(),
+			rotation: transform.getRotation().toSnapshot(),
+			scale: transform.getScale().toSnapshot(),
+		}
+		const after: TransformNodeValues = {
+			...before,
+			translation: calculateAlignedTranslation(before.translation, bounds, request),
+		}
+		this.alignmentSequence += 1
+		this.applyTransform(nodeId, before, after, `alignment-${this.alignmentSequence}`)
 	}
 
 	public handleGraphChange(): void {

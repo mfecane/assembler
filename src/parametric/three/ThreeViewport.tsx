@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react'
-import { ArrowLeft, Move3d, Rotate3d, Scaling } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { AlignCenter, ArrowLeft, Move3d, Rotate3d, Scaling } from 'lucide-react'
 import type { TransformControlsMode } from 'three/examples/jsm/controls/TransformControls.js'
 import { Button } from '@/components/ui/button'
 import {
@@ -8,6 +8,7 @@ import {
 } from '@/parametric/editor/react/EditorContext'
 import { ConfiguratorPanel } from '@/parametric/components/ConfiguratorPanel'
 import { cn } from '@/lib/utils'
+import { ViewportAlignmentDialog } from '@/parametric/three/ViewportAlignmentDialog'
 
 const transformTools: ReadonlyArray<{
 	mode: TransformControlsMode
@@ -25,6 +26,7 @@ export function ThreeViewport() {
 	const editor = useEditor()
 	const viewport = editor.viewport
 	const snapshot = useReactBridgeSnapshot()
+	const [alignmentOpen, setAlignmentOpen] = useState(false)
 
 	useEffect(() => {
 		const canvas = canvasRef.current
@@ -33,6 +35,10 @@ export function ThreeViewport() {
 		viewport.attach(canvas, container)
 		return () => viewport.detach()
 	}, [viewport])
+
+	useEffect(() => {
+		if (!snapshot.transformNodeId) setAlignmentOpen(false)
+	}, [snapshot.transformNodeId])
 
 	return (
 		<div
@@ -79,7 +85,28 @@ export function ThreeViewport() {
 							{label}
 						</Button>
 					))}
+					<Button
+						data-id="three-editor-transform-align"
+						type="button"
+						variant="ghost"
+						size="sm"
+						className="text-xs"
+						onClick={() => setAlignmentOpen(true)}
+					>
+						<AlignCenter />
+						Align
+					</Button>
 				</div>
+			)}
+			{snapshot.transformNodeId && alignmentOpen && (
+				<ViewportAlignmentDialog
+					key={snapshot.transformNodeId}
+					open
+					nodeId={snapshot.transformNodeId}
+					initialSettings={snapshot.alignmentSettings}
+					onOpenChange={setAlignmentOpen}
+					onApply={(request) => viewport.alignTransform(snapshot.transformNodeId as string, request)}
+				/>
 			)}
 			{snapshot.previewNodeId ? (
 				<Button

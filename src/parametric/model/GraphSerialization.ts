@@ -152,7 +152,24 @@ export function deserializeGraph(value: unknown, registry: NodeRegistry): GraphD
 			getEnumOptions: (enumId) => enumDefinitions.get(enumId)?.options ?? [],
 		})
 		if (model.getNodes().length !== graph.nodes.length || model.getEdges().length !== graph.edges.length) {
-			throw new Error(`Graph "${graph.id}" contains invalid nodes, edges, or ports`)
+			const acceptedNodeIds = new Set(model.getNodes().map((node) => node.id))
+			const acceptedEdgeIds = new Set(model.getEdges().map((edge) => edge.id))
+			const rejectedNodeIds = graph.nodes
+				.filter((node) => !acceptedNodeIds.has(node.id))
+				.map((node) => `${node.id} (${node.type})`)
+			const rejectedEdges = graph.edges
+				.filter((edge) => !acceptedEdgeIds.has(edge.id))
+				.map((edge) => (
+					`${edge.id}: ${edge.sourceNodeId}.${edge.sourcePort} -> `
+					+ `${edge.targetNodeId}.${edge.targetPort}`
+				))
+			throw new Error(
+				`Graph "${graph.id}" contains invalid nodes, edges, or ports. `
+				+ `Rejected nodes: ${JSON.stringify(rejectedNodeIds)}. `
+				+ `Rejected or replaced edges: ${JSON.stringify(rejectedEdges)}. `
+				+ `Expected ${graph.nodes.length} nodes and ${graph.edges.length} edges; accepted `
+				+ `${model.getNodes().length} nodes and ${model.getEdges().length} edges.`
+			)
 		}
 		return {
 			...interfaces.get(graph.id) as GraphInterface,
@@ -235,12 +252,13 @@ function assertInputDefinition(
 		if (
 			!definition
 			|| localOptions !== undefined
-			|| typeof input.defaultValue !== 'string'
-			|| !options.includes(input.defaultValue)
+			|| !Number.isInteger(input.defaultValue)
+			|| (input.defaultValue as number) < 0
+			|| (input.defaultValue as number) >= options.length
 		) {
 			throw new Error(
 				`Choice input "${input.id}" in graph "${graphId}" must reference one document choice set `
-				+ `through enumId, must not define local options, and must use a default from that choice set. `
+				+ `through enumId, must not define local options, and must use a valid option index. `
 				+ `Received enumId ${JSON.stringify(input.enumId)}, default `
 				+ `${JSON.stringify(input.defaultValue)}, local options ${JSON.stringify(localOptions)}.`
 			)

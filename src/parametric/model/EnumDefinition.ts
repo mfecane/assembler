@@ -74,6 +74,27 @@ export class EnumDefinition {
 		return previousOption
 	}
 
+	public moveOption(sourceIndex: number, targetIndex: number): void {
+		const options = this.field.getOptions()
+		if (
+			!Number.isInteger(sourceIndex)
+			|| !Number.isInteger(targetIndex)
+			|| sourceIndex < 0
+			|| sourceIndex >= options.length
+			|| targetIndex < 0
+			|| targetIndex >= options.length
+		) {
+			throw new Error(
+				`Cannot reorder choice set "${this.id}" with source index ${sourceIndex} and target index `
+				+ `${targetIndex}; valid indices are 0 through ${options.length - 1}.`
+			)
+		}
+		if (sourceIndex === targetIndex) return
+		const [moved] = options.splice(sourceIndex, 1)
+		options.splice(targetIndex, 0, moved)
+		this.field.setOptions(options)
+	}
+
 	public removeOption(index: number): string {
 		const options = this.field.getOptions()
 		if (options.length <= 1) {

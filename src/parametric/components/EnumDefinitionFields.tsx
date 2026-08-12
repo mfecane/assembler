@@ -72,7 +72,10 @@ export function EnumDefinitionFields({ inputId }: { inputId: string }) {
 			</div>
 
 			<Label className="text-[11px] text-muted-foreground">Default for this input</Label>
-			<Select value={String(input.defaultValue ?? '')} onValueChange={binding.setDefault}>
+			<Select
+				value={String(input.defaultValue ?? 0)}
+				onValueChange={(value) => binding.setDefault(Number(value))}
+			>
 				<SelectTrigger
 					data-id={`graph-input-enum-default-${inputId}`}
 					className="nodrag h-8 px-2 text-xs"
@@ -81,8 +84,8 @@ export function EnumDefinitionFields({ inputId }: { inputId: string }) {
 					<SelectValue />
 				</SelectTrigger>
 				<SelectContent>
-					{definition.options.map((option) => (
-						<SelectItem key={option} value={option}>{option}</SelectItem>
+					{definition.options.map((option, index) => (
+						<SelectItem key={index} value={String(index)}>{option}</SelectItem>
 					))}
 				</SelectContent>
 			</Select>
@@ -95,6 +98,7 @@ export function EnumDefinitionFields({ inputId }: { inputId: string }) {
 				onAddOption={binding.addOption}
 				onRenameOption={binding.renameOption}
 				onRemoveOption={binding.removeOption}
+				onMoveOption={binding.moveOption}
 			/>
 		</div>
 	)

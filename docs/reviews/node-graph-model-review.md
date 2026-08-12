@@ -48,7 +48,7 @@ numeric fields to everything else."
 ### 1. No generic field abstraction — every node hand-rolls private fields + getter/setter pairs
 
 `GraphNode.ts` defines ~14 subclasses (`PrimitiveGraphNode`, `NumberInputGraphNode`,
-`SelectorGraphNode`, `ColorGraphNode`, `MeshSelectorGraphNode`, `TransformGraphNode`,
+`SelectorGraphNode`, `ColorGraphNode`, `ChoiceToMeshMapGraphNode`, `TransformGraphNode`,
 `MaterialGraphNode`, `ArrayGraphNode`, `SumGraphNode`, …). Each one is a class whose entire body is
 `private field; getField(); setField(value)`, repeated per field, per node. There is no shared
 notion of "a field" — no interface a `NumberField`, `EnumField`, `BooleanField`, or `ColorField`
@@ -163,7 +163,7 @@ writing a controller method," which is true today for numbers and false for ever
 ### 4. `useGraphNode.ts` hand-writes one binding hook per node type
 
 Twelve `useXNode` hooks (`usePrimitiveNode`, `useNumberInputNode`, `useSelectorNode`,
-`useColorNode`, `useMeshSelectorNode`, `useMeshAssetNode`, `useMaterialNode`, `useArrayNode`,
+`useColorNode`, `useChoiceToMeshMapNode`, `useMeshAssetNode`, `useMaterialNode`, `useArrayNode`,
 `useGroupNode`, `useSumNode`, `useTransformNode`, plus `useVectorNumericFields`/`useNumericField`)
 in one 393-line file. Each follows the identical shape: read the node via `model.getNode(id)`,
 `instanceof`-check it, wrap every setter in `useCallback(() => controller.setX(...))`, return a

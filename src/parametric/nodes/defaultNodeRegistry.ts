@@ -5,6 +5,7 @@ import type {
 	NumberValue,
 	EnumValue,
 	ColorValue,
+	Vector3GraphValue,
 } from '@/parametric/evaluation/EvaluationTypes'
 import {
 	isSceneMetadata,
@@ -19,10 +20,12 @@ import {
 	ArrayGraphNode,
 	type Axis,
 	ColorGraphNode,
-	EnumNumberMapGraphNode,
-	type EnumNumberMapping,
-	type GeometrySwitchCase,
-	GeometrySwitchGraphNode,
+	ChoiceToScalarMapGraphNode,
+	type ChoiceScalarMapping,
+	ChoiceToVector3MapGraphNode,
+	type ChoiceVector3Mapping,
+	type ChoiceMeshMapping,
+	ChoiceToMeshMapGraphNode,
 	GeometryToggleGraphNode,
 	GraphInputGraphNode,
 	GraphInstanceGraphNode,
@@ -31,8 +34,6 @@ import {
 	MaterialGraphNode,
 	MeshArrayGraphNode,
 	MeshAssetGraphNode,
-	type MeshSelection,
-	MeshSelectorGraphNode,
 	MultiArrayGraphNode,
 	NumberInputGraphNode,
 	OutputGraphNode,
@@ -60,47 +61,47 @@ interface NumberInputData {
 
 interface SelectorData {
 	options: string[]
-	value: string
+	value: number
 }
 
-interface EnumNumberMapData {
-	mappings: EnumNumberMapping[]
+interface ChoiceScalarMapData {
+	mappings: ChoiceScalarMapping[]
 }
 
-interface GeometrySwitchData {
-	cases: GeometrySwitchCase[]
+interface ChoiceVector3MapData {
+	mappings: ChoiceVector3Mapping[]
+}
+
+interface ChoiceMeshMapData {
+	mappings: ChoiceMeshMapping[]
 }
 
 interface GeometryToggleData {
 	enabled: boolean
 }
 
-function parseGeometrySwitchCases(nodeId: string, data: unknown): GeometrySwitchCase[] {
-	const cases = (data as Partial<GeometrySwitchData> | undefined)?.cases
+function parseChoiceMeshMappings(nodeId: string, data: unknown): ChoiceMeshMapping[] {
+	const mappings = (data as Partial<ChoiceMeshMapData> | undefined)?.mappings
 	if (
-		!Array.isArray(cases)
-		|| cases.some((switchCase) => (
-			!switchCase
-			|| typeof switchCase !== 'object'
-			|| typeof switchCase.id !== 'string'
-			|| typeof switchCase.enumValue !== 'string'
+		!Array.isArray(mappings)
+		|| mappings.some((mapping) => (
+			!mapping
+			|| typeof mapping !== 'object'
+			|| typeof mapping.id !== 'string'
+			|| !Number.isInteger(mapping.enumIndex)
+			|| (mapping.enumIndex as number) < 0
 		))
 	) {
 		throw new Error(
-			`Cannot deserialize Geometry Switch node "${nodeId}": data.cases must be an array `
-			+ `of { id, enumValue } strings. Received ${JSON.stringify(data)}`
+			`Cannot deserialize Choice to Mesh node "${nodeId}": data.mappings must be an array `
+				+ `of { id: string, enumIndex: non-negative integer }. Received ${JSON.stringify(data)}`
 		)
 	}
-	return cases
+	return mappings
 }
 
 interface ColorData {
 	color: string
-}
-
-interface MeshSelectorData {
-	selections: MeshSelection[]
-	transform?: TransformFieldSnapshot
 }
 
 interface MeshAssetData {
@@ -225,11 +226,15 @@ function number(value: number): NumberValue {
 	return { valueType: 'number', value }
 }
 
+function vector3(value: Vector3Snapshot): Vector3GraphValue {
+	return { valueType: 'vector3', value: { ...value } }
+}
+
 function meshArray(value: MeshArrayValue['value']): MeshArrayValue {
 	return { valueType: 'meshArray', value }
 }
 
-function enumValue(value: string): EnumValue {
+function enumValue(value: number): EnumValue {
 	return { valueType: 'enum', value }
 }
 
@@ -300,16 +305,15 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		label: 'Choice',
 		creatable: true,
 		create: (id, position) =>
-			new SelectorGraphNode(id, position, ['Cube', 'Cone', 'Ring'], 'Cube'),
+			new SelectorGraphNode(id, position, ['Cube', 'Cone', 'Ring'], 0),
 		ports: {
 			outputs: [{ id: 'enum', valueType: 'enum' }],
 			getOutputOptions: (node, portId) => portId === 'enum' ? node.getOptions() : undefined,
 		},
 		fields: {
-			value: enumField(
+			value: numberField(
 				(node) => node.getValue(),
-				(node, value) => node.setValue(value),
-				(node) => node.getOptions()
+				(node, value) => node.setValue(value)
 			),
 		},
 		serialize: (node) => ({
@@ -318,58 +322,93 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		}),
 		deserialize: (id, position, data) => {
 			const value = data as SelectorData
+			if (
+				!Array.isArray(value?.options)
+				|| value.options.length === 0
+				|| value.options.some((option) => typeof option !== 'string' || !option.trim())
+				|| !Number.isInteger(value.value)
+				|| value.value < 0
+				|| value.value >= value.options.length
+			) {
+				throw new Error(
+					`Cannot deserialize Choice node "${id}": data.options must be a non-empty string `
+					+ `array and data.value must be a valid option index. Received ${JSON.stringify(data)}`
+				)
+			}
 			return new SelectorGraphNode(id, position, value.options, value.value)
 		},
 		evaluate: (node) => new Map([['enum', enumValue(node.getValue())]]),
 	})
 
-	registry.register<EnumNumberMapGraphNode>({
-		type: 'enumNumberMap',
-		label: 'Choice to Number',
+	registry.register<ChoiceToScalarMapGraphNode>({
+		type: 'choiceToScalarMap',
+		label: 'Map to Scalar',
 		creatable: true,
-		create: (id, position) => new EnumNumberMapGraphNode(id, position, []),
+		create: (id, position) => new ChoiceToScalarMapGraphNode(id, position, []),
 		ports: {
 			inputs: [{ id: 'enum', valueType: 'enum' }],
 			outputs: [{ id: 'number', valueType: 'number' }],
 		},
 		serialize: (node) => ({ mappings: node.getMappings() }),
 		deserialize: (id, position, data) =>
-			new EnumNumberMapGraphNode(id, position, (data as EnumNumberMapData).mappings),
+			new ChoiceToScalarMapGraphNode(id, position, (data as ChoiceScalarMapData).mappings),
 		evaluate: (node, context) => {
 			const input = context.resolveInput(node, 'enum')
-			if (input?.valueType !== 'enum' || typeof input.value !== 'string') return new Map()
-			const mappedNumber = node.getNumber(input.value)
+			if (input?.valueType !== 'enum' || !Number.isInteger(input.value)) return new Map()
+			const mappedNumber = node.getNumber(input.value as number)
 			return mappedNumber === undefined
 				? new Map()
 				: new Map([['number', number(mappedNumber)]])
 		},
 	})
 
-	registry.register<GeometrySwitchGraphNode>({
-		type: 'geometrySwitch',
-		label: 'Switch',
+	registry.register<ChoiceToVector3MapGraphNode>({
+		type: 'choiceToVector3Map',
+		label: 'Map to Vector 3',
 		creatable: true,
-		create: (id, position) => new GeometrySwitchGraphNode(id, position, [
-			{ id: 'geometry-1', enumValue: 'Option 1' },
-			{ id: 'geometry-2', enumValue: 'Option 2' },
+		create: (id, position) => new ChoiceToVector3MapGraphNode(id, position, []),
+		ports: {
+			inputs: [{ id: 'enum', valueType: 'enum' }],
+			outputs: [{ id: 'vector3', valueType: 'vector3' }],
+		},
+		serialize: (node) => ({ mappings: node.getMappings() }),
+		deserialize: (id, position, data) =>
+			new ChoiceToVector3MapGraphNode(id, position, (data as ChoiceVector3MapData).mappings),
+		evaluate: (node, context) => {
+			const input = context.resolveInput(node, 'enum')
+			if (input?.valueType !== 'enum' || !Number.isInteger(input.value)) return new Map()
+			const mappedVector = node.getVector(input.value as number)
+			return mappedVector === undefined
+				? new Map()
+				: new Map([['vector3', vector3(mappedVector)]])
+		},
+	})
+
+	registry.register<ChoiceToMeshMapGraphNode>({
+		type: 'choiceToMeshMap',
+		label: 'Map to Mesh',
+		creatable: true,
+		create: (id, position) => new ChoiceToMeshMapGraphNode(id, position, [
+			{ id: 'mesh-1', enumIndex: 0 },
+			{ id: 'mesh-2', enumIndex: 1 },
 		]),
 		ports: {
 			inputs: (node) => [
-				{ id: 'choice', valueType: 'enum' },
-				...node.getCases().map((switchCase) => ({
-					id: switchCase.id,
+				{ id: 'enum', valueType: 'enum' },
+				...node.getMappings().map((mapping) => ({
+					id: mapping.id,
 					valueType: 'geometry' as const,
 				})),
 			],
 			outputs: geometryOutput,
 		},
-		serialize: (node) => ({ cases: node.getCases() }),
+		serialize: (node) => ({ mappings: node.getMappings() }),
 		deserialize: (id, position, data) =>
-			new GeometrySwitchGraphNode(id, position, parseGeometrySwitchCases(id, data)),
+			new ChoiceToMeshMapGraphNode(id, position, parseChoiceMeshMappings(id, data)),
 		evaluate: (node, context) => {
-			const choice = context.resolveInput(node, 'choice')
-			if (choice?.valueType !== 'enum' || typeof choice.value !== 'string') return new Map()
-			const inputId = node.getInputId(choice.value)
+			const choice = context.resolveInput(node, 'enum')
+			if (choice?.valueType !== 'enum' || !Number.isInteger(choice.value)) return new Map()
+			const inputId = node.getInputId(choice.value as number)
 			if (!inputId) return new Map()
 			const selectedGeometry = context.resolveInput(node, inputId)
 			return selectedGeometry?.valueType === 'geometry' && isSceneMetadata(selectedGeometry.value)
@@ -433,54 +472,6 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		evaluate: (node) => new Map([['color', colorValue(node.getColor())]]),
 	})
 
-	registry.register<MeshSelectorGraphNode>({
-		type: 'meshSelector',
-		label: 'Mesh Selector',
-		creatable: true,
-		create: (id, position, { meshCatalog }) => {
-			const meshes = meshCatalog.getMeshes().filter((mesh) => mesh.selectable)
-			return new MeshSelectorGraphNode(
-				id,
-				position,
-				meshes.map((mesh) => ({ enumValue: mesh.label, meshId: mesh.id }))
-			)
-		},
-		ports: {
-			inputs: [{ id: 'enum', valueType: 'enum' }],
-			outputs: geometryOutput,
-		},
-		fields: transformFields('transform', (node) => node.getTransform()),
-		serialize: (node) => ({
-			selections: node.getSelections(),
-			transform: node.getTransform().serialize(),
-		}),
-		deserialize: (id, position, data) =>
-			new MeshSelectorGraphNode(
-				id,
-				position,
-				(data as MeshSelectorData).selections,
-				new TransformField((data as MeshSelectorData).transform)
-			),
-		evaluate: (node, context) => {
-			const input = context.resolveInput(node, 'enum')
-			if (input?.valueType !== 'enum' || typeof input.value !== 'string') return new Map()
-			const meshId = node.getMeshId(input.value)
-			const size = meshId ? context.getMeshBounds(meshId) : undefined
-			if (!meshId || !size) return new Map()
-			const instances = [{
-					instanceId: node.id,
-					assetId: meshId,
-					assetKind: 'catalog' as const,
-					size,
-					transform: matrixSnapshot(new Matrix4()),
-					originNode: context.getNodeInstanceReference(node.id),
-				}]
-			return new Map([['geometry', geometry(applyTransform(
-				node.getTransform(), instances, (instance) => instance.instanceId
-			))]])
-		},
-	})
-
 	registry.register<MeshAssetGraphNode>({
 		type: 'meshAsset',
 		label: 'Mesh Asset',
@@ -540,6 +531,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		ports: {
 			inputs: [
 				{ id: 'enabled', valueType: 'boolean' },
+				{ id: 'translation', valueType: 'vector3' },
 				...geometryInput,
 			],
 			outputs: geometryOutput,
@@ -580,9 +572,18 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		evaluate: (node, context) => {
 			const input = context.resolveInput(node, 'geometry')
 			if (input?.valueType !== 'geometry' || !isSceneMetadata(input.value)) return new Map()
+			const translationInput = context.resolveInput(node, 'translation')
+			const translation = translationInput?.valueType === 'vector3'
+				&& Vector3Value.isSnapshot(translationInput.value)
+				? translationInput.value
+				: node.getTranslation().toSnapshot()
+			const transform = new TransformField({
+				...node.getTransform().serialize(),
+				translation,
+			})
 			const instances = input.value.assetInstances
 			const transformed = applyTransform(
-				node.getTransform(),
+				transform,
 				instances,
 				(instance) => `${node.id}/transformed/${instance.instanceId}`
 			)
@@ -649,11 +650,13 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 				{ id: 'geometry', valueType: 'geometry' },
 				{ id: 'count', valueType: 'number' },
 				{ id: 'startIndex', valueType: 'number' },
+				{ id: 'offset', valueType: 'number' },
 			],
 			outputs: geometryOutput,
 			getInputDefault: (node, portId) => {
 				if (portId === 'count') return { valueType: 'number', value: node.getCount() }
 				if (portId === 'startIndex') return { valueType: 'number', value: 0 }
+				if (portId === 'offset') return { valueType: 'number', value: node.getOffset() }
 				return undefined
 			},
 		},
@@ -679,6 +682,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			const input = context.resolveInput(node, 'geometry')
 			const count = context.resolveInput(node, 'count')
 			const startIndex = context.resolveInput(node, 'startIndex')
+			const offset = context.resolveInput(node, 'offset')
 			if (
 				input?.valueType !== 'geometry'
 				|| !isSceneMetadata(input.value)
@@ -686,13 +690,15 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 				|| typeof count.value !== 'number'
 				|| startIndex?.valueType !== 'number'
 				|| typeof startIndex.value !== 'number'
+				|| offset?.valueType !== 'number'
+				|| typeof offset.value !== 'number'
 			) return new Map()
 
 			const translation = node.getAxis() === 'x'
-				? new Vector3(node.getOffset(), 0, 0)
+				? new Vector3(offset.value, 0, 0)
 				: node.getAxis() === 'y'
-					? new Vector3(0, node.getOffset(), 0)
-					: new Vector3(0, 0, node.getOffset())
+					? new Vector3(0, offset.value, 0)
+					: new Vector3(0, 0, offset.value)
 			const instances = input.value.assetInstances
 			const firstIndex = Math.floor(startIndex.value)
 			const arrayInstances = instances.flatMap((instance) =>

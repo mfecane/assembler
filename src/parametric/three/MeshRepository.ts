@@ -67,7 +67,7 @@ export function primitiveMeshId(kind: PrimitiveKind): string {
 function createMeshRepository(): MeshRepository {
 	const repository = new MeshRepository()
 
-	// Primitive node geometry is internal and does not appear in Mesh Selector.
+	// Primitive node geometry is internal and is not selectable as a mesh asset.
 	repository.add(primitiveMeshId('box'), 'Box', new BoxGeometry(1, 1, 1))
 	repository.add(primitiveMeshId('sphere'), 'Sphere', new SphereGeometry(0.5, 32, 16))
 	repository.add(primitiveMeshId('cylinder'), 'Cylinder', new CylinderGeometry(0.5, 0.5, 1, 32))

@@ -50,8 +50,8 @@ Enum option lists live once in the top-level `enums` collection:
 }
 ```
 
-An enum graph input stores `enumId` instead of `options`. Its default remains local to that graph
-interface and must be present in the referenced definition. Definitions have document-unique IDs,
+An enum graph input stores `enumId` instead of `options`. Its zero-based numeric default remains
+local to that graph interface and must index the referenced definition. Definitions have document-unique IDs,
 non-empty names, and non-empty unique option lists. Standalone Enum nodes remain local value-source
 nodes and continue to persist their own options.
 
@@ -60,7 +60,7 @@ nodes and continue to persist their own options.
 A `graphInstance` node stores one `graphId`, an embedded transform, and an `inputValues` object for
 instance-specific non-geometry input values. The graph ID must resolve to a definition in the same
 document. Every stored input value must target a declared non-geometry input and match its type;
-choice values must also belong to the referenced choice set and colors must use `#RRGGBB`. There is
+choice values must be valid option indices in the referenced choice set and colors must use `#RRGGBB`. There is
 no external graph address or loading mechanism.
 
 The instance input ports and geometry output port are derived from the referenced definition. Its
@@ -160,8 +160,8 @@ Documents from the former singular `entryGraphId` / `entryInputValues` shape and
 store choice or color options on graph inputs are intentionally unsupported. No compatibility
 migration is provided.
 
-Geometry Switch and Geometry Toggle add persisted `geometrySwitch` and `geometryToggle` node types.
-Switch stores stable case IDs and matching enum values; Toggle stores its disconnected boolean
+Choice to Mesh and Geometry Toggle add persisted `choiceToMeshMap` and `geometryToggle` node types.
+Choice to Mesh stores stable input IDs and matching enum indices; Toggle stores its disconnected boolean
 fallback. Builds predating these node types cannot import documents that contain them; no
 compatibility migration is provided.
 
@@ -184,17 +184,17 @@ The fixture uses six graph definitions and two root records:
 - `graph-4` (`Wing`) repeats and combines instances of `graph-1` (`Wing Section`).
 - `graph-1` (`Wing Section`) builds one shelving section using Big and Small instances of the
   reusable `shelf` (`Shelf`) subgraph. Mesh Array preserves those ordered bundles, and Multi Array
-  pairs them with the shelf-count array while applying one shared 0.2-unit level step. Mesh Selector
-  nodes choose its post height and repeated backplate type from choice inputs forwarded by Wing. Its
+  pairs them with the shelf-count array while applying one shared 0.2-unit level step. Mesh Asset
+  nodes feed Choice-to-Mesh mappings for post height and repeated backplate type forwarded by Wing. Its
   optional `mirror-shelves-and-base` boolean input controls a Geometry Toggle that adds reflected
   shelf, bracket, and base geometry behind the backplate without duplicating posts or panels. A
-  Choice to Number node maps post height to the repeated backplate count.
+  Choice to Scalar node maps post height to the repeated backplate count.
 - `shelf` (`Shelf`) owns the original big and small shelf geometry branches. Its shared `shelf-size`
-  enum input selects exactly one branch through a Geometry Switch while preserving each branch's
+  enum input selects exactly one branch through Choice to Mesh while preserving each branch's
   asset and transform data.
-- `graph-3` (`Corner 2`) builds the corner assembly currently instantiated by Root. Its post Mesh
-  Selectors share Root's post-height choice; its 665 × 400 mm back panels remain fixed because the
-  catalog has no matching alternate backplate-type assets. Its own Choice to Number mapping repeats
+- `graph-3` (`Corner 2`) builds the corner assembly currently instantiated by Root. Its post mesh
+  mappings share Root's post-height choice; its 665 × 400 mm back panels remain fixed because the
+  catalog has no matching alternate backplate-type assets. Its own Choice to Scalar mapping repeats
   those panels high enough to fill the selected posts.
 - `graph-5` (`Root 3`) is a small independent root retained to exercise multi-root configuration.
 

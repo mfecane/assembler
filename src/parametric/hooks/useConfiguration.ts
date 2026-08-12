@@ -49,7 +49,7 @@ export function useConfiguration() {
 					step: control.step,
 				})
 			}
-			if (input.valueType === 'enum' && typeof value === 'string' && control.type === 'select') {
+				if (input.valueType === 'enum' && typeof value === 'number' && control.type === 'select') {
 				fields.push({
 					id: input.id,
 					type: 'enum',
@@ -88,7 +88,7 @@ export function useConfiguration() {
 		[activeRootGraphId, controller]
 	)
 	const setEnumValue = useCallback(
-		(id: string, value: string) => controller.setRootInputValue(activeRootGraphId, id, value),
+		(id: string, value: number) => controller.setRootInputValue(activeRootGraphId, id, value),
 		[activeRootGraphId, controller]
 	)
 	const setColorValue = useCallback(

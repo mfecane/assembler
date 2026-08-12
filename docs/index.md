@@ -29,6 +29,8 @@ behavior; only files under **Planned work** are pending.
   graph values and customer-facing palettes owned by configuration controls.
 - [Viewport editor](./implementation/viewport-editor.md) — viewport ownership, node previews,
   transform tools, and asset selection.
+- [Mesh mapping and viewport alignment](./implementation/mesh-mapping-and-alignment.md) — separate
+  mesh inputs for indexed choices and bounding-box alignment into stored translations.
 - [Graph editor architecture](./implementation/graph-editor-architecture.md) — root ownership,
   graph state, commands, shared history, React bridge, and Three.js coordination.
 - [Scene metadata](./implementation/scene-metadata.md) — graph evaluation IR, asset instances,

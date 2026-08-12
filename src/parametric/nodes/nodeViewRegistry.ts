@@ -1,5 +1,4 @@
 import {
-	Boxes,
 	Combine,
 	Cuboid,
 	Grid3X3,
@@ -23,7 +22,6 @@ import { ArrayNode } from '@/parametric/nodes/ArrayNode'
 import { NumberInputNode } from '@/parametric/nodes/NumberInputNode'
 import { SelectorNode } from '@/parametric/nodes/SelectorNode'
 import { MeshAssetNode } from '@/parametric/nodes/MeshAssetNode'
-import { MeshSelectorNode } from '@/parametric/nodes/MeshSelectorNode'
 import { TransformNode } from '@/parametric/nodes/TransformNode'
 import { OutputNode } from '@/parametric/nodes/OutputNode'
 import { GroupNode } from '@/parametric/nodes/GroupNode'
@@ -32,22 +30,23 @@ import { ColorNode } from '@/parametric/nodes/ColorNode'
 import { MaterialNode } from '@/parametric/nodes/MaterialNode'
 import { GraphInputNode } from '@/parametric/nodes/GraphInputNode'
 import { GraphInstanceNode } from '@/parametric/nodes/GraphInstanceNode'
-import { EnumNumberMapNode } from '@/parametric/nodes/EnumNumberMapNode'
+import { ChoiceToScalarMapNode } from '@/parametric/nodes/ChoiceToScalarMapNode'
+import { ChoiceToVector3MapNode } from '@/parametric/nodes/ChoiceToVector3MapNode'
 import { MeshArrayNode } from '@/parametric/nodes/MeshArrayNode'
 import { MultiArrayNode } from '@/parametric/nodes/MultiArrayNode'
-import { GeometrySwitchNode } from '@/parametric/nodes/GeometrySwitchNode'
+import { ChoiceToMeshMapNode } from '@/parametric/nodes/ChoiceToMeshMapNode'
 import { GeometryToggleNode } from '@/parametric/nodes/GeometryToggleNode'
 
 export const nodeViewTypes = {
 	primitive: PrimitiveNode,
 	numberInput: NumberInputNode,
 	selector: SelectorNode,
-	enumNumberMap: EnumNumberMapNode,
-	geometrySwitch: GeometrySwitchNode,
+	choiceToScalarMap: ChoiceToScalarMapNode,
+	choiceToVector3Map: ChoiceToVector3MapNode,
+	choiceToMeshMap: ChoiceToMeshMapNode,
 	geometryToggle: GeometryToggleNode,
 	color: ColorNode,
 	meshAsset: MeshAssetNode,
-	meshSelector: MeshSelectorNode,
 	transform: TransformNode,
 	array: ArrayNode,
 	meshArray: MeshArrayNode,
@@ -79,14 +78,19 @@ export const nodeViewPresentation: Record<string, NodeViewPresentation> = {
 		description: 'Emit a stored choice',
 		icon: ListFilter,
 	},
-	enumNumberMap: {
+	choiceToScalarMap: {
 		group: 'Operations',
 		description: 'Map choices to numbers',
 		icon: ListFilter,
 	},
-	geometrySwitch: {
+	choiceToVector3Map: {
 		group: 'Operations',
-		description: 'Select one geometry input by choice',
+		description: 'Map choices to XYZ vectors',
+		icon: Move3d,
+	},
+	choiceToMeshMap: {
+		group: 'Operations',
+		description: 'Map choices to separate mesh inputs',
 		icon: GitBranch,
 	},
 	geometryToggle: {
@@ -108,11 +112,6 @@ export const nodeViewPresentation: Record<string, NodeViewPresentation> = {
 		group: 'Geometry',
 		description: 'Place one repository mesh',
 		icon: Package,
-	},
-	meshSelector: {
-		group: 'Geometry',
-		description: 'Map choices to meshes',
-		icon: Boxes,
 	},
 	material: {
 		group: 'Appearance',

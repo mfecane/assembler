@@ -4,6 +4,10 @@ import { emptySceneMetadata } from '@/parametric/evaluation/SceneMetadata'
 import { ArrayGraphNode, isTransformableGraphNode } from '@/parametric/model/GraphNode'
 import { ViewportEditorController } from '@/parametric/three/editor/ViewportEditorController'
 import { ViewportScene } from '@/parametric/three/editor/ViewportScene'
+import {
+	copyViewportAlignmentRequest,
+	type ViewportAlignmentRequest,
+} from '@/parametric/three/editor/ViewportAlignment'
 
 export class ViewportEditor {
 	public readonly controller: ViewportEditorController
@@ -65,6 +69,27 @@ export class ViewportEditor {
 	public dispose(): void {
 		this.detach()
 		this.unsubscribeGraph()
+	}
+
+	public alignTransform(nodeId: string, request: ViewportAlignmentRequest): boolean {
+		try {
+			if (!this.scene) throw new Error('Cannot align viewport content before the 3D scene is attached')
+			this.controller.alignTransform(nodeId, this.scene.getContentBounds(), request)
+			this.bridge.update({
+				alignmentSettings: copyViewportAlignmentRequest(request),
+				error: null,
+			})
+			return true
+		} catch (cause) {
+			const error = [
+				`Failed to align transform-capable node "${nodeId}".`,
+				`Active graph: "${this.editorController.getSnapshot().activeGraphId}".`,
+				describeError(cause),
+			].join(' ')
+			console.error(error, { cause, nodeId, request })
+			this.bridge.update({ error })
+			return false
+		}
 	}
 
 	private syncScene(): void {

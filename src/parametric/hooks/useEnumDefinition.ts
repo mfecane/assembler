@@ -23,6 +23,9 @@ export function useEnumDefinition(inputId: string) {
 			controller.renameEnumOption(definition.id, index, option)
 		),
 		removeOption: (index: number) => controller.removeEnumOption(definition.id, index),
-		setDefault: (defaultValue: string) => controller.updateGraphInput(inputId, { defaultValue }),
+		moveOption: (sourceIndex: number, targetIndex: number) => (
+			controller.moveEnumOption(definition.id, sourceIndex, targetIndex)
+		),
+		setDefault: (defaultValue: number) => controller.updateGraphInput(inputId, { defaultValue }),
 	}
 }

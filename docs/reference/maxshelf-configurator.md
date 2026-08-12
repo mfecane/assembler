@@ -169,12 +169,12 @@ Material node, so the finish covers every emitted mesh.
 
 `Post height` is an enum configuration control with 1200, 1400, 1600, 2100, 2400, 2600, and
 2800 mm options. Root forwards the selection through both Wing instances and the Corner 2 assembly.
-The Wing Section and Corner 2 graphs use the existing Mesh Selector node to map that enum to the
-matching upright asset, so all repeated wing and corner posts change together.
+The Wing Section and Corner 2 graphs connect one Mesh Asset per height to Choice-to-Mesh maps, so
+all repeated wing and corner posts change together.
 
 `Backplate type` is an enum configuration control with Plain, Perforated, and Corner options. Root
-forwards it through each Wing into Wing Section, where a Mesh Selector chooses the repeated
-backplate asset. The three legacy backplate asset IDs currently resolve to the same 1000 × 300 mm
+forwards it through each Wing into Wing Section, where Choice to Mesh chooses between separately
+placed backplate assets. The three legacy backplate asset IDs currently resolve to the same 1000 × 300 mm
 source GLB, so the selection is persisted and drives the correct asset identity but does not yet
 produce a visual mesh difference. Corner 2 retains its fixed 665 × 400 mm plain panels because no
 same-size perforated or corner assets exist in the catalog.
@@ -185,8 +185,8 @@ repeated 400 mm panels. Counts use ceiling division so the backplate stack reach
 post, including heights that are not exact multiples of the available panel height.
 
 Asset choice still needs no product-specific node. Enum graph inputs carry selections across graph
-boundaries and Mesh Selector performs enum-to-asset mapping. Dynamic repetition does require the
-generic Choice to Number node because Array accepts a numeric count and the selected post height is
+boundaries and Choice to Mesh performs enum-to-asset mapping. Dynamic repetition does require the
+generic Choice to Scalar node because Array accepts a numeric count and the selected post height is
 stored internally as an enum. This node stores editable choice-to-number mappings and can be reused
 anywhere a choice must drive a numeric graph input.
 

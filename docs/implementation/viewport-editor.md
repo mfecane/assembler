@@ -23,8 +23,12 @@ one undo step alongside React Flow graph edits.
 ## Node preview and transforms
 
 - Every geometry-output node exposes **Open in 3D editor**.
-- Opening a standalone Transform or a transform-capable Mesh Asset, Mesh Selector, or Assembly
+- Opening a standalone Transform or a transform-capable Mesh Asset or Assembly
   Instance node activates translation, rotation, or scale controls.
+- The transform toolbar includes **Align**. Its dialog exposes an enable checkbox and Min/Mid/Max
+  method for each axis plus one XYZ target point. Apply measures all currently previewed meshes,
+  computes the selected bounding-box coordinates, and adds the required delta to the selected
+  node's stored translation as one undoable edit. Unchecked axes remain unchanged.
 - Opening an Array activates a dedicated single-axis distance gizmo at its final duplicate. The
   gizmo follows the Array axis and edits per-copy duplication distance instead of a transform.
 - Translation, scale, and Array duplication distance snap to `0.01`; rotation snaps to `15`
@@ -37,7 +41,7 @@ one undo step alongside React Flow graph edits.
 
 Outside transform mode, evaluated asset meshes can be selected by raycast. Selection displays a
 wireframe bounding box and an asset action menu. **Go to original asset node** opens the source
-graph, selects the Mesh Asset or Mesh Selector node that introduced the mesh, and briefly pulses
+graph, selects the Mesh Asset node that introduced the mesh, and briefly pulses
 it for localization.
 
 Asset provenance is part of every metadata instance and survives Material, Transform, Array,

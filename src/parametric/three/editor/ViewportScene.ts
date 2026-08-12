@@ -29,6 +29,7 @@ import {
 	ARRAY_DISTANCE_SNAP,
 	type TransformNodeValues,
 } from '@/parametric/editor/EditorController'
+import type { ViewportBoundsSnapshot } from '@/parametric/three/editor/ViewportAlignment'
 
 export class ViewportScene {
 	private readonly scene: Scene
@@ -91,6 +92,18 @@ export class ViewportScene {
 		this.renderer.setSize(clientWidth, clientHeight, false)
 		this.camera.aspect = clientWidth / clientHeight
 		this.camera.updateProjectionMatrix()
+	}
+
+	public getContentBounds(): ViewportBoundsSnapshot {
+		const bounds = new Box3()
+		for (const mesh of this.meshesById.values()) bounds.expandByObject(mesh)
+		if (bounds.isEmpty()) {
+			throw new Error('Cannot align viewport content because the current preview contains no meshes')
+		}
+		return {
+			min: { x: bounds.min.x, y: bounds.min.y, z: bounds.min.z },
+			max: { x: bounds.max.x, y: bounds.max.y, z: bounds.max.z },
+		}
 	}
 
 	public sync(

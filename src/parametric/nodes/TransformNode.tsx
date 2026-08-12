@@ -38,7 +38,18 @@ export function TransformNode({ id }: NodeProps<ParametricFlowNode>) {
 						aria-label="Enable transform"
 					/>
 				</div>
-				<Vec3Field label="Position" fields={translation} />
+				<div className="relative" data-id="transform-translation-input">
+					<TypedHandle
+						id="translation"
+						type="target"
+						position={Position.Left}
+						valueType="vector3"
+					/>
+					<Vec3Field label="Position" fields={translation} />
+					{binding.translationConnected && (
+						<span className="text-[10px] text-muted-foreground">Driven by connection</span>
+					)}
+				</div>
 				<Vec3Field label="Rotation" fields={rotation} step={1} />
 				<div className="nodrag flex flex-col gap-1 text-xs">
 					<div className="flex items-center justify-between gap-3">

@@ -33,7 +33,7 @@ Root, Wing, and Wing Section forward one `shelf-counts` value. Root exposes it a
 with **Big shelves** and **Small shelves** entries, whole-number steps, and a combined maximum of six.
 
 The reusable `Shelf` subgraph owns the complete big and small shelf branches. Its `shelf-size` enum
-input accepts **Big** or **Small** and drives one Geometry Switch whose two inputs receive the
+input accepts **Big** or **Small** and drives one Choice-to-Mesh map whose two inputs receive the
 complete shelf bundles. The selected branch retains its original shelf, near bracket, far bracket,
 and placement transforms. Wing Section contains one Big and one Small Shelf instance, collects
 their outputs through Mesh Array, and places them through one y-axis Multi Array with a 0.2-unit
@@ -41,7 +41,7 @@ step.
 
 `projects/maxshelf/maxshelf.json` and `src/data/defaultGraph.json` are kept byte-identical. The local
 Supabase seed script validates the number-array shape and requires Mesh Array, Multi Array,
-Geometry Switch, and Geometry Toggle. Wing Section uses the Toggle directly for its optional
+Choice to Mesh, and Geometry Toggle. Wing Section uses the Toggle directly for its optional
 mirrored shelves and bases instead of mapping the boolean through a Sum and zero-offset Array.
 
 ## Verification

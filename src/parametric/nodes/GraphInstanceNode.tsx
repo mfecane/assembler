@@ -147,10 +147,10 @@ function GraphInstanceInput({
 					onChange={onValueChange}
 					disabled={connected}
 				/>
-			) : input.valueType === 'enum' ? (
-				<Select
-					value={typeof value === 'string' ? value : options[0] ?? ''}
-					onValueChange={onValueChange}
+				) : input.valueType === 'enum' ? (
+					<Select
+						value={String(typeof value === 'number' ? value : 0)}
+						onValueChange={(next) => onValueChange(Number(next))}
 					disabled={connected}
 				>
 					<SelectTrigger
@@ -161,8 +161,8 @@ function GraphInstanceInput({
 						<SelectValue />
 					</SelectTrigger>
 					<SelectContent>
-						{options.map((option) => (
-							<SelectItem key={option} value={option}>{option}</SelectItem>
+							{options.map((option, index) => (
+								<SelectItem key={index} value={String(index)}>{option}</SelectItem>
 						))}
 					</SelectContent>
 				</Select>

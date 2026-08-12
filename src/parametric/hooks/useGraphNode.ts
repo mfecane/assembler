@@ -1,14 +1,14 @@
 import { useCallback } from 'react'
 import { useEditorController } from '@/parametric/editor/react/EditorContext'
 import {
-	EnumNumberMapGraphNode,
-	type EnumNumberMapping,
-	type GeometrySwitchCase,
-	GeometrySwitchGraphNode,
+	ChoiceToScalarMapGraphNode,
+	type ChoiceScalarMapping,
+	ChoiceToVector3MapGraphNode,
+	type ChoiceVector3Mapping,
+	type ChoiceMeshMapping,
+	ChoiceToMeshMapGraphNode,
 	GeometryToggleGraphNode,
 	MaterialGraphNode,
-	type MeshSelection,
-	MeshSelectorGraphNode,
 	SelectorGraphNode,
 	SumGraphNode,
 	type TransformOrigin,
@@ -16,7 +16,6 @@ import {
 } from '@/parametric/model/GraphNode'
 import type { Vector3Snapshot } from '@/parametric/model/Vector3Value'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
-import type { MeshDescriptor } from '@/parametric/model/MeshCatalog'
 
 export interface FieldBinding<T> {
 	value: T
@@ -67,64 +66,66 @@ export function useSelectorNode(nodeId: string): SelectorNodeBinding | undefined
 	return { options: node.getOptions(), setOptions }
 }
 
-export interface MeshSelectorNodeBinding {
-	selections: MeshSelection[]
-	availableMeshes: MeshDescriptor[]
-	availableEnumValues: string[]
-	setSelections: (selections: MeshSelection[]) => void
+export interface ChoiceToScalarMapNodeBinding {
+	mappings: ChoiceScalarMapping[]
+	availableEnumOptions: string[]
+	setMappings: (mappings: ChoiceScalarMapping[]) => void
 }
 
-export function useMeshSelectorNode(nodeId: string): MeshSelectorNodeBinding | undefined {
-	const controller = useEditorController()
-	const { model } = useGraphSnapshot()
-	const node = model.getNode(nodeId)
-	const setSelections = useCallback(
-		(selections: MeshSelection[]) => controller.setMeshSelections(nodeId, selections),
-		[controller, nodeId]
-	)
-
-	if (!(node instanceof MeshSelectorGraphNode)) return undefined
-	return {
-		selections: node.getSelections(),
-		availableMeshes: controller.getSelectableMeshes(),
-		availableEnumValues: model.getInputOptions(nodeId, 'enum'),
-		setSelections,
-	}
-}
-
-export interface EnumNumberMapNodeBinding {
-	mappings: EnumNumberMapping[]
-	availableEnumValues: string[]
-	setMappings: (mappings: EnumNumberMapping[]) => void
-}
-
-export function useEnumNumberMapNode(nodeId: string): EnumNumberMapNodeBinding | undefined {
+export function useChoiceToScalarMapNode(nodeId: string): ChoiceToScalarMapNodeBinding | undefined {
 	const controller = useEditorController()
 	const { model } = useGraphSnapshot()
 	const node = model.getNode(nodeId)
 	const setMappings = useCallback(
-		(mappings: EnumNumberMapping[]) => controller.setEnumNumberMappings(nodeId, mappings),
+		(mappings: ChoiceScalarMapping[]) => controller.setChoiceScalarMappings(nodeId, mappings),
 		[controller, nodeId]
 	)
 
-	if (!(node instanceof EnumNumberMapGraphNode)) return undefined
+	if (!(node instanceof ChoiceToScalarMapGraphNode)) return undefined
 	return {
 		mappings: node.getMappings(),
-		availableEnumValues: model.getInputOptions(nodeId, 'enum'),
+		availableEnumOptions: model.getInputOptions(nodeId, 'enum'),
 		setMappings,
 	}
 }
 
-export interface GeometrySwitchNodeBinding {
-	cases: GeometrySwitchCase[]
+export interface ChoiceToVector3MapNodeBinding {
+	mappings: ChoiceVector3Mapping[]
+	availableEnumOptions: string[]
+	setMappings: (mappings: ChoiceVector3Mapping[]) => void
 }
 
-export function useGeometrySwitchNode(nodeId: string): GeometrySwitchNodeBinding | undefined {
+export function useChoiceToVector3MapNode(nodeId: string): ChoiceToVector3MapNodeBinding | undefined {
+	const controller = useEditorController()
+	const { model } = useGraphSnapshot()
+	const node = model.getNode(nodeId)
+	const setMappings = useCallback(
+		(mappings: ChoiceVector3Mapping[]) => controller.setChoiceVector3Mappings(nodeId, mappings),
+		[controller, nodeId]
+	)
+
+	if (!(node instanceof ChoiceToVector3MapGraphNode)) return undefined
+	return {
+		mappings: node.getMappings(),
+		availableEnumOptions: model.getInputOptions(nodeId, 'enum'),
+		setMappings,
+	}
+}
+
+export interface ChoiceToMeshMapNodeBinding {
+	mappings: ChoiceMeshMapping[]
+	availableEnumOptions: string[]
+}
+
+export function useChoiceToMeshMapNode(nodeId: string): ChoiceToMeshMapNodeBinding | undefined {
 	const { model } = useGraphSnapshot()
 	const node = model.getNode(nodeId)
 
-	if (!(node instanceof GeometrySwitchGraphNode)) return undefined
-	return { cases: node.getCases() }
+	if (!(node instanceof ChoiceToMeshMapGraphNode)) return undefined
+	return {
+		mappings: node.getMappings(),
+		availableEnumOptions: model.getInputOptions(nodeId, 'enum'),
+	}
 }
 
 export interface GeometryToggleNodeBinding {
@@ -259,6 +260,7 @@ export interface TransformNodeBinding {
 	uniformScale: boolean
 	enabled: boolean
 	enabledConnected: boolean
+	translationConnected: boolean
 	setScale: (value: Vector3Snapshot) => void
 	setOrigin: (value: TransformOrigin) => void
 	setCopy: (value: boolean) => void
@@ -316,6 +318,9 @@ export function useTransformNode(nodeId: string): TransformNodeBinding | undefin
 		uniformScale: node.getUniformScale(),
 		enabled: connectedEnabled ?? node.getEnabled(),
 		enabledConnected: connectedEnabled !== undefined,
+		translationConnected: model.getEdges().some(
+			(edge) => edge.targetNodeId === nodeId && edge.targetPort === 'translation'
+		),
 		setScale,
 		setOrigin,
 		setCopy,

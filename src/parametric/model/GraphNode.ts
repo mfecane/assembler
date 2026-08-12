@@ -1,4 +1,4 @@
-import { Vector3Value } from '@/parametric/model/Vector3Value'
+import { Vector3Value, type Vector3Snapshot } from '@/parametric/model/Vector3Value'
 import { BooleanField } from '@/parametric/model/fields/BooleanField'
 import { ColorField } from '@/parametric/model/fields/ColorField'
 import { EnumField } from '@/parametric/model/fields/EnumField'
@@ -20,6 +20,7 @@ export type GraphValueType =
 	| 'meshArray'
 	| 'number'
 	| 'numberArray'
+	| 'vector3'
 	| 'enum'
 	| 'color'
 	| 'boolean'
@@ -40,19 +41,19 @@ export interface GraphInputDefault {
 	value: unknown
 }
 
-export interface MeshSelection {
-	enumValue: string
-	meshId: string
-}
-
-export interface EnumNumberMapping {
-	enumValue: string
+export interface ChoiceScalarMapping {
+	enumIndex: number
 	value: number
 }
 
-export interface GeometrySwitchCase {
+export interface ChoiceVector3Mapping {
+	enumIndex: number
+	value: Vector3Snapshot
+}
+
+export interface ChoiceMeshMapping {
 	id: string
-	enumValue: string
+	enumIndex: number
 }
 
 export interface TransformOrigin {
@@ -153,111 +154,192 @@ export class NumberInputGraphNode extends GraphNode {
 
 }
 
+function normalizeChoiceOptions(options: readonly string[]): string[] {
+	return EnumField.normalizeOptions(options)
+}
+
+function isChoiceIndex(value: number, options: readonly string[]): boolean {
+	return Number.isInteger(value) && value >= 0 && value < options.length
+}
+
 export class SelectorGraphNode extends GraphNode {
 	public readonly type = 'selector'
-	private readonly valueField: EnumField
+	private options: string[]
+	private value: number
 
 	public constructor(
 		id: string,
 		position: GraphPoint,
 		options: string[],
-		value: string
+		value: number
 	) {
 		super(id, position)
-		this.valueField = new EnumField(value, options)
+		this.options = normalizeChoiceOptions(options)
+		this.value = isChoiceIndex(value, this.options) ? value : 0
 	}
 
 	public getOptions(): string[] {
-		return this.valueField.getOptions()
+		return [...this.options]
 	}
 
 	public setOptions(options: string[]): void {
-		this.valueField.setOptions(options)
+		this.options = normalizeChoiceOptions(options)
+		if (!isChoiceIndex(this.value, this.options)) this.value = 0
 	}
 
-	public getValue(): string {
-		return this.valueField.get()
+	public getValue(): number {
+		return this.value
 	}
 
-	public setValue(value: string): void {
-		this.valueField.set(value)
+	public setValue(value: number): void {
+		if (isChoiceIndex(value, this.options)) this.value = value
 	}
 }
 
-export class EnumNumberMapGraphNode extends GraphNode {
-	public readonly type = 'enumNumberMap'
+export class ChoiceToScalarMapGraphNode extends GraphNode {
+	public readonly type = 'choiceToScalarMap'
 
 	public constructor(
 		id: string,
 		position: GraphPoint,
-		private mappings: EnumNumberMapping[]
+		private mappings: ChoiceScalarMapping[]
 	) {
 		super(id, position)
+		this.mappings = ChoiceToScalarMapGraphNode.validateMappings(id, mappings)
 	}
 
-	public getMappings(): EnumNumberMapping[] {
+	public getMappings(): ChoiceScalarMapping[] {
 		return this.mappings.map((mapping) => ({ ...mapping }))
 	}
 
-	public setMappings(mappings: EnumNumberMapping[]): void {
-		this.mappings = mappings.map((mapping) => ({ ...mapping }))
+	public setMappings(mappings: ChoiceScalarMapping[]): void {
+		this.mappings = ChoiceToScalarMapGraphNode.validateMappings(this.id, mappings)
 	}
 
-	public getNumber(enumValue: string): number | undefined {
-		return this.mappings.find((mapping) => mapping.enumValue === enumValue)?.value
+	public getNumber(enumIndex: number): number | undefined {
+		return this.mappings.find((mapping) => mapping.enumIndex === enumIndex)?.value
+	}
+
+	private static validateMappings(nodeId: string, mappings: ChoiceScalarMapping[]): ChoiceScalarMapping[] {
+		if (!Array.isArray(mappings) || mappings.some((mapping) => (
+			!Number.isInteger(mapping?.enumIndex)
+			|| mapping.enumIndex < 0
+			|| !Number.isFinite(mapping.value)
+		))) {
+			throw new Error(
+				`Choice to Scalar node "${nodeId}" requires mappings with non-negative integer `
+				+ `enumIndex values and finite numbers. Received ${JSON.stringify(mappings)}`
+			)
+		}
+		if (new Set(mappings.map((mapping) => mapping.enumIndex)).size !== mappings.length) {
+			throw new Error(
+				`Choice to Scalar node "${nodeId}" requires unique enumIndex values. `
+				+ `Received ${JSON.stringify(mappings)}`
+			)
+		}
+		return mappings.map((mapping) => ({ ...mapping }))
 	}
 }
 
-export class GeometrySwitchGraphNode extends GraphNode {
-	public readonly type = 'geometrySwitch'
-	private cases: GeometrySwitchCase[]
+export class ChoiceToVector3MapGraphNode extends GraphNode {
+	public readonly type = 'choiceToVector3Map'
 
 	public constructor(
 		id: string,
 		position: GraphPoint,
-		cases: GeometrySwitchCase[]
+		private mappings: ChoiceVector3Mapping[]
 	) {
 		super(id, position)
-		this.cases = GeometrySwitchGraphNode.validateCases(id, cases)
+		this.mappings = ChoiceToVector3MapGraphNode.validateMappings(id, mappings)
 	}
 
-	public getCases(): GeometrySwitchCase[] {
-		return this.cases.map((switchCase) => ({ ...switchCase }))
+	public getMappings(): ChoiceVector3Mapping[] {
+		return this.mappings.map((mapping) => ({ ...mapping, value: { ...mapping.value } }))
 	}
 
-	public setCases(cases: GeometrySwitchCase[]): void {
-		this.cases = GeometrySwitchGraphNode.validateCases(this.id, cases)
+	public setMappings(mappings: ChoiceVector3Mapping[]): void {
+		this.mappings = ChoiceToVector3MapGraphNode.validateMappings(this.id, mappings)
 	}
 
-	public getInputId(enumValue: string): string | undefined {
-		return this.cases.find((switchCase) => switchCase.enumValue === enumValue)?.id
+	public getVector(enumIndex: number): Vector3Snapshot | undefined {
+		const value = this.mappings.find((mapping) => mapping.enumIndex === enumIndex)?.value
+		return value ? { ...value } : undefined
 	}
 
-	private static validateCases(nodeId: string, cases: GeometrySwitchCase[]): GeometrySwitchCase[] {
-		if (cases.length === 0) {
-			throw new Error(`Geometry Switch node "${nodeId}" requires at least one case`)
+	private static validateMappings(
+		nodeId: string,
+		mappings: ChoiceVector3Mapping[]
+	): ChoiceVector3Mapping[] {
+		if (!Array.isArray(mappings) || mappings.some((mapping) => (
+			!Number.isInteger(mapping?.enumIndex)
+			|| mapping.enumIndex < 0
+			|| !Vector3Value.isSnapshot(mapping.value)
+		))) {
+			throw new Error(
+				`Choice to Vector 3 node "${nodeId}" requires mappings with non-negative integer `
+				+ `enumIndex values and finite { x, y, z } vectors. Received ${JSON.stringify(mappings)}`
+			)
 		}
-		const normalized = cases.map((switchCase, index) => {
-			const id = switchCase.id.trim()
-			const enumValue = switchCase.enumValue.trim()
-			if (!id || !enumValue) {
+		if (new Set(mappings.map((mapping) => mapping.enumIndex)).size !== mappings.length) {
+			throw new Error(
+				`Choice to Vector 3 node "${nodeId}" requires unique enumIndex values. `
+				+ `Received ${JSON.stringify(mappings)}`
+			)
+		}
+		return mappings.map((mapping) => ({ ...mapping, value: { ...mapping.value } }))
+	}
+}
+
+export class ChoiceToMeshMapGraphNode extends GraphNode {
+	public readonly type = 'choiceToMeshMap'
+	private mappings: ChoiceMeshMapping[]
+
+	public constructor(
+		id: string,
+		position: GraphPoint,
+		mappings: ChoiceMeshMapping[]
+	) {
+		super(id, position)
+		this.mappings = ChoiceToMeshMapGraphNode.validateMappings(id, mappings)
+	}
+
+	public getMappings(): ChoiceMeshMapping[] {
+		return this.mappings.map((mapping) => ({ ...mapping }))
+	}
+
+	public setMappings(mappings: ChoiceMeshMapping[]): void {
+		this.mappings = ChoiceToMeshMapGraphNode.validateMappings(this.id, mappings)
+	}
+
+	public getInputId(enumIndex: number): string | undefined {
+		return this.mappings.find((mapping) => mapping.enumIndex === enumIndex)?.id
+	}
+
+	private static validateMappings(nodeId: string, mappings: ChoiceMeshMapping[]): ChoiceMeshMapping[] {
+		if (mappings.length === 0) {
+			throw new Error(`Choice to Mesh node "${nodeId}" requires at least one mapping`)
+		}
+		const normalized = mappings.map((mapping, index) => {
+			const id = mapping.id.trim()
+			const enumIndex = mapping.enumIndex
+			if (!id || !Number.isInteger(enumIndex) || enumIndex < 0) {
 				throw new Error(
-					`Geometry Switch node "${nodeId}" case ${index + 1} requires a non-empty `
-					+ `input ID and choice value. Received ${JSON.stringify(switchCase)}`
+					`Choice to Mesh node "${nodeId}" mapping ${index + 1} requires a non-empty `
+					+ `input ID and a non-negative integer choice index. Received ${JSON.stringify(mapping)}`
 				)
 			}
-			return { id, enumValue }
+			return { id, enumIndex }
 		})
-		const inputIds = normalized.map((switchCase) => switchCase.id)
-		const enumValues = normalized.map((switchCase) => switchCase.enumValue)
+		const inputIds = normalized.map((mapping) => mapping.id)
+		const enumIndices = normalized.map((mapping) => mapping.enumIndex)
 		if (
-			inputIds.includes('choice')
+			inputIds.includes('enum')
 			|| new Set(inputIds).size !== inputIds.length
-			|| new Set(enumValues).size !== enumValues.length
+			|| new Set(enumIndices).size !== enumIndices.length
 		) {
 			throw new Error(
-				`Geometry Switch node "${nodeId}" requires unique input IDs other than "choice" `
-				+ 'and unique choice values. '
+				`Choice to Mesh node "${nodeId}" requires unique input IDs other than "enum" `
+				+ 'and unique choice indices. '
 				+ `Received ${JSON.stringify(normalized)}`
 			)
 		}
@@ -303,36 +385,6 @@ export class ColorGraphNode extends GraphNode {
 	public setColor(color: string): void {
 		this.colorField.set(color)
 	}
-}
-
-export class MeshSelectorGraphNode extends GraphNode {
-	public readonly type = 'meshSelector'
-	private readonly transform: TransformField
-
-	public constructor(
-		id: string,
-		position: GraphPoint,
-		private selections: MeshSelection[],
-		transform = new TransformField()
-	) {
-		super(id, position)
-		this.transform = transform
-	}
-
-	public getSelections(): MeshSelection[] {
-		return this.selections.map((selection) => ({ ...selection }))
-	}
-
-	public setSelections(selections: MeshSelection[]): void {
-		this.selections = selections.map((selection) => ({ ...selection }))
-	}
-
-	public getMeshId(enumValue: string): string | undefined {
-		return this.selections.find((selection) => selection.enumValue === enumValue)?.meshId
-	}
-
-	public getTransform(): TransformField { return this.transform }
-
 }
 
 export class MeshAssetGraphNode extends GraphNode {

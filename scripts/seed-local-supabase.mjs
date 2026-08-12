@@ -46,6 +46,67 @@ if (invalidRootGraphs.length > 0) {
 		+ `and graph ids ${JSON.stringify([...graphIds])}.`
 	)
 }
+const enumDefinitions = new Map(defaultGraph.enums.map((definition) => [definition.id, definition]))
+const enumInputs = defaultGraph.graphs.flatMap((graph) => graph.inputs
+	.filter((input) => input.valueType === 'enum')
+	.map((input) => ({ graphId: graph.id, input })))
+const invalidEnumInputs = enumInputs.filter(({ input }) => {
+	const options = enumDefinitions.get(input.enumId)?.options
+	return !Array.isArray(options)
+		|| options.length === 0
+		|| !Number.isInteger(input.defaultValue)
+		|| input.defaultValue < 0
+		|| input.defaultValue >= options.length
+})
+const invalidRootEnumValues = defaultGraph.rootGraphs.flatMap((rootGraph) => {
+	const graph = defaultGraph.graphs.find((candidate) => candidate.id === rootGraph.graphId)
+	return graph.inputs.flatMap((input) => {
+		if (input.valueType !== 'enum' || !(input.id in rootGraph.inputValues)) return []
+		const options = enumDefinitions.get(input.enumId)?.options ?? []
+		const value = rootGraph.inputValues[input.id]
+		return Number.isInteger(value) && value >= 0 && value < options.length
+			? []
+			: [{ graphId: graph.id, inputId: input.id, value, optionCount: options.length }]
+	})
+})
+const invalidEnumMappings = defaultGraph.graphs.flatMap((graph) => graph.nodes.flatMap((node) => {
+	const entries = node.type === 'choiceToMeshMap'
+		? node.data.mappings
+		: node.type === 'choiceToScalarMap' || node.type === 'choiceToVector3Map'
+			? node.data.mappings
+			: undefined
+	if (!entries) return []
+	return Array.isArray(entries) && entries.every((entry) => (
+		Number.isInteger(entry.enumIndex) && entry.enumIndex >= 0 && !('enumValue' in entry)
+	)) ? [] : [{ graphId: graph.id, nodeId: node.id, entries }]
+}))
+const invalidVectorMappings = defaultGraph.graphs.flatMap((graph) => graph.nodes.flatMap((node) => (
+	node.type !== 'choiceToVector3Map'
+		? []
+		: node.data.mappings.every((mapping) => (
+			mapping.value
+			&& typeof mapping.value === 'object'
+			&& Number.isFinite(mapping.value.x)
+			&& Number.isFinite(mapping.value.y)
+			&& Number.isFinite(mapping.value.z)
+		))
+			? []
+			: [{ graphId: graph.id, nodeId: node.id, mappings: node.data.mappings }]
+)))
+if (
+	invalidEnumInputs.length > 0
+	|| invalidRootEnumValues.length > 0
+	|| invalidEnumMappings.length > 0
+	|| invalidVectorMappings.length > 0
+) {
+	throw new Error(
+		'The default graph seed contains invalid indexed choice data. Choice defaults, root values, '
+		+ 'scalar, vector, and mesh mappings must use non-negative option indices. '
+		+ `Invalid inputs: ${JSON.stringify(invalidEnumInputs)}. Invalid root values: `
+		+ `${JSON.stringify(invalidRootEnumValues)}. Invalid mappings: ${JSON.stringify(invalidEnumMappings)}. `
+		+ `Invalid vectors: ${JSON.stringify(invalidVectorMappings)}.`
+	)
+}
 const rgbColorPattern = /^#[0-9a-f]{6}$/i
 const colorInputs = defaultGraph.graphs.flatMap((graph) => graph.inputs
 	.filter((input) => input.valueType === 'color')
@@ -115,11 +176,11 @@ const nodeTypes = defaultGraph.graphs.flatMap((graph) => graph.nodes.map((node) 
 if (
 	!nodeTypes.includes('meshArray')
 	|| !nodeTypes.includes('multiArray')
-	|| !nodeTypes.includes('geometrySwitch')
+	|| !nodeTypes.includes('choiceToMeshMap')
 	|| !nodeTypes.includes('geometryToggle')
 ) {
 	throw new Error(
-		'The default MaxShelf seed must exercise Mesh Array, Multi Array, Geometry Switch, '
+		'The default MaxShelf seed must exercise Mesh Array, Multi Array, Choice to Mesh, '
 		+ 'and Geometry Toggle. '
 		+ `Received node types ${JSON.stringify([...new Set(nodeTypes)])}.`
 	)

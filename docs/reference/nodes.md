@@ -8,7 +8,8 @@ Ports are written as `port-id: value-type`. Built-in value types are:
 - `meshArray` — an ordered array of geometry bundles used by Mesh Array and Multi Array.
 - `number` — a JavaScript number.
 - `numberArray` — an ordered array of non-negative JavaScript numbers.
-- `enum` — one string selected from a source node's options.
+- `vector3` — an internal `{ x, y, z }` connection value for driving vector fields.
+- `enum` — a zero-based numeric index into a source node's ordered options.
 - `color` — an RGB color string in `#RRGGBB` format.
 - `boolean` — a JavaScript boolean.
 
@@ -51,18 +52,6 @@ Emits one registered catalog mesh.
 - Evaluation: emits one instance using catalog bounds and applies the embedded transform. An
   unknown asset ID produces no output.
 
-### Mesh Selector (`meshSelector`)
-
-Maps an enum value to a registered mesh.
-
-- Inputs: `enum: enum`.
-- Outputs: `geometry: geometry`.
-- Data: `selections`, an array of `{ enumValue, meshId }` mappings, and an embedded `transform`.
-- Editor: each choice mapping opens the shared preview picker and replaces only that row's mesh.
-- Default: one mapping per selectable mesh, using the mesh label as the enum value.
-- Evaluation: looks up the incoming enum value, emits the matching mesh, and applies the embedded
-  transform. A missing input, mapping, or catalog asset produces no output.
-
 ## Constant value sources
 
 ### Number Input (`numberInput`)
@@ -77,11 +66,11 @@ Emits a stored number inside a graph. It does not create a configuration-panel c
 
 ### Selector (`selector`)
 
-Emits one stored string choice inside a graph. It does not create a configuration-panel control.
+Emits one stored choice index inside a graph. It does not create a configuration-panel control.
 
 - Inputs: none.
 - Outputs: `enum: enum`.
-- Data: non-empty `options` string array; `value`, which must be one of the options.
+- Data: non-empty `options` string array; `value`, a valid zero-based index into that array.
 - Default: name `Choice`, options `Cube`, `Cone`, and `Ring`, with `Cube` selected.
 - Normalization: options are trimmed, empty and duplicate values are removed, and an empty list becomes `["Option"]`. An invalid current value becomes the first option.
 
@@ -100,38 +89,49 @@ Supported persisted colors are `#eaceac`, `#f4f4f5`, `#27272a`, `#dc5a5a`, `#e89
 
 ## Value operations
 
-### Choice to Number (`enumNumberMap`)
+### Map to Scalar (`choiceToScalarMap`)
 
 Maps an enum value to a number for driving numeric operation inputs.
 
 - Inputs: `enum: enum`.
 - Outputs: `number: number`.
-- Data: `mappings`, an array of `{ enumValue, value }` mappings.
+- Data: `mappings`, an array of `{ enumIndex, value }` mappings.
 - Default: no mappings; connecting an enum exposes its options for editing in the node.
-- Evaluation: emits the number mapped to the incoming enum value. A missing input or mapping
+- Evaluation: emits the number mapped to the incoming enum index. A missing input or mapping
+  produces no output.
+
+### Map to Vector 3 (`choiceToVector3Map`)
+
+Maps an enum option index to an XYZ vector, primarily for driving Transform translation.
+
+- Inputs: `enum: enum`.
+- Outputs: `vector3: vector3`.
+- Data: `mappings`, an array of `{ enumIndex, value: { x, y, z } }` mappings.
+- Default: no mappings; connecting an enum exposes its options and three numeric fields per option.
+- Evaluation: emits the vector mapped to the incoming enum index. A missing input or mapping
   produces no output.
 
 ## Geometry operations
 
-### Switch (`geometrySwitch`)
+### Map to Mesh (`choiceToMeshMap`)
 
-Selects one geometry input using an incoming choice value.
+Maps an enum option to one separately connected mesh input.
 
-- Inputs: `choice: enum`; one geometry input for every persisted case.
+- Inputs: `enum: enum`; one geometry input for every persisted mapping.
 - Outputs: `geometry: geometry`.
-- Data: `cases`, a non-empty array of unique `{ id, enumValue }` entries. The stable `id` owns the
-  geometry port; `enumValue` is the exact incoming choice value that selects it.
-- Editor: cases mirror the connected choice output and are displayed as labeled geometry ports.
-  Adding, renaming, or removing an upstream choice updates the cases automatically. Existing geometry
+- Data: `mappings`, a non-empty array of unique `{ id, enumIndex }` entries. The stable `id` owns the
+  geometry port; `enumIndex` is the incoming option index that selects it.
+- Editor: mappings mirror the connected choice output and are displayed as labeled mesh ports.
+  Adding, renaming, or removing an upstream choice updates the mappings automatically. Existing mesh
   connections keep their stable input IDs across renames; removing a choice removes its connection.
-- Evaluation: passes through the selected case's complete geometry bundle. Missing choices,
-  unmatched values, and unconnected selected cases produce no output.
+- Evaluation: passes through the selected input's complete geometry bundle. Missing choices,
+  unmatched values, and unconnected selected inputs produce no output.
 
 ### Toggle (`geometryToggle`)
 
 Enables or disables one geometry branch using a boolean value.
 
-- Inputs: `enabled: boolean`; `geometry: geometry`.
+- Inputs: `enabled: boolean`; `translation: vector3`; `geometry: geometry`.
 - Outputs: `geometry: geometry`.
 - Data: `enabled` boolean fallback used while the boolean input is disconnected.
 - Editor: the fallback uses a Switch control and is disabled while a boolean connection controls
@@ -154,6 +154,8 @@ Applies translation, rotation, scale, and a selectable pivot to every incoming i
 - Default: zero translation and rotation, unit scale, middle origin, `copy: false`,
   `uniformScale: true`, and `enabled: true`.
 - Units: rotation values are degrees. Translation uses scene units.
+- Fallback: the persisted translation is used while `translation` is disconnected. A connected
+  vector overrides the complete translation without changing rotation, scale, or origin.
 - Evaluation: transforms all instances. When `copy` is true, both original and transformed instances are emitted.
 - Toggle: the stored value is used while `enabled` is disconnected. A connected boolean controls
   the node and disables the fallback switch. When disabled, the geometry input is passed through
@@ -175,13 +177,13 @@ Assigns a standard material color to every incoming instance.
 
 Repeats incoming geometry along one axis.
 
-- Inputs: `geometry: geometry`; `count: number`; `startIndex: number`.
+- Inputs: `geometry: geometry`; `count: number`; `startIndex: number`; `offset: number`.
 - Outputs: `geometry: geometry`.
 - Data: non-negative integer `count`; `axis` (`x`, `y`, or `z`); and `offset`, the editable
   duplication distance.
 - Default: count `2`, x-axis, offset `1`.
-- Fallback: when `count` is unconnected, the stored count is used; when `startIndex` is
-  unconnected, zero is used. `startIndex` is connection-only and does not change persisted data.
+- Fallback: stored `count` and `offset` values are used while their ports are disconnected; when
+  `startIndex` is unconnected, zero is used. `startIndex` is connection-only.
 - Evaluation: floors the effective count, clamps it to at least zero, and emits copies at
   `(startIndex + index) × offset` along the selected axis. A zero count emits empty geometry.
 - 3D editing: opening the node attaches a single-axis gizmo to the final duplicate. Dragging it

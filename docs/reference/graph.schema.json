@@ -134,6 +134,16 @@
         }
       }
     },
+    "point3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "z"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" }
+      }
+    },
     "transformField": {
       "type": "object",
       "additionalProperties": false,
@@ -264,7 +274,8 @@
               "$ref": "#/$defs/id"
             },
             "defaultValue": {
-              "type": "string"
+              "type": "integer",
+              "minimum": 0
             }
           }
         },
@@ -436,11 +447,11 @@
             "primitive",
             "numberInput",
             "selector",
-            "enumNumberMap",
-            "geometrySwitch",
+            "choiceToScalarMap",
+            "choiceToVector3Map",
+            "choiceToMeshMap",
             "geometryToggle",
             "color",
-            "meshSelector",
             "meshAsset",
             "transform",
             "material",
@@ -459,6 +470,84 @@
         }
       },
       "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "selector"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "data": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "options",
+                  "value"
+                ],
+                "properties": {
+                  "options": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "value": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "choiceToVector3Map"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "data": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "mappings"
+                ],
+                "properties": {
+                  "mappings": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "enumIndex",
+                        "value"
+                      ],
+                      "properties": {
+                        "enumIndex": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "value": {
+                          "$ref": "#/$defs/point3"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         {
           "if": {
             "properties": {
@@ -488,7 +577,7 @@
           "if": {
             "properties": {
               "type": {
-                "const": "geometrySwitch"
+                "const": "choiceToMeshMap"
               }
             }
           },
@@ -498,10 +587,10 @@
                 "type": "object",
                 "additionalProperties": false,
                 "required": [
-                  "cases"
+                  "mappings"
                 ],
                 "properties": {
-                  "cases": {
+                  "mappings": {
                     "type": "array",
                     "minItems": 1,
                     "items": {
@@ -509,7 +598,7 @@
                       "additionalProperties": false,
                       "required": [
                         "id",
-                        "enumValue"
+                        "enumIndex"
                       ],
                       "properties": {
                         "id": {
@@ -519,14 +608,14 @@
                             },
                             {
                               "not": {
-                                "const": "choice"
+                                "const": "enum"
                               }
                             }
                           ]
                         },
-                        "enumValue": {
-                          "type": "string",
-                          "minLength": 1
+                        "enumIndex": {
+                          "type": "integer",
+                          "minimum": 0
                         }
                       }
                     }
@@ -540,7 +629,7 @@
           "if": {
             "properties": {
               "type": {
-                "const": "enumNumberMap"
+                "const": "choiceToScalarMap"
               }
             }
           },
@@ -559,13 +648,13 @@
                       "type": "object",
                       "additionalProperties": false,
                       "required": [
-                        "enumValue",
+                        "enumIndex",
                         "value"
                       ],
                       "properties": {
-                        "enumValue": {
-                          "type": "string",
-                          "minLength": 1
+                        "enumIndex": {
+                          "type": "integer",
+                          "minimum": 0
                         },
                         "value": {
                           "type": "number"

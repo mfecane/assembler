@@ -8,7 +8,7 @@ import { isRgbColor } from '@/parametric/model/ColorPalette'
 import { RootGraph } from '@/parametric/model/RootGraph'
 
 export type GraphInputValue = number | number[] | string | boolean
-export type GraphInputValueType = Exclude<GraphValueType, 'meshArray'>
+export type GraphInputValueType = Exclude<GraphValueType, 'meshArray' | 'vector3'>
 
 export interface GraphInputDefinition {
 	id: string
@@ -79,7 +79,7 @@ export type ConfigurationField =
 		total: number
 		step: number
 	}
-	| { id: string; type: 'enum'; label: string; value: string; options: string[] }
+	| { id: string; type: 'enum'; label: string; value: number; options: string[] }
 	| { id: string; type: 'color'; label: string; value: string; options: string[] }
 	| { id: string; type: 'boolean'; label: string; value: boolean }
 
@@ -217,17 +217,22 @@ export class GraphDocumentModel {
 	public renameEnumOption(enumId: string, index: number, option: string): string {
 		const definition = this.requireEnumEntity(enumId)
 		const normalizedOption = option.trim()
-		const previousOption = definition.renameOption(index, normalizedOption)
-		if (previousOption === normalizedOption) return previousOption
-		this.reconcileEnumInputValues(enumId, previousOption, normalizedOption)
-		return previousOption
+		return definition.renameOption(index, normalizedOption)
 	}
 
 	public removeEnumOption(enumId: string, index: number): string {
 		const definition = this.requireEnumEntity(enumId)
 		const removedOption = definition.removeOption(index)
-		this.reconcileEnumInputValues(enumId)
+		this.reconcileEnumInputValues(enumId, (value) => value === index ? 0 : value > index ? value - 1 : value)
 		return removedOption
+	}
+
+	public moveEnumOption(enumId: string, sourceIndex: number, targetIndex: number): void {
+		this.requireEnumEntity(enumId).moveOption(sourceIndex, targetIndex)
+		this.reconcileEnumInputValues(
+			enumId,
+			(value) => remapMovedIndex(value, sourceIndex, targetIndex)
+		)
 	}
 
 	public setInputEnum(graphId: string, inputId: string, enumId: string): string | undefined {
@@ -236,15 +241,14 @@ export class GraphDocumentModel {
 		if (input?.valueType !== 'enum') return undefined
 		const previousEnumId = input.enumId
 		input.enumId = enumId
-		const options = this.getEnumOptions(enumId)
-		if (typeof input.defaultValue !== 'string' || !options.includes(input.defaultValue)) {
-			input.defaultValue = options[0]
+		if (!this.isInputValueCompatible(input, input.defaultValue ?? -1)) {
+			input.defaultValue = 0
 		}
 		const root = this.rootGraphs.get(graphId)
 		if (root) {
 			const current = root.getInputValue(inputId)
 			if (current !== undefined && !this.isInputValueCompatible(input, current)) {
-				root.setInputValue(inputId, input.defaultValue)
+				root.setInputValue(inputId, input.defaultValue ?? 0)
 			}
 		}
 		if (previousEnumId && previousEnumId !== enumId) this.removeEnumIfUnused(previousEnumId)
@@ -549,28 +553,18 @@ export class GraphDocumentModel {
 		return definition
 	}
 
-	private reconcileEnumInputValues(
-		enumId: string,
-		previousOption?: string,
-		nextOption?: string
-	): void {
-		const options = this.getEnumOptions(enumId)
+	private reconcileEnumInputValues(enumId: string, remapIndex: (value: number) => number): void {
 		for (const graph of this.graphs.values()) {
 			for (const input of graph.inputs) {
 				if (input.valueType !== 'enum' || input.enumId !== enumId) continue
-				if (previousOption && nextOption && input.defaultValue === previousOption) {
-					input.defaultValue = nextOption
-				} else if (
-					typeof input.defaultValue !== 'string'
-					|| !options.includes(input.defaultValue)
-				) {
-					input.defaultValue = options[0]
-				}
+				input.defaultValue = typeof input.defaultValue === 'number'
+					? remapIndex(input.defaultValue)
+					: 0
 				const root = this.rootGraphs.get(graph.id)
 				if (!root) continue
 				const current = root.getInputValue(input.id)
-				if (previousOption && nextOption && current === previousOption) {
-					root.setInputValue(input.id, nextOption)
+				if (typeof current === 'number') {
+					root.setInputValue(input.id, remapIndex(current))
 				} else if (current !== undefined && !this.isInputValueCompatible(input, current)) {
 					root.setInputValue(input.id, input.defaultValue)
 				}
@@ -677,13 +671,20 @@ export function isInputValueCompatible(
 			&& value.every((item) => Number.isFinite(item) && item >= 0)
 	}
 	if (input.valueType === 'enum') {
-		return typeof value === 'string' && options.includes(value)
+		return Number.isInteger(value) && (value as number) >= 0 && (value as number) < options.length
 	}
 	if (input.valueType === 'color') {
 		return typeof value === 'string' && isRgbColor(value)
 	}
 	if (input.valueType === 'boolean') return typeof value === 'boolean'
 	return false
+}
+
+export function remapMovedIndex(value: number, sourceIndex: number, targetIndex: number): number {
+	if (value === sourceIndex) return targetIndex
+	if (sourceIndex < targetIndex && value > sourceIndex && value <= targetIndex) return value - 1
+	if (sourceIndex > targetIndex && value >= targetIndex && value < sourceIndex) return value + 1
+	return value
 }
 
 function reconcileNumberArray(

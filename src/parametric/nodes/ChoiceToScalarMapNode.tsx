@@ -3,57 +3,56 @@ import { NumericInput } from '@/parametric/components/NumericInput'
 import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
-import { useEnumNumberMapNode } from '@/parametric/hooks/useGraphNode'
+import { useChoiceToScalarMapNode } from '@/parametric/hooks/useGraphNode'
 
-export function EnumNumberMapNode({ id }: NodeProps<ParametricFlowNode>) {
-	const binding = useEnumNumberMapNode(id)
+export function ChoiceToScalarMapNode({ id }: NodeProps<ParametricFlowNode>) {
+	const binding = useChoiceToScalarMapNode(id)
 	if (!binding) return null
 
-	const setNumberForValue = (enumValue: string, value: number) => {
+	const setNumberForIndex = (enumIndex: number, value: number) => {
 		const existingMapping = binding.mappings.find(
-			(mapping) => mapping.enumValue === enumValue
+			(mapping) => mapping.enumIndex === enumIndex
 		)
 		binding.setMappings(existingMapping
 			? binding.mappings.map((mapping) =>
-				mapping.enumValue === enumValue ? { ...mapping, value } : mapping
+				mapping.enumIndex === enumIndex ? { ...mapping, value } : mapping
 			)
-			: [...binding.mappings, { enumValue, value }]
+			: [...binding.mappings, { enumIndex, value }]
 		)
 	}
 
 	return (
 		<div
-			data-id={`enum-number-map-node-${id}`}
+			data-id={`choice-to-scalar-map-node-${id}`}
 			className="min-w-56 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
 		>
 			<TypedHandle id="enum" type="target" position={Position.Left} valueType="enum" />
 			<NodeHeader nodeId={id} />
 			<div className="flex flex-col gap-1.5">
-				{binding.availableEnumValues.map((enumValue) => {
+				{binding.availableEnumOptions.map((option, enumIndex) => {
 					const mapping = binding.mappings.find(
-						(candidate) => candidate.enumValue === enumValue
+						(candidate) => candidate.enumIndex === enumIndex
 					)
 					return (
 						<div
-							key={enumValue}
-							data-id={`enum-number-map-row-${enumValue}`}
+							key={enumIndex}
+							data-id={`choice-to-scalar-map-row-${enumIndex}`}
 							className="nodrag flex items-center justify-between gap-2 text-xs"
 						>
-							<span className="w-24 truncate text-foreground" title={enumValue}>
-								{enumValue}
+							<span className="w-24 truncate text-foreground" title={option}>
+								{option}
 							</span>
 							<NumericInput
 								field={{
 									value: mapping?.value ?? 0,
-									setValue: (value) => setNumberForValue(enumValue, value),
+									setValue: (value) => setNumberForIndex(enumIndex, value),
 								}}
-								min={0}
-								step={1}
+								step={0.1}
 							/>
 						</div>
 					)
 				})}
-				{binding.availableEnumValues.length === 0 && (
+				{binding.availableEnumOptions.length === 0 && (
 					<div className="px-2 py-1 text-xs text-muted-foreground">
 						Connect a choice output to configure mappings.
 					</div>

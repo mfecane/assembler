@@ -1,5 +1,9 @@
 import type { TransformControlsMode } from 'three/examples/jsm/controls/TransformControls.js'
 import type { SceneNodeInstanceReference } from '@/parametric/evaluation/SceneMetadata'
+import {
+	createDefaultViewportAlignmentRequest,
+	type ViewportAlignmentRequest,
+} from '@/parametric/three/editor/ViewportAlignment'
 
 export interface ViewportContextMenu {
 	x: number
@@ -21,6 +25,7 @@ export interface ReactBridgeSnapshot {
 	transformNodeId: string | null
 	arrayDistanceNodeId: string | null
 	transformMode: TransformControlsMode
+	alignmentSettings: ViewportAlignmentRequest
 	selectedMeshInstanceId: string | null
 	contextMenu: ViewportContextMenu | null
 	graphNodeFocusRequest: GraphNodeFocusRequest | null
@@ -37,6 +42,7 @@ const initialSnapshot: ReactBridgeSnapshot = {
 	transformNodeId: null,
 	arrayDistanceNodeId: null,
 	transformMode: 'translate',
+	alignmentSettings: createDefaultViewportAlignmentRequest(),
 	selectedMeshInstanceId: null,
 	contextMenu: null,
 	graphNodeFocusRequest: null,

@@ -10,7 +10,7 @@ and the [Node graph model review](../reviews/node-graph-model-review.md).
 
 - Scalar fields are registered by kind and mutate through `setFieldValue`; bespoke controller and
   React hooks remain only for structural or connected-value behavior.
-- Mesh Asset, Mesh Selector, and Assembly Instance persist and evaluate a shared embedded
+- Mesh Asset and Assembly Instance persist and evaluate a shared embedded
   transform field and render the shared collapsible transform section.
 - The viewport recognizes that shared transform field as a capability, so its move, rotate, and
   scale widgets edit embedded and standalone transforms through the same history path.
@@ -128,8 +128,8 @@ node/value pairs that currently have no generic path at all: `ColorGraphNode.col
 (enum), `SelectorGraphNode.value` (enum, options from `getOptions()`).
 
 Fields that are genuinely structural, not a single scalar assignment, stay outside this mechanism:
-`SelectorGraphNode.options` (resizes a list), `MeshSelectorGraphNode.selections` (array of
-objects), `TransformGraphNode.uniformScale` (cascades into `scale`), any `DynamicInputPorts`-backed
+`SelectorGraphNode.options` (resizes a list), `TransformGraphNode.uniformScale` (cascades into
+`scale`), any dynamic-input-port mapping list
 port list. Do not force these into `fields` — the review's recommendation is "plain field
 assignment should be generic," not "everything must be generic."
 
@@ -174,7 +174,7 @@ named method.
   genuinely structural.
 - `setSelectorOptions`/`addGraphInputOption`/`updateGraphInputOption`/`removeGraphInputOption` —
   resize/reshape a list, not a field.
-- `setMeshSelections` — sets a whole array of `{enumValue, meshId}` objects.
+- `setMeshSelections` — sets a whole array of `{enumIndex, meshId}` objects.
 - `setTransformNodeValues` (viewport-driven, multi-field, custom merge key) — leave as-is.
 
 **Acceptance:** the eleven single-scalar setters enumerated at the top are gone from
@@ -211,8 +211,8 @@ Migrate the hooks whose entire job is "instanceof-check + expose scalar fields" 
 **Keep bespoke hooks** where cross-edge/cross-field resolution is the actual point:
 `useMaterialNode` (resolves the connected-color edge value vs. stored fallback), `useSumNode`
 (resolves the connected-`enabled` edge value), `useGroupNode` (dynamic port connection state),
-`useTransformNode` (uniform-scale cascading UI state), `useMeshSelectorNode` (selection-list
-editing UI). These hooks earn their keep by doing real logic beyond field passthrough — don't
+`useTransformNode` (uniform-scale cascading UI state). These hooks earn their keep by doing real
+logic beyond field passthrough — don't
 delete them, don't force them onto the generic path.
 
 **Acceptance:** the five "boring" hooks above are deleted; their views call `useField`/
@@ -248,7 +248,7 @@ want a quick win first. Pure type-safety cleanup, zero behavior change.
 ## Phase 5 — embedded transform capability (builds on Phases 0–4)
 
 Implements the first proposal in `node-capabilities-proposal.md`: a collapsible, non-connectable
-transform section on Mesh Asset, Mesh Selector, and Assembly Instance.
+transform section on Mesh Asset and Assembly Instance.
 
 1. **`TransformField`** (new, `model/fields/TransformField.ts`): composes `translation`,
    `rotation`, `scale` (each a `Vector3Value`) and `origin`. Deliberately excludes `copy` and
@@ -261,8 +261,8 @@ transform section on Mesh Asset, Mesh Selector, and Assembly Instance.
    `defaultNodeRegistry.ts`) into a standalone exported function taking a `TransformField` and a
    list of scene instances. Both the standalone `TransformGraphNode.evaluate` and any host node's
    `evaluate` call the same function — one implementation, not two kept in sync by discipline.
-3. **Field exposure**: any host node (`MeshAssetGraphNode`, `MeshSelectorGraphNode`, or
-   `GraphInstanceGraphNode`) composes a `transform: TransformField` and
+3. **Field exposure**: any host node (`MeshAssetGraphNode` or `GraphInstanceGraphNode`) composes a
+   `transform: TransformField` and
    registers its sub-fields through
    the same `vectorNumericFields`-style factory used for the standalone Transform node, under a
    prefix (`transform.translation.x`, etc.). This means **no new `EditorController` method and no

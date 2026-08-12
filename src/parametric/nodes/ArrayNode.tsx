@@ -42,7 +42,8 @@ export function ArrayNode({ id }: NodeProps<ParametricFlowNode>) {
 					<span>Start index</span>
 					<span className="text-[10px] text-muted-foreground/70">0 when disconnected</span>
 				</div>
-				<div className="nodrag flex items-center justify-between gap-2 text-muted-foreground">
+				<div className="nodrag relative flex items-center justify-between gap-2 text-muted-foreground">
+					<TypedHandle id="offset" type="target" position={Position.Left} valueType="number" />
 					<Label htmlFor={`${id}-axis`} className="text-xs text-muted-foreground">Axis</Label>
 					<Select value={axis.value} onValueChange={(next) => axis.setValue(next as Axis)}>
 						<SelectTrigger id={`${id}-axis`} className="h-7 w-16 px-2 text-xs">
