@@ -139,7 +139,7 @@
   "graphs": [
     {
       "id": "main",
-      "label": "Root",
+      "label": "Cornered shelf assembly",
       "inputs": [
         {
           "id": "number-1",
@@ -809,8 +809,8 @@
           "id": "numberInput-1",
           "name": "One support",
           "position": {
-            "x": -666.5921693797117,
-            "y": -514.3048136182274
+            "x": -924.1941579883575,
+            "y": -571.6420889763435
           },
           "type": "numberInput",
           "data": {
@@ -846,8 +846,8 @@
           "id": "sum-1",
           "name": "Optional last support",
           "position": {
-            "x": -308.56096425877234,
-            "y": -829.8923921103811
+            "x": -425.4757687815877,
+            "y": -820.8849237529014
           },
           "type": "sum",
           "data": {
@@ -859,8 +859,8 @@
           "id": "graphInput-3",
           "name": "Include last post and base",
           "position": {
-            "x": -760.3607398535407,
-            "y": -786.8768378095067
+            "x": -855.1215110748003,
+            "y": -760.3381299977851
           },
           "type": "graphInput",
           "data": {
@@ -871,7 +871,7 @@
           "id": "meshAsset-1",
           "name": "Backplate by type",
           "position": {
-            "x": -328.67850989908993,
+            "x": -517.2423751873449,
             "y": 672.314761533588
           },
           "type": "meshSelector",
@@ -932,8 +932,8 @@
           "id": "backplate-count-by-post-height",
           "name": "Backplate count by post height",
           "position": {
-            "x": -232.0297132973996,
-            "y": 233.76229963965878
+            "x": -328.1690628347295,
+            "y": 155.42653334998258
           },
           "type": "enumNumberMap",
           "data": {
@@ -1031,8 +1031,8 @@
           "id": "backplate-type-input",
           "name": "Backplate type",
           "position": {
-            "x": -752.8887745053252,
-            "y": 649.9690325629414
+            "x": -861.5176089463957,
+            "y": 643.6845241607977
           },
           "type": "graphInput",
           "data": {
@@ -1055,8 +1055,8 @@
           "id": "mirrored-shelves-and-base-toggle",
           "name": "Mirrored shelves and bases",
           "position": {
-            "x": 1039.6959457343853,
-            "y": 314.5197316257862
+            "x": 1080.6266610408343,
+            "y": 253.223966434249
           },
           "type": "geometryToggle",
           "data": {
@@ -1081,8 +1081,8 @@
           "id": "shelves-and-base-for-mirror",
           "name": "Shelves and bases to mirror",
           "position": {
-            "x": 330.05842247761404,
-            "y": -551.2822689414784
+            "x": 255.5338208787009,
+            "y": -671.6681638320304
           },
           "type": "group",
           "data": {}
@@ -1091,7 +1091,7 @@
           "id": "mirror-shelves-and-base-transform",
           "name": "Mirror across backplate",
           "position": {
-            "x": 712.7592006336622,
+            "x": 678.3632306649331,
             "y": -726.5004644297695
           },
           "type": "transform",
@@ -1125,8 +1125,8 @@
           "id": "finish-geometry",
           "name": "Combined geometry",
           "position": {
-            "x": 1501.3011960751955,
-            "y": -136.7465492977117
+            "x": 1541.4298277053797,
+            "y": -36.42497022225174
           },
           "type": "group",
           "data": {}
@@ -1779,7 +1779,7 @@
     },
     {
       "id": "graph-3",
-      "label": "Corner 2",
+      "label": "Corner",
       "inputs": [
         {
           "id": "post-height",
@@ -1815,8 +1815,8 @@
           "id": "meshAsset-3",
           "name": "Corner post by height",
           "position": {
-            "x": -860.3817986867735,
-            "y": -267.5331287992035
+            "x": -856.7691801478123,
+            "y": -311.48665435656477
           },
           "type": "meshSelector",
           "data": {
@@ -2019,8 +2019,8 @@
           "id": "meshAsset-1",
           "name": "Mesh Asset",
           "position": {
-            "x": -1301.925238596327,
-            "y": 417.65966406294945
+            "x": -1331.1334732984385,
+            "y": 434.96824759012657
           },
           "type": "meshAsset",
           "data": {
@@ -2149,6 +2149,69 @@
           "data": {
             "color": "#eaceac"
           }
+        },
+        {
+          "id": "primitive-1",
+          "name": "Size reference cube",
+          "position": {
+            "x": -540.5979229296336,
+            "y": -411.0569354347775
+          },
+          "type": "primitive",
+          "data": {
+            "primitive": "box",
+            "size": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            }
+          }
+        },
+        {
+          "id": "transform-2",
+          "name": "Transform",
+          "position": {
+            "x": -237.89529016176346,
+            "y": -569.4409409058369
+          },
+          "type": "transform",
+          "data": {
+            "translation": {
+              "x": 0.5,
+              "y": 0.5,
+              "z": 0.5
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            },
+            "origin": {
+              "x": "middle",
+              "y": "middle",
+              "z": "middle"
+            },
+            "copy": false,
+            "uniformScale": true,
+            "enabled": true
+          }
+        },
+        {
+          "id": "geometryToggle-1",
+          "name": "Toggle",
+          "position": {
+            "x": 41.49312076169015,
+            "y": -402.1729730600287
+          },
+          "type": "geometryToggle",
+          "data": {
+            "enabled": false
+          }
         }
       ],
       "edges": [
@@ -2249,12 +2312,33 @@
           "targetNodeId": "array-1",
           "sourcePort": "number",
           "targetPort": "count"
+        },
+        {
+          "id": "primitive-1:geometry->transform-2:geometry",
+          "sourceNodeId": "primitive-1",
+          "targetNodeId": "transform-2",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "transform-2:geometry->geometryToggle-1:geometry",
+          "sourceNodeId": "transform-2",
+          "targetNodeId": "geometryToggle-1",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "geometryToggle-1:geometry->finish-geometry:geometry",
+          "sourceNodeId": "geometryToggle-1",
+          "targetNodeId": "finish-geometry",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
         }
       ]
     },
     {
       "id": "graph-5",
-      "label": "Root 3",
+      "label": "Line shelf assembly",
       "inputs": [
         {
           "id": "number-1",
@@ -2273,8 +2357,8 @@
           "id": "graph-5-output",
           "name": "Assembly Output",
           "position": {
-            "x": 500,
-            "y": 120
+            "x": 180.5499983201354,
+            "y": 133.23165687431393
           },
           "type": "graphOutput",
           "data": {}
@@ -2283,8 +2367,8 @@
           "id": "graphInstance-1",
           "name": "Wing Section",
           "position": {
-            "x": -543.6680956603362,
-            "y": 197.88400202510317
+            "x": -456.7172076291305,
+            "y": 135.5061910461947
           },
           "type": "graphInstance",
           "data": {
@@ -2312,7 +2396,12 @@
               }
             },
             "inputValues": {
-              "mirror-shelves-and-base": true
+              "mirror-shelves-and-base": true,
+              "post-height": "1200 mm",
+              "shelf-counts": [
+                2,
+                3
+              ]
             }
           }
         },
@@ -2320,22 +2409,22 @@
           "id": "array-1",
           "name": "Array",
           "position": {
-            "x": 52.89641770137811,
-            "y": -21.649315156962846
+            "x": -64.29825747111659,
+            "y": 74.7527563558957
           },
           "type": "array",
           "data": {
             "count": 2,
             "axis": "x",
-            "offset": 1.28
+            "offset": 0.88
           }
         },
         {
           "id": "graphInput-1",
           "name": "Number",
           "position": {
-            "x": -1018.4446835718178,
-            "y": -52.676826043052785
+            "x": -339.849709589147,
+            "y": -16.76232881277215
           },
           "type": "graphInput",
           "data": {
