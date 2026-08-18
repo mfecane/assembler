@@ -11,6 +11,7 @@ create table public.projects (
   graph_document jsonb not null
     check (
       jsonb_typeof(graph_document) = 'object'
+      and graph_document ->> 'client' in ('maxshelf', 'kitchen')
       and graph_document ? 'rootGraphs'
       and jsonb_typeof(graph_document -> 'rootGraphs') = 'array'
       and graph_document ? 'enums'

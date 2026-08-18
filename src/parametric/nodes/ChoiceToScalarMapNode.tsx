@@ -43,10 +43,8 @@ export function ChoiceToScalarMapNode({ id }: NodeProps<ParametricFlowNode>) {
 								{option}
 							</span>
 							<NumericInput
-								field={{
-									value: mapping?.value ?? 0,
-									setValue: (value) => setNumberForIndex(enumIndex, value),
-								}}
+								value={mapping?.value ?? 0}
+								onValueChange={(value) => setNumberForIndex(enumIndex, value)}
 								step={0.1}
 							/>
 						</div>

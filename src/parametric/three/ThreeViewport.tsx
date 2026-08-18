@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { AlignCenter, ArrowLeft, Move3d, Rotate3d, Scaling } from 'lucide-react'
+import { AlignCenter, ArrowLeft, ChevronDown, Move3d, Rotate3d, Scaling } from 'lucide-react'
 import type { TransformControlsMode } from 'three/examples/jsm/controls/TransformControls.js'
 import { Button } from '@/components/ui/button'
+import { ButtonGroup } from '@/components/ui/button-group'
 import {
 	useReactBridgeSnapshot,
 	useEditor,
@@ -26,7 +27,8 @@ export function ThreeViewport() {
 	const editor = useEditor()
 	const viewport = editor.viewport
 	const snapshot = useReactBridgeSnapshot()
-	const [alignmentOpen, setAlignmentOpen] = useState(false)
+	const [alignmentGizmoEnabled, setAlignmentGizmoEnabled] = useState(false)
+	const [alignmentDialogOpen, setAlignmentDialogOpen] = useState(false)
 
 	useEffect(() => {
 		const canvas = canvasRef.current
@@ -37,8 +39,24 @@ export function ThreeViewport() {
 	}, [viewport])
 
 	useEffect(() => {
-		if (!snapshot.transformNodeId) setAlignmentOpen(false)
-	}, [snapshot.transformNodeId])
+		if (snapshot.transformNodeId) return
+		setAlignmentGizmoEnabled(false)
+		setAlignmentDialogOpen(false)
+		viewport.setAlignmentGizmoEnabled(false)
+	}, [snapshot.transformNodeId, viewport])
+
+	const selectTransformMode = (mode: TransformControlsMode) => {
+		setAlignmentGizmoEnabled(false)
+		setAlignmentDialogOpen(false)
+		viewport.setAlignmentGizmoEnabled(false)
+		viewport.controller.setTransformMode(mode)
+	}
+
+	const toggleAlignment = () => {
+		const nextEnabled = !alignmentGizmoEnabled
+		setAlignmentGizmoEnabled(nextEnabled)
+		viewport.setAlignmentGizmoEnabled(nextEnabled)
+	}
 
 	return (
 		<div
@@ -75,36 +93,51 @@ export function ThreeViewport() {
 							key={mode}
 							data-id={`three-editor-transform-${mode}`}
 							type="button"
-							variant={snapshot.transformMode === mode ? 'secondary' : 'ghost'}
+							variant={!alignmentGizmoEnabled && snapshot.transformMode === mode ? 'secondary' : 'ghost'}
 							size="sm"
 							className="text-xs"
 							aria-pressed={snapshot.transformMode === mode}
-							onClick={() => viewport.controller.setTransformMode(mode)}
+							onClick={() => selectTransformMode(mode)}
 						>
 							<Icon />
 							{label}
 						</Button>
 					))}
-					<Button
-						data-id="three-editor-transform-align"
-						type="button"
-						variant="ghost"
-						size="sm"
-						className="text-xs"
-						onClick={() => setAlignmentOpen(true)}
-					>
-						<AlignCenter />
-						Align
-					</Button>
+					<ButtonGroup data-id="three-editor-transform-align-group">
+						<Button
+							data-id="three-editor-transform-align"
+							type="button"
+							variant={alignmentGizmoEnabled ? 'secondary' : 'ghost'}
+							size="sm"
+							className="text-xs"
+							aria-pressed={alignmentGizmoEnabled}
+							onClick={toggleAlignment}
+						>
+							<AlignCenter />
+							Align
+						</Button>
+						<Button
+							data-id="three-editor-transform-align-dialog"
+							type="button"
+							variant="ghost"
+							size="sm"
+							className="px-2"
+							aria-label="Open detailed alignment dialog"
+							aria-haspopup="dialog"
+							onClick={() => setAlignmentDialogOpen(true)}
+						>
+							<ChevronDown />
+						</Button>
+					</ButtonGroup>
 				</div>
 			)}
-			{snapshot.transformNodeId && alignmentOpen && (
+			{snapshot.transformNodeId && alignmentDialogOpen && (
 				<ViewportAlignmentDialog
 					key={snapshot.transformNodeId}
 					open
 					nodeId={snapshot.transformNodeId}
 					initialSettings={snapshot.alignmentSettings}
-					onOpenChange={setAlignmentOpen}
+					onOpenChange={setAlignmentDialogOpen}
 					onApply={(request) => viewport.alignTransform(snapshot.transformNodeId as string, request)}
 				/>
 			)}

@@ -17,6 +17,20 @@ transform values remain on transform-capable graph nodes and are updated through
 Graph evaluation supplies plain scene metadata to `ViewportScene`; its synchronizer resolves the
 assets and builds the corresponding Three.js meshes.
 
+Evaluation-triggering graph changes are debounced for 300 milliseconds. Preview evaluation runs as
+an asynchronous scheduled task with a monotonically increasing sequence; a newer request cancels a
+pending timer and prevents an older task from synchronizing stale metadata after it yields. This
+keeps rapid numeric edits responsive and applies only the latest requested preview.
+
+Viewport gizmo drags do not wait for that evaluation. Transform drags apply a transient delta to
+the currently rendered preview matrices, including the node's configured transform origin, and
+Array distance drags reposition the rendered copies directly. The graph still receives each
+undo-grouped drag value, while the debounced evaluation replaces the transient matrices with the
+authoritative finished result after interaction settles.
+Holding Shift during a Transform or Array gizmo drag applies one tenth of the normal delta from the
+gesture's starting value. The gizmo and transient meshes follow the precision-adjusted value
+together; Array distance persistence uses `0.001` snapping in this mode instead of `0.01`.
+
 Repeated object changes from one transform-control drag share a history group and collapse into
 one undo step alongside React Flow graph edits.
 
@@ -25,10 +39,13 @@ one undo step alongside React Flow graph edits.
 - Every geometry-output node exposes **Open in 3D editor**.
 - Opening a standalone Transform or a transform-capable Mesh Asset or Assembly
   Instance node activates translation, rotation, or scale controls.
-- The transform toolbar includes **Align**. Its dialog exposes an enable checkbox and Min/Mid/Max
-  method for each axis plus one XYZ target point. Apply measures all currently previewed meshes,
-  computes the selected bounding-box coordinates, and adds the required delta to the selected
-  node's stored translation as one undoable edit. Unchecked axes remain unchanged.
+- The transform toolbar includes **Align**. It replaces the transform controls with 27 clickable
+  points at every Min/Mid/Max combination of the preview's world-space bounding box. Clicking a
+  point moves that exact bounds point to the world origin as one undoable edit. A connected chevron
+  opens the detailed per-axis alignment dialog while the primary Align button controls the gizmo.
+- Alignment markers distinguish corners, edge centers, face centers, and the bounds center by
+  color. Larger invisible hit targets make them forgiving to acquire; hover recolors only the
+  visible marker and switches the viewport cursor to a pointer.
 - Opening an Array activates a dedicated single-axis distance gizmo at its final duplicate. The
   gizmo follows the Array axis and edits per-copy duplication distance instead of a transform.
 - Translation, scale, and Array duplication distance snap to `0.01`; rotation snaps to `15`

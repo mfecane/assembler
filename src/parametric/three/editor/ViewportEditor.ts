@@ -10,11 +10,15 @@ import {
 } from '@/parametric/three/editor/ViewportAlignment'
 
 export class ViewportEditor {
+	private static readonly EVALUATION_DEBOUNCE_MS = 300
 	public readonly controller: ViewportEditorController
 	private scene: ViewportScene | null = null
 	private resizeObserver: ResizeObserver | null = null
 	private readonly unsubscribeGraph: () => void
 	private evaluationRevision: number
+	private evaluationSequence = 0
+	private evaluationTimeout: number | null = null
+	private alignmentGizmoEnabled = false
 
 	public constructor(
 		private readonly editorController: EditorController,
@@ -24,7 +28,7 @@ export class ViewportEditor {
 		this.controller = new ViewportEditorController(
 			editorController,
 			this.bridge,
-			() => this.syncScene()
+			() => this.scheduleSceneEvaluation()
 		)
 		this.unsubscribeGraph = editorController.subscribe(() => {
 			const evaluationRevision = editorController.getSnapshot().evaluationRevision
@@ -38,10 +42,11 @@ export class ViewportEditor {
 		this.detach()
 		try {
 			this.scene = new ViewportScene(canvas, container, this.controller)
+			this.scene.setAlignmentGizmoEnabled(this.alignmentGizmoEnabled)
 			this.resizeObserver = new ResizeObserver(() => this.scene?.resize())
 			this.resizeObserver.observe(container)
 			this.bridge.update({ error: null })
-			this.syncScene()
+			this.scheduleSceneEvaluation()
 		} catch (cause) {
 			const reason = describeError(cause)
 			const error = [
@@ -60,6 +65,7 @@ export class ViewportEditor {
 	}
 
 	public detach(): void {
+		this.cancelSceneEvaluation()
 		this.resizeObserver?.disconnect()
 		this.resizeObserver = null
 		this.scene?.dispose()
@@ -92,8 +98,32 @@ export class ViewportEditor {
 		}
 	}
 
-	private syncScene(): void {
-		if (!this.scene) return
+	public setAlignmentGizmoEnabled(enabled: boolean): void {
+		this.alignmentGizmoEnabled = enabled
+		this.scene?.setAlignmentGizmoEnabled(enabled)
+		this.scheduleSceneEvaluation()
+	}
+
+	private scheduleSceneEvaluation(): void {
+		this.evaluationSequence += 1
+		const sequence = this.evaluationSequence
+		if (this.evaluationTimeout !== null) window.clearTimeout(this.evaluationTimeout)
+		this.evaluationTimeout = window.setTimeout(() => {
+			this.evaluationTimeout = null
+			void this.evaluateAndSyncScene(sequence)
+		}, ViewportEditor.EVALUATION_DEBOUNCE_MS)
+	}
+
+	private cancelSceneEvaluation(): void {
+		this.evaluationSequence += 1
+		if (this.evaluationTimeout !== null) window.clearTimeout(this.evaluationTimeout)
+		this.evaluationTimeout = null
+	}
+
+	private async evaluateAndSyncScene(sequence: number): Promise<void> {
+		if (!this.scene || sequence !== this.evaluationSequence) return
+		await yieldToBrowser()
+		if (!this.scene || sequence !== this.evaluationSequence) return
 		const graphSnapshot = this.editorController.getSnapshot()
 		const bridgeSnapshot = this.bridge.getSnapshot()
 		try {
@@ -113,6 +143,8 @@ export class ViewportEditor {
 				? graphSnapshot.model.getNode(bridgeSnapshot.arrayDistanceNodeId)
 				: null
 
+			await yieldToBrowser()
+			if (!this.scene || sequence !== this.evaluationSequence) return
 			this.scene.sync(
 				metadata,
 				bridgeSnapshot.previewNodeId ? graphOutputMetadata : emptySceneMetadata(),
@@ -121,8 +153,9 @@ export class ViewportEditor {
 				arrayDistanceNode instanceof ArrayGraphNode ? arrayDistanceNode : null,
 				bridgeSnapshot.transformMode
 			)
-			if (bridgeSnapshot.error) this.bridge.update({ error: null })
+			if (this.bridge.getSnapshot().error) this.bridge.update({ error: null })
 		} catch (cause) {
+			if (sequence !== this.evaluationSequence) return
 			const error = [
 				'Failed to evaluate graph metadata or synchronize the 3D scene.',
 				`Active graph: "${graphSnapshot.activeGraphId}".`,
@@ -141,6 +174,10 @@ export class ViewportEditor {
 			this.bridge.update({ error })
 		}
 	}
+}
+
+function yieldToBrowser(): Promise<void> {
+	return new Promise((resolve) => window.setTimeout(resolve, 0))
 }
 
 function describeError(cause: unknown): string {

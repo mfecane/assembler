@@ -41,7 +41,8 @@ export function SumNode({ id }: NodeProps<ParametricFlowNode>) {
 				<div className="nodrag flex items-center justify-between gap-2">
 					<span className="text-muted-foreground">Constant</span>
 					<NumericInput
-						field={{ value: binding.constant, setValue: binding.setConstant }}
+						value={binding.constant}
+						onValueChange={binding.setConstant}
 					/>
 				</div>
 				<div className="relative flex h-7 items-center rounded border border-border bg-input px-2">

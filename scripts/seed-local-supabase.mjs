@@ -8,9 +8,33 @@ const user = {
 }
 const projectId = '20000000-0000-4000-8000-000000000001'
 const projectName = 'Seeded MaxShelf configurator'
+const kitchenProjectId = '20000000-0000-4000-8000-000000000002'
+const kitchenProjectName = 'Seeded Kitchen configurator'
 const defaultGraph = JSON.parse(
 	readFileSync(new URL('../src/data/defaultGraph.json', import.meta.url), 'utf8')
 )
+if (defaultGraph.client !== 'maxshelf') {
+	throw new Error(
+		'The seeded MaxShelf graph must declare client "maxshelf". '
+		+ `Received ${JSON.stringify(defaultGraph.client)}.`
+	)
+}
+const kitchenDefaultGraph = JSON.parse(
+	readFileSync(new URL('../src/data/kitchen/defaultGraph.json', import.meta.url), 'utf8')
+)
+if (
+	kitchenDefaultGraph.client !== 'kitchen'
+	|| !Array.isArray(kitchenDefaultGraph.rootGraphs)
+	|| kitchenDefaultGraph.rootGraphs.length === 0
+	|| !Array.isArray(kitchenDefaultGraph.enums)
+	|| !Array.isArray(kitchenDefaultGraph.graphs)
+	|| kitchenDefaultGraph.graphs.length === 0
+) {
+	throw new Error(
+		'The Kitchen default graph must declare client "kitchen" and contain rootGraphs, enums, and graphs. '
+		+ `Received top-level data ${JSON.stringify(kitchenDefaultGraph)}.`
+	)
+}
 if (!Array.isArray(defaultGraph.enums) || defaultGraph.enums.length === 0) {
 	throw new Error(
 		'The default graph seed must contain at least one document-level enum definition. '
@@ -242,4 +266,25 @@ if (projectError) {
 	)
 }
 
-console.log(`Seeded ${user.email} and the default MaxShelf configurator project.`)
+const { error: kitchenProjectError } = await admin
+	.from('projects')
+	.upsert(
+		{
+			id: kitchenProjectId,
+			user_id: ownerId,
+			user_email: user.email,
+			name: kitchenProjectName,
+			graph_document: kitchenDefaultGraph,
+		},
+		{ onConflict: 'id' }
+	)
+
+if (kitchenProjectError) {
+	throw new Error(
+		`Failed to seed project "${kitchenProjectName}" (${kitchenProjectId}) for `
+		+ `local user "${user.email}" (${ownerId}): ${kitchenProjectError.message}`,
+		{ cause: kitchenProjectError }
+	)
+}
+
+console.log(`Seeded ${user.email} and the default MaxShelf and Kitchen configurator projects.`)

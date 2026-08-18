@@ -1,7 +1,8 @@
 import {
 	ASSET_METADATA_FORMAT,
 	ASSET_METADATA_FORMAT_VERSION,
-	ASSET_SCALE,
+	ASSET_SCALE_BY_CLIENT,
+	Client,
 	MAXSHELF_ASSET_ID_PREFIX,
 } from '@/cosntants'
 import type { MeshCatalog } from '@/parametric/model/MeshCatalog'
@@ -68,7 +69,7 @@ export function createAssetMetadataDocument(meshCatalog: MeshCatalog): AssetMeta
 	return {
 		format: ASSET_METADATA_FORMAT,
 		version: ASSET_METADATA_FORMAT_VERSION,
-		assetScale: ASSET_SCALE,
+		assetScale: ASSET_SCALE_BY_CLIENT[Client.MAXSHELF],
 		dimensionsIncludeAssetScale: true,
 		units: 'scene-units',
 		axisDescription: 'Local geometry axes after asset transforms and common scaling',

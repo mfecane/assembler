@@ -1,4 +1,5 @@
 {
+  "client": "maxshelf",
   "rootGraphs": [
     {
       "graphId": "main",

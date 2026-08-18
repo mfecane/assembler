@@ -47,10 +47,8 @@ export function ChoiceToVector3MapNode({ id }: NodeProps<ParametricFlowNode>) {
 							{(['x', 'y', 'z'] as const).map((axis) => (
 								<NumericInput
 									key={axis}
-									field={{
-										value: value[axis],
-										setValue: (next) => setVectorAxis(enumIndex, axis, next),
-									}}
+									value={value[axis]}
+									onValueChange={(next) => setVectorAxis(enumIndex, axis, next)}
 								/>
 							))}
 						</div>

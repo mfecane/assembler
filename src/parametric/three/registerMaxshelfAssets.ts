@@ -30,80 +30,84 @@ import upright2100Url from '../../../assets/maxshelf/upright/2100upright.glb?url
 import upright2400Url from '../../../assets/maxshelf/upright/2400upright (1).glb?url'
 import upright2600Url from '../../../assets/maxshelf/upright/2600upright.glb?url'
 import upright2800Url from '../../../assets/maxshelf/upright/2800upright.glb?url'
-import { MAXSHELF_ASSET_IDS } from '@/cosntants'
-import type { AssetRegistrar } from '@/parametric/three/AssetRegistrar'
+import { Client, MAXSHELF_ASSET_IDS } from '@/cosntants'
+import type { AssetRegistrar, AssetRegistration } from '@/parametric/three/AssetRegistrar'
 
 export function registerMaxshelfAssets(registrar: AssetRegistrar): void {
-	registrar.register({
+	const register = (asset: Omit<AssetRegistration, 'client'>) => {
+		registrar.register({ ...asset, client: Client.MAXSHELF })
+	}
+
+	register({
 		id: MAXSHELF_ASSET_IDS.backpanel665x100,
 		label: 'Backpanel 665 × 100 mm — Plain',
 		url: backpanel665x100Url,
 	})
-	registrar.register({
+	register({
 		id: MAXSHELF_ASSET_IDS.backpanel665x300,
 		label: 'Backpanel 665 × 300 mm — Plain',
 		url: backpanel665x300Url,
 	})
-	registrar.register({
+	register({
 		id: MAXSHELF_ASSET_IDS.backpanel665x400,
 		label: 'Backpanel 665 × 400 mm — Plain',
 		url: backpanel665x400Url,
 	})
-	registrar.register({
+	register({
 		id: MAXSHELF_ASSET_IDS.backpanel1000x100,
 		label: 'Backpanel 1000 × 100 mm — Plain',
 		url: backpanel1000x100Url,
 	})
-	registrar.register({
+	register({
 		id: MAXSHELF_ASSET_IDS.backpanel1000x300,
 		label: 'Backpanel 1000 × 300 mm — Plain',
 		url: backpanel1000x300Url,
 	})
-	registrar.register({
+	register({
 		id: MAXSHELF_ASSET_IDS.backpanel1000x400,
 		label: 'Backpanel 1000 × 400 mm — Plain',
 		url: backpanel1000x400Url,
 	})
-	registrar.register({
+	register({
 		id: MAXSHELF_ASSET_IDS.backpanel1250x100,
 		label: 'Backpanel 1250 × 100 mm — Plain',
 		url: backpanel1250x100Url,
 	})
-	registrar.register({
+	register({
 		id: MAXSHELF_ASSET_IDS.backpanel1250x300,
 		label: 'Backpanel 1250 × 300 mm — Plain',
 		url: backpanel1250x300Url,
 	})
-	registrar.register({
+	register({
 		id: MAXSHELF_ASSET_IDS.backpanel1250x400,
 		label: 'Backpanel 1250 × 400 mm — Plain',
 		url: backpanel1250x400Url,
 	})
 
-	registrar.register({ id: MAXSHELF_ASSET_IDS.baseLeg300, label: 'Base Leg 300 mm', url: baseLeg300Url })
-	registrar.register({ id: MAXSHELF_ASSET_IDS.baseLeg370, label: 'Base Leg 370 mm', url: baseLeg370Url })
-	registrar.register({ id: MAXSHELF_ASSET_IDS.baseLeg470, label: 'Base Leg 470 mm', url: baseLeg470Url })
-	registrar.register({ id: MAXSHELF_ASSET_IDS.baseLeg570, label: 'Base Leg 570 mm', url: baseLeg570Url })
+	register({ id: MAXSHELF_ASSET_IDS.baseLeg300, label: 'Base Leg 300 mm', url: baseLeg300Url })
+	register({ id: MAXSHELF_ASSET_IDS.baseLeg370, label: 'Base Leg 370 mm', url: baseLeg370Url })
+	register({ id: MAXSHELF_ASSET_IDS.baseLeg470, label: 'Base Leg 470 mm', url: baseLeg470Url })
+	register({ id: MAXSHELF_ASSET_IDS.baseLeg570, label: 'Base Leg 570 mm', url: baseLeg570Url })
 
-	registrar.register({ id: MAXSHELF_ASSET_IDS.bracket300, label: 'Bracket 300 mm', url: bracket300Url })
-	registrar.register({ id: MAXSHELF_ASSET_IDS.bracket370, label: 'Bracket 370 mm', url: bracket370Url })
-	registrar.register({ id: MAXSHELF_ASSET_IDS.bracket470, label: 'Bracket 470 mm', url: bracket470Url })
-	registrar.register({ id: MAXSHELF_ASSET_IDS.bracket570, label: 'Bracket 570 mm', url: bracket570Url })
+	register({ id: MAXSHELF_ASSET_IDS.bracket300, label: 'Bracket 300 mm', url: bracket300Url })
+	register({ id: MAXSHELF_ASSET_IDS.bracket370, label: 'Bracket 370 mm', url: bracket370Url })
+	register({ id: MAXSHELF_ASSET_IDS.bracket470, label: 'Bracket 470 mm', url: bracket470Url })
+	register({ id: MAXSHELF_ASSET_IDS.bracket570, label: 'Bracket 570 mm', url: bracket570Url })
 
-	registrar.register({ id: MAXSHELF_ASSET_IDS.shelf665x300, label: 'Shelf 665 × 300 mm', url: shelf665x300Url })
-	registrar.register({ id: MAXSHELF_ASSET_IDS.shelf665x370, label: 'Shelf 665 × 370 mm', url: shelf665x370Url })
-	registrar.register({ id: MAXSHELF_ASSET_IDS.shelf1000x300, label: 'Shelf 1000 × 300 mm', url: shelf1000x300Url })
-	registrar.register({ id: MAXSHELF_ASSET_IDS.shelf1000x370, label: 'Shelf 1000 × 370 mm', url: shelf1000x370Url })
-	registrar.register({ id: MAXSHELF_ASSET_IDS.shelf1000x470, label: 'Shelf 1000 × 470 mm', url: shelf1000x470Url })
-	registrar.register({ id: MAXSHELF_ASSET_IDS.shelf1250x300, label: 'Shelf 1250 × 300 mm', url: shelf1250x300Url })
-	registrar.register({ id: MAXSHELF_ASSET_IDS.shelf1250x370, label: 'Shelf 1250 × 370 mm', url: shelf1250x370Url })
-	registrar.register({ id: MAXSHELF_ASSET_IDS.shelf470, label: 'Shelf 470 mm', url: shelf470Url })
+	register({ id: MAXSHELF_ASSET_IDS.shelf665x300, label: 'Shelf 665 × 300 mm', url: shelf665x300Url })
+	register({ id: MAXSHELF_ASSET_IDS.shelf665x370, label: 'Shelf 665 × 370 mm', url: shelf665x370Url })
+	register({ id: MAXSHELF_ASSET_IDS.shelf1000x300, label: 'Shelf 1000 × 300 mm', url: shelf1000x300Url })
+	register({ id: MAXSHELF_ASSET_IDS.shelf1000x370, label: 'Shelf 1000 × 370 mm', url: shelf1000x370Url })
+	register({ id: MAXSHELF_ASSET_IDS.shelf1000x470, label: 'Shelf 1000 × 470 mm', url: shelf1000x470Url })
+	register({ id: MAXSHELF_ASSET_IDS.shelf1250x300, label: 'Shelf 1250 × 300 mm', url: shelf1250x300Url })
+	register({ id: MAXSHELF_ASSET_IDS.shelf1250x370, label: 'Shelf 1250 × 370 mm', url: shelf1250x370Url })
+	register({ id: MAXSHELF_ASSET_IDS.shelf470, label: 'Shelf 470 mm', url: shelf470Url })
 
-	registrar.register({ id: MAXSHELF_ASSET_IDS.upright1200, label: 'Upright 1200 mm', url: upright1200Url })
-	registrar.register({ id: MAXSHELF_ASSET_IDS.upright1400, label: 'Upright 1400 mm', url: upright1400Url })
-	registrar.register({ id: MAXSHELF_ASSET_IDS.upright1600, label: 'Upright 1600 mm', url: upright1600Url })
-	registrar.register({ id: MAXSHELF_ASSET_IDS.upright2100, label: 'Upright 2100 mm', url: upright2100Url })
-	registrar.register({ id: MAXSHELF_ASSET_IDS.upright2400, label: 'Upright 2400 mm', url: upright2400Url })
-	registrar.register({ id: MAXSHELF_ASSET_IDS.upright2600, label: 'Upright 2600 mm', url: upright2600Url })
-	registrar.register({ id: MAXSHELF_ASSET_IDS.upright2800, label: 'Upright 2800 mm', url: upright2800Url })
+	register({ id: MAXSHELF_ASSET_IDS.upright1200, label: 'Upright 1200 mm', url: upright1200Url })
+	register({ id: MAXSHELF_ASSET_IDS.upright1400, label: 'Upright 1400 mm', url: upright1400Url })
+	register({ id: MAXSHELF_ASSET_IDS.upright1600, label: 'Upright 1600 mm', url: upright1600Url })
+	register({ id: MAXSHELF_ASSET_IDS.upright2100, label: 'Upright 2100 mm', url: upright2100Url })
+	register({ id: MAXSHELF_ASSET_IDS.upright2400, label: 'Upright 2400 mm', url: upright2400Url })
+	register({ id: MAXSHELF_ASSET_IDS.upright2600, label: 'Upright 2600 mm', url: upright2600Url })
+	register({ id: MAXSHELF_ASSET_IDS.upright2800, label: 'Upright 2800 mm', url: upright2800Url })
 }

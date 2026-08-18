@@ -1,6 +1,6 @@
 import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { DraftNumberInput } from '@/parametric/components/DraftNumberInput'
+import { NumericInput } from '@/parametric/components/NumericInput'
 
 export function NumberArrayEditor({
 	dataId,
@@ -17,7 +17,7 @@ export function NumberArrayEditor({
 		<div data-id={dataId} className="nodrag space-y-1.5">
 			{values.map((value, index) => (
 				<div key={index} className="flex items-center gap-1.5">
-					<DraftNumberInput
+					<NumericInput
 						data-id={`${dataId}-value-${index}`}
 						className="h-8 min-w-0 flex-1 px-2 text-xs"
 						value={value}

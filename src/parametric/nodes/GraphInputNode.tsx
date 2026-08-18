@@ -1,6 +1,6 @@
 import { Position, type NodeProps } from '@xyflow/react'
 import { Label } from '@/components/ui/label'
-import { DraftNumberInput } from '@/parametric/components/DraftNumberInput'
+import { NumericInput } from '@/parametric/components/NumericInput'
 import { EnumDefinitionFields } from '@/parametric/components/EnumDefinitionFields'
 import { RgbColorInput } from '@/parametric/components/RgbColorInput'
 import { Switch } from '@/components/ui/switch'
@@ -41,7 +41,7 @@ export function GraphInputNode({ id }: NodeProps<ParametricFlowNode>) {
 			</div>
 			<div className="flex flex-col gap-2">
 				{input.valueType === 'number' && (
-					<DraftNumberInput
+					<NumericInput
 						data-id={`graph-input-default-${input.id}`}
 						className="nodrag h-8 px-2 text-xs"
 						value={typeof input.defaultValue === 'number' ? input.defaultValue : 0}

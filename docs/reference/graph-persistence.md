@@ -2,6 +2,7 @@
 
 The graph document contains everything required to edit and evaluate one product:
 
+- `client` is either `maxshelf` or `kitchen`; it selects the client-specific mesh catalog.
 - `rootGraphs` identifies every independently configurable top-level graph. Each item owns the
   saved `inputValues` and `configurationPanel` for its referenced graph.
 - `enums` stores reusable document-level enum definitions.
@@ -154,7 +155,7 @@ Export writes the complete current document with two-space JSON formatting. Impo
 only the document shape described here and rebuilds every graph scope against the document's
 local graph interface index.
 
-Top-level `rootGraphs`, `enums`, and `graphs`; root-level `inputValues` and `configurationPanel`;
+Top-level `client`, `rootGraphs`, `enums`, and `graphs`; root-level `inputValues` and `configurationPanel`;
 enum-input `enumId`; and color-control `options` are required.
 Documents from the former singular `entryGraphId` / `entryInputValues` shape and documents that
 store choice or color options on graph inputs are intentionally unsupported. No compatibility
@@ -175,6 +176,13 @@ are runtime data and are not serialized.
 the full shelving example—including assets, required copy and assembly transforms, arrays,
 configurable inputs, and connections—rather than a reduced smoke-test graph.
 `scripts/seed-local-supabase.mjs` reads the default copy directly instead of carrying embedded data.
+
+`projects/kitchen/kitchen.json` and `src/data/kitchen/defaultGraph.json` are the corresponding Kitchen
+fixture and new-project default. A project's client is immutable while it is open: importing a graph
+for another client is rejected, and mesh listing and geometry access expose only global primitives
+plus assets registered for the document client.
+Asset geometry uses a client-specific import scale: MaxShelf millimeter-authored GLBs use `0.05`,
+while meter-authored Kitchen GLBs use `1`.
 
 The fixture uses six graph definitions and two root records:
 

@@ -1,8 +1,17 @@
-export const ASSET_SCALE = 0.05
+export enum Client {
+	MAXSHELF = 'maxshelf',
+	KITCHEN = 'kitchen',
+}
+
+export const ASSET_SCALE_BY_CLIENT: Record<Client, number> = {
+	[Client.MAXSHELF]: 0.05,
+	[Client.KITCHEN]: 1,
+}
 export const ASSET_METADATA_FILE_NAME = 'maxshelf-asset-metadata.json'
 export const ASSET_METADATA_FORMAT = 'maxshelf-asset-metadata'
 export const ASSET_METADATA_FORMAT_VERSION = 1
 export const MAXSHELF_ASSET_ID_PREFIX = 'asset:maxshelf:'
+export const KITCHEN_ASSET_ID_PREFIX = 'asset:kitchen:'
 
 export const MAXSHELF_ASSET_IDS = {
 	backpanel665x100: 'asset:maxshelf:backpanel:665x100-plain',
@@ -37,6 +46,21 @@ export const MAXSHELF_ASSET_IDS = {
 	upright2400: 'asset:maxshelf:upright:2400',
 	upright2600: 'asset:maxshelf:upright:2600',
 	upright2800: 'asset:maxshelf:upright:2800',
+} as const
+
+export const KITCHEN_ASSET_IDS = {
+	cabinet: 'asset:kitchen:cabinet',
+	door1: 'asset:kitchen:door:1',
+	door2: 'asset:kitchen:door:2',
+	door3: 'asset:kitchen:door:3',
+	faucet1: 'asset:kitchen:faucet:1',
+	faucet2: 'asset:kitchen:faucet:2',
+	handle1: 'asset:kitchen:handle:1',
+	handle2: 'asset:kitchen:handle:2',
+	leg: 'asset:kitchen:leg',
+	tabletop1: 'asset:kitchen:tabletop:1',
+	tabletop2: 'asset:kitchen:tabletop:2',
+	tabletop3: 'asset:kitchen:tabletop:3',
 } as const
 
 export const LEGACY_ASSET_ALIASES = [

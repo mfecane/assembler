@@ -10,7 +10,7 @@ import {
 	SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { DraftNumberInput } from '@/parametric/components/DraftNumberInput'
+import { NumericInput } from '@/parametric/components/NumericInput'
 import { EmbeddedTransformSection } from '@/parametric/components/EmbeddedTransformSection'
 import { GeometryPreviewButton } from '@/parametric/components/GeometryPreviewButton'
 import { NodeHeader } from '@/parametric/components/NodeHeader'
@@ -131,7 +131,7 @@ function GraphInstanceInput({
 				{input.label}
 			</Label>
 			{input.valueType === 'number' ? (
-				<DraftNumberInput
+				<NumericInput
 					id={controlId}
 					data-id={`${controlId}-control`}
 					className="nodrag h-8 px-2 text-xs"

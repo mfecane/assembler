@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ChevronDown, SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { DraftNumberInput } from '@/parametric/components/DraftNumberInput'
+import { NumericInput } from '@/parametric/components/NumericInput'
 import { ColorOptionSelect } from '@/parametric/components/ColorOptionSelect'
 import { useConfiguration } from '@/parametric/hooks/useConfiguration'
 import { Label } from '@/components/ui/label'
@@ -90,7 +90,7 @@ export function ConfiguratorPanel() {
 											>
 												{value.labels[index]}
 											</Label>
-											<DraftNumberInput
+											<NumericInput
 												id={`configuration-${value.id}-${index}`}
 												data-id={`configuration-number-array-${value.id}-${index}`}
 												className="h-8 px-2 text-xs tabular-nums"
@@ -106,7 +106,7 @@ export function ConfiguratorPanel() {
 									</div>
 								</div>
 							) : value.type === 'number' ? (
-								<DraftNumberInput
+								<NumericInput
 									className="h-8 w-full px-2 text-xs tabular-nums"
 									id={`configuration-${value.id}`}
 									value={value.value}

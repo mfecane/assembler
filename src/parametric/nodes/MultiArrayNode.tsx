@@ -49,7 +49,13 @@ export function MultiArrayNode({ id }: NodeProps<ParametricFlowNode>) {
 				</div>
 				<div className="nodrag flex items-center justify-between gap-2 text-muted-foreground">
 					<Label htmlFor={`${id}-step-distance`} className="text-xs">Step</Label>
-					<NumericInput id={`${id}-step-distance`} field={offset} />
+					<NumericInput
+						id={`${id}-step-distance`}
+						value={offset.value}
+						onValueChange={offset.setValue}
+						step={0.01}
+						roundStep={0.01}
+					/>
 				</div>
 			</div>
 			<TypedHandle id="geometry" type="source" position={Position.Right} valueType="geometry" />

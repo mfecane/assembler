@@ -5,9 +5,10 @@ interface Vec3FieldProps {
 	label: string
 	fields: Record<'x' | 'y' | 'z', NumericFieldBinding>
 	step?: number
+	roundStep?: number
 }
 
-export function Vec3Field({ label, fields, step = 0.1 }: Vec3FieldProps) {
+export function Vec3Field({ label, fields, step = 0.1, roundStep = step }: Vec3FieldProps) {
 	return (
 		<div data-id={`vector-field-${label.toLowerCase()}`} className="flex flex-col gap-1 text-xs">
 			<span className="text-muted-foreground">{label}</span>
@@ -16,7 +17,9 @@ export function Vec3Field({ label, fields, step = 0.1 }: Vec3FieldProps) {
 					<NumericInput
 						key={axis}
 						step={step}
-						field={fields[axis]}
+						roundStep={roundStep}
+						value={fields[axis].value}
+						onValueChange={fields[axis].setValue}
 					/>
 				))}
 			</div>

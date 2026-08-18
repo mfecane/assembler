@@ -5,11 +5,16 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "client",
     "rootGraphs",
     "enums",
     "graphs"
   ],
   "properties": {
+    "client": {
+      "type": "string",
+      "enum": ["maxshelf", "kitchen"]
+    },
     "rootGraphs": {
       "type": "array",
       "minItems": 1,

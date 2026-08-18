@@ -30,7 +30,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/ui/select'
-import { DraftNumberInput } from '@/parametric/components/DraftNumberInput'
+import { NumericInput } from '@/parametric/components/NumericInput'
 import { RgbColorInput } from '@/parametric/components/RgbColorInput'
 import { useEditorController } from '@/parametric/editor/react/EditorContext'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
@@ -626,7 +626,7 @@ function NumberSetting({
 	return (
 		<div>
 			<Label className="mb-1 text-xs text-muted-foreground">{label}</Label>
-			<DraftNumberInput
+			<NumericInput
 				data-id={`configuration-control-${id}`}
 				className="h-8 text-xs"
 				value={value}

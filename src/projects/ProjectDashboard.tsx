@@ -5,6 +5,14 @@ import { UserMenu } from '@/auth/UserMenu'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ConfirmationDialog } from '@/parametric/components/ConfirmationDialog'
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '@/components/ui/select'
+import { Client } from '@/cosntants'
 import { createDefaultEditor } from '@/parametric/editor/createEditor'
 import type { ProjectRepository } from '@/projects/ProjectRepository'
 import type { ProjectSummary } from '@/projects/projectTypes'
@@ -22,6 +30,7 @@ export function ProjectDashboard({
 }) {
 	const [projects, setProjects] = useState<ProjectSummary[]>([])
 	const [name, setName] = useState('')
+	const [client, setClient] = useState(Client.MAXSHELF)
 	const [isLoading, setIsLoading] = useState(true)
 	const [isCreating, setIsCreating] = useState(false)
 	const [deleteTarget, setDeleteTarget] = useState<ProjectSummary | null>(null)
@@ -49,7 +58,7 @@ export function ProjectDashboard({
 		setIsCreating(true)
 		setError(null)
 		try {
-			const editor = createDefaultEditor()
+			const editor = createDefaultEditor(client)
 			const document = editor.controller.exportGraph()
 			editor.dispose()
 			const project = await repository.create(trimmedName, document)
@@ -89,19 +98,30 @@ export function ProjectDashboard({
 
 			<div className="mx-auto max-w-5xl p-6">
 				<form
-					className="mb-8 flex max-w-xl gap-2"
+					data-id="create-project-form"
+					className="mb-8 flex max-w-2xl gap-2"
 					onSubmit={(event) => {
 						event.preventDefault()
 						void createProject()
 					}}
 				>
 					<Input
+						data-id="new-project-name"
 						value={name}
 						maxLength={120}
 						placeholder="New project name"
 						aria-label="New project name"
 						onChange={(event) => setName(event.target.value)}
 					/>
+					<Select value={client} onValueChange={(value) => setClient(value as Client)}>
+						<SelectTrigger data-id="new-project-client" className="w-40" aria-label="Client">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value={Client.MAXSHELF}>MaxShelf</SelectItem>
+							<SelectItem value={Client.KITCHEN}>Kitchen</SelectItem>
+						</SelectContent>
+					</Select>
 					<Button type="submit" disabled={!name.trim() || isCreating}>
 						<Plus />
 						{isCreating ? 'Creating…' : 'Create'}

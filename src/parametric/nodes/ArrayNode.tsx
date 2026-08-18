@@ -35,7 +35,7 @@ export function ArrayNode({ id }: NodeProps<ParametricFlowNode>) {
 				<div className="nodrag relative flex items-center justify-between gap-2 text-muted-foreground">
 					<TypedHandle id="count" type="target" position={Position.Left} valueType="number" />
 					<span>Count</span>
-					<NumericInput field={count} min={0} step={1} />
+					<NumericInput value={count.value} onValueChange={count.setValue} min={0} step={1} />
 				</div>
 				<div className="nodrag relative flex items-center justify-between gap-2 text-muted-foreground">
 					<TypedHandle id="startIndex" type="target" position={Position.Left} valueType="number" />
@@ -60,7 +60,13 @@ export function ArrayNode({ id }: NodeProps<ParametricFlowNode>) {
 					<Label htmlFor={`${id}-duplication-distance`} className="text-xs text-muted-foreground">
 						Distance
 					</Label>
-					<NumericInput id={`${id}-duplication-distance`} field={offset} />
+					<NumericInput
+						id={`${id}-duplication-distance`}
+						value={offset.value}
+						onValueChange={offset.setValue}
+						step={0.01}
+						roundStep={0.01}
+					/>
 				</div>
 			</div>
 			<TypedHandle id="geometry" type="source" position={Position.Right} valueType="geometry" />

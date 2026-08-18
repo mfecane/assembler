@@ -17,7 +17,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/ui/select'
-import { DraftNumberInput } from '@/parametric/components/DraftNumberInput'
+import { NumericInput } from '@/parametric/components/NumericInput'
 import type { Vector3Snapshot } from '@/parametric/model/Vector3Value'
 import type {
 	AlignmentAxis,
@@ -113,7 +113,7 @@ export function ViewportAlignmentDialog({
 								<Label htmlFor={`viewport-alignment-point-${axis}`} className="uppercase">
 									{axis}
 								</Label>
-								<DraftNumberInput
+								<NumericInput
 									id={`viewport-alignment-point-${axis}`}
 									data-id={`viewport-alignment-point-${axis}`}
 									value={point[axis]}

@@ -80,6 +80,17 @@ Their public labels remain owned by the separate configuration mapping UI.
 Assembly instances retain their explicit open action for navigation. Labels above transform vector
 inputs are also drag surfaces, while the inputs themselves remain interactive and do not move nodes.
 
+Node-local numeric fields pair their typed input with a horizontal-drag control marked by the
+left/right chevrons icon. Drag distance advances a configurable rounded step and repeated values are
+ignored. Transform position and scale plus Array and Multi Array offsets use `0.01`; transform
+rotation uses `1`, and integer count inputs retain step `1`.
+
+All numeric editing surfaces use the same `NumericInput`. It owns focused draft text, parsing,
+minimum constraints, rounded commits, and dragging. Its internal field is a decimal-keyboard text
+input, so browser number steppers are not rendered; border, background, radius, focus, and disabled
+visuals belong only to the shared wrapper.
+Holding Shift while dragging uses one tenth of the configured rounded step for precision adjustment.
+
 ## Verification
 
 Static TypeScript validation covers component integration. Runtime layout and interaction remain

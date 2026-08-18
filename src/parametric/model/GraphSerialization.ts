@@ -19,8 +19,10 @@ import type { NodeRegistry } from '@/parametric/model/NodeDefinition'
 import { isRgbColor } from '@/parametric/model/ColorPalette'
 import type { EnumDefinitionSnapshot } from '@/parametric/model/EnumDefinition'
 import { RootGraph } from '@/parametric/model/RootGraph'
+import { Client } from '@/cosntants'
 
 export interface GraphDocument {
+	client: Client
 	rootGraphs: RootGraphDocument[]
 	enums: EnumDefinitionSnapshot[]
 	graphs: GraphDefinitionDocument[]
@@ -64,6 +66,7 @@ export function serializeGraph(
 	registry: NodeRegistry
 ): GraphDocument {
 	return {
+		client: document.getClient(),
 		rootGraphs: document.getRootGraphs().map((root) => ({
 			graphId: root.getGraphId(),
 			inputValues: root.getInputValues(),
@@ -103,7 +106,8 @@ export function deserializeGraph(value: unknown, registry: NodeRegistry): GraphD
 	if (!isGraphDocument(value)) {
 		const topLevelKeys = value && typeof value === 'object' ? Object.keys(value) : []
 		throw new Error(
-			'Unsupported graph document. Expected rootGraphs, enums, and graphs. Each rootGraphs item '
+			'Unsupported graph document. Expected client ("maxshelf" or "kitchen"), rootGraphs, enums, '
+			+ 'and graphs. Each rootGraphs item '
 			+ 'must contain graphId, inputValues, and configurationPanel with controls. '
 			+ `Received ${typeof value} with top-level keys ${JSON.stringify(topLevelKeys)}.`
 		)
@@ -184,6 +188,7 @@ export function deserializeGraph(value: unknown, registry: NodeRegistry): GraphD
 		root.configurationPanel.controls
 	))
 	const document = new GraphDocumentModel(
+		value.client,
 		rootGraphs,
 		value.enums,
 		definitions
@@ -397,7 +402,8 @@ function copyInput(input: GraphInputDefinition): GraphInputDefinition {
 function isGraphDocument(value: unknown): value is GraphDocument {
 	if (!value || typeof value !== 'object') return false
 	const document = value as Partial<GraphDocument>
-	return Array.isArray(document.rootGraphs)
+	return Object.values(Client).includes(document.client as Client)
+		&& Array.isArray(document.rootGraphs)
 		&& document.rootGraphs.length > 0
 		&& document.rootGraphs.every(isRootGraphDocument)
 		&& Array.isArray(document.enums)

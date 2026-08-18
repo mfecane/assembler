@@ -6,6 +6,7 @@ import {
 } from '@/parametric/model/EnumDefinition'
 import { isRgbColor } from '@/parametric/model/ColorPalette'
 import { RootGraph } from '@/parametric/model/RootGraph'
+import type { Client } from '@/cosntants'
 
 export type GraphInputValue = number | number[] | string | boolean
 export type GraphInputValueType = Exclude<GraphValueType, 'meshArray' | 'vector3'>
@@ -89,6 +90,7 @@ export class GraphDocumentModel {
 	private readonly rootGraphs = new Map<string, RootGraph>()
 
 	public constructor(
+		private readonly client: Client,
 		rootGraphs: RootGraph[],
 		enumDefinitions: EnumDefinitionSnapshot[],
 		graphs: GraphDefinition[]
@@ -128,6 +130,10 @@ export class GraphDocumentModel {
 			this.validateReferences(root)
 			this.validateConfigurationValues(root)
 		}
+	}
+
+	public getClient(): Client {
+		return this.client
 	}
 
 	public getDefaultRootGraphId(): string {

@@ -8,10 +8,13 @@ import type { SceneNodeInstanceReference } from '@/parametric/evaluation/SceneMe
 import { ArrayGraphNode, isTransformableGraphNode } from '@/parametric/model/GraphNode'
 import {
 	InteractionHandlerRouter,
+	AlignmentPointInteractionHandler,
 	MeshSelectionInteractionHandler,
 } from '@/parametric/three/editor/InteractionSystem'
 import {
 	calculateAlignedTranslation,
+	copyViewportAlignmentRequest,
+	type AlignmentMethod,
 	type ViewportAlignmentRequest,
 	type ViewportBoundsSnapshot,
 } from '@/parametric/three/editor/ViewportAlignment'
@@ -27,6 +30,7 @@ export class ViewportEditorController {
 		private readonly requestRenderSync: () => void
 	) {
 		this.activeGraphId = editorController.getSnapshot().activeGraphId
+		this.interactions.add(new AlignmentPointInteractionHandler(this))
 		this.interactions.add(new MeshSelectionInteractionHandler(this))
 	}
 
@@ -122,9 +126,14 @@ export class ViewportEditorController {
 		)
 	}
 
-	public applyArrayDistance(nodeId: string, value: number, historyGroup: string): void {
+	public applyArrayDistance(
+		nodeId: string,
+		value: number,
+		historyGroup: string,
+		precision: boolean
+	): void {
 		const graphId = this.editorController.getSnapshot().activeGraphId
-		this.editorController.setArrayDistance(graphId, nodeId, value, historyGroup)
+		this.editorController.setArrayDistance(graphId, nodeId, value, historyGroup, precision)
 	}
 
 	public alignTransform(
@@ -155,6 +164,35 @@ export class ViewportEditorController {
 		}
 		this.alignmentSequence += 1
 		this.applyTransform(nodeId, before, after, `alignment-${this.alignmentSequence}`)
+	}
+
+	public alignFromGizmo(
+		nodeId: string,
+		bounds: ViewportBoundsSnapshot,
+		methods: Record<'x' | 'y' | 'z', AlignmentMethod>
+	): void {
+		const request: ViewportAlignmentRequest = {
+			enabledAxes: { x: true, y: true, z: true },
+			methods,
+			point: { x: 0, y: 0, z: 0 },
+		}
+		try {
+			this.alignTransform(nodeId, bounds, request)
+			this.bridge.update({
+				alignmentSettings: copyViewportAlignmentRequest(request),
+				error: null,
+			})
+			this.requestRenderSync()
+		} catch (cause) {
+			const error = [
+				`Failed to align transform-capable node "${nodeId}" from the 27-point viewport gizmo.`,
+				`Active graph: "${this.editorController.getSnapshot().activeGraphId}".`,
+				`Alignment methods: ${JSON.stringify(methods)}.`,
+				describeAlignmentError(cause),
+			].join(' ')
+			console.error(error, { cause, nodeId, bounds, request })
+			this.bridge.update({ error })
+		}
 	}
 
 	public handleGraphChange(): void {
@@ -195,5 +233,16 @@ export class ViewportEditorController {
 			})
 		}
 		this.requestRenderSync()
+	}
+}
+
+function describeAlignmentError(cause: unknown): string {
+	if (cause instanceof Error) {
+		return `${cause.name}: ${cause.message}${cause.stack ? `\n${cause.stack}` : ''}`
+	}
+	try {
+		return JSON.stringify(cause)
+	} catch {
+		return String(cause)
 	}
 }

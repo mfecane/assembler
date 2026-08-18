@@ -1,5 +1,5 @@
 import { Position, type NodeProps } from '@xyflow/react'
-import { DraftNumberInput } from '@/parametric/components/DraftNumberInput'
+import { NumericInput } from '@/parametric/components/NumericInput'
 import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
@@ -15,7 +15,7 @@ export function NumberInputNode({ id }: NodeProps<ParametricFlowNode>) {
 		>
 			<NodeHeader nodeId={id} />
 			<div className="flex flex-col gap-2 text-xs">
-				<DraftNumberInput
+				<NumericInput
 					value={value.value}
 					onValueChange={value.setValue}
 					step={0.1}

@@ -1,9 +1,11 @@
 import type { BufferGeometry } from 'three'
+import type { Client } from '@/cosntants'
 
 export interface MeshDescriptor {
 	id: string
 	label: string
 	selectable: boolean
+	client: Client | null
 }
 
 export interface MeshBounds {

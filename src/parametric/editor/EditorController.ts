@@ -611,6 +611,15 @@ export class EditorController {
 			this.reportCommandError('validate graph document import', cause)
 			throw cause
 		}
+		const currentClient = this.state.getDocument().getClient()
+		if (document.getClient() !== currentClient) {
+			const error = new Error(
+				`Cannot import a ${document.getClient()} document into a ${currentClient} project. `
+				+ 'Create or open a project for the target client instead.'
+			)
+			this.reportCommandError('validate graph document client', error)
+			throw error
+		}
 		this.execute('Import graph document', () => this.state.replaceDocument(document))
 	}
 
@@ -709,12 +718,14 @@ export class EditorController {
 		graphId: string,
 		nodeId: string,
 		value: number,
-		historyGroup: string
+		historyGroup: string,
+		precision: boolean
 	): void {
 		const node = this.document.getGraph(graphId)?.model.getNode(nodeId)
 		if (!(node instanceof ArrayGraphNode) || !Number.isFinite(value)) return
+		const snap = precision ? ARRAY_DISTANCE_SNAP / 10 : ARRAY_DISTANCE_SNAP
 		const snappedValue = Number(
-			(Math.round(value / ARRAY_DISTANCE_SNAP) * ARRAY_DISTANCE_SNAP).toFixed(2)
+			(Math.round(value / snap) * snap).toFixed(precision ? 3 : 2)
 		)
 		this.execute(
 			`Set duplication distance on array node "${nodeId}" in 3D editor`,

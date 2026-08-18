@@ -45,12 +45,12 @@ export function TransformNode({ id }: NodeProps<ParametricFlowNode>) {
 						position={Position.Left}
 						valueType="vector3"
 					/>
-					<Vec3Field label="Position" fields={translation} />
+					<Vec3Field label="Position" fields={translation} step={0.01} roundStep={0.01} />
 					{binding.translationConnected && (
 						<span className="text-[10px] text-muted-foreground">Driven by connection</span>
 					)}
 				</div>
-				<Vec3Field label="Rotation" fields={rotation} step={1} />
+				<Vec3Field label="Rotation" fields={rotation} step={1} roundStep={1} />
 				<div className="nodrag flex flex-col gap-1 text-xs">
 					<div className="flex items-center justify-between gap-3">
 						<span className="text-muted-foreground">Scale</span>
@@ -71,15 +71,19 @@ export function TransformNode({ id }: NodeProps<ParametricFlowNode>) {
 					</div>
 					{binding.uniformScale ? (
 						<NumericInput
-							field={{
-								value: binding.scale.x,
-								setValue: (value) => binding.setScale({ x: value, y: value, z: value }),
-							}}
+							value={binding.scale.x}
+							onValueChange={(value) => binding.setScale({ x: value, y: value, z: value })}
+							roundStep={0.01}
 						/>
 					) : (
 						<div className="flex gap-1">
 							{(['x', 'y', 'z'] as const).map((axis) => (
-								<NumericInput key={axis} field={scale[axis]} />
+								<NumericInput
+									key={axis}
+									value={scale[axis].value}
+									onValueChange={scale[axis].setValue}
+									roundStep={0.01}
+								/>
 							))}
 						</div>
 					)}

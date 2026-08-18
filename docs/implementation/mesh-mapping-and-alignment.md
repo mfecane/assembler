@@ -14,16 +14,19 @@ legacy deserialization path.
 
 ## Viewport alignment
 
-Opening any transform-capable node exposes an Align action beside Move, Rotate, and Scale. The
-dialog contains one enable checkbox and Min/Mid/Max selector for each axis, plus one XYZ alignment
-point. Apply measures the world-space bounding box of all meshes in the current opaque preview.
+Opening any transform-capable node exposes an Align action beside Move, Rotate, and Scale. Align
+replaces the transform controls with a 27-point gizmo containing every Min/Mid/Max combination of
+the current opaque preview's world-space bounding box. Clicking a point aligns that precise point
+to the world origin on all three axes. A connected chevron beside Align opens the detailed dialog
+for per-axis Min/Mid/Max choices and a custom target point without hiding the direct gizmo workflow.
+
+The markers are color-coded by anchor type: red corners, amber edge centers, blue face centers, and
+a white bounds center. Each marker has a larger invisible hit target. Hovering changes only the
+visible marker to lime and changes the canvas cursor, while the invisible hit target remains hidden.
 
 For every enabled axis, the editor adds this delta to the node's stored translation:
 
 `target point − selected bounding-box coordinate`
 
-The selected coordinate is the minimum, midpoint, or maximum on that axis. Unchecked axes retain
-their current translation. Rotation and scale are unchanged, and the complete alignment is stored
-as one undoable viewport transform action. The editor bridge retains the last successfully applied
-axis checkboxes, methods, and target point across dialog and node-preview remounts. Closing without
-applying discards the draft and restores the last applied settings next time.
+The selected coordinate is the minimum, midpoint, or maximum on each axis. Rotation and scale are
+unchanged, and the complete alignment is stored as one undoable viewport transform action.

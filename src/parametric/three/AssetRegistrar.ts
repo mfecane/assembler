@@ -1,44 +1,68 @@
 import { BufferGeometry, Mesh } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import { ASSET_SCALE_BY_CLIENT, type Client } from '@/cosntants'
 
 export interface AssetRegistration {
 	id: string
 	label: string
 	url: string
+	client: Client
 }
 
 export interface AssetRegistrationTarget {
-	add(id: string, label: string, geometry: BufferGeometry, selectable?: boolean): void
+	add(id: string, label: string, geometry: BufferGeometry, client: Client, selectable?: boolean): void
 }
 
 export class AssetRegistrar {
 	private readonly assets = new Map<string, AssetRegistration>()
 
-	public constructor(private readonly scale: number) {
-		if (!Number.isFinite(scale) || scale <= 0) {
-			throw new Error(`Asset scale must be a positive finite number; received ${scale}`)
-		}
-	}
-
 	public register(asset: AssetRegistration): void {
 		if (this.assets.has(asset.id)) {
-			throw new Error(`Mesh asset "${asset.id}" is already registered`)
+			throw new Error(
+				`Mesh asset "${asset.id}" for client "${asset.client}" is already registered. `
+				+ `Attempted URL: ${asset.url}`
+			)
 		}
 		this.assets.set(asset.id, asset)
 	}
 
 	public async loadInto(target: AssetRegistrationTarget): Promise<void> {
 		const loadedAssets = await Promise.all(
-			[...this.assets.values()].map(async (asset) => ({
-				asset,
-				geometry: await loadAssetGeometry(asset, this.scale),
-			}))
+			[...this.assets.values()].map(async (asset) => {
+				const scale = ASSET_SCALE_BY_CLIENT[asset.client]
+				if (!Number.isFinite(scale) || scale <= 0) {
+					throw new Error(
+						`Mesh asset "${asset.id}" for client "${asset.client}" has invalid scale ${scale}. `
+						+ 'Client asset scales must be positive finite numbers.'
+					)
+				}
+				try {
+					return { asset, geometry: await loadAssetGeometry(asset, scale) }
+				} catch (cause) {
+					throw new Error(
+						`Failed to load mesh asset "${asset.id}" (${asset.label}) for client `
+						+ `"${asset.client}" from ${asset.url} at scale ${scale}. `
+						+ `Cause: ${describeError(cause)}`
+					)
+				}
+			})
 		)
 
 		for (const { asset, geometry } of loadedAssets) {
-			target.add(asset.id, asset.label, geometry, true)
+			target.add(asset.id, asset.label, geometry, asset.client, true)
 		}
+	}
+}
+
+function describeError(cause: unknown): string {
+	if (cause instanceof Error) {
+		return `${cause.name}: ${cause.message}${cause.stack ? `\n${cause.stack}` : ''}`
+	}
+	try {
+		return JSON.stringify(cause) ?? String(cause)
+	} catch {
+		return String(cause)
 	}
 }
 
