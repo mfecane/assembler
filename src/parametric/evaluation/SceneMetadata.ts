@@ -10,6 +10,7 @@ export interface SceneStretchDeformationMetadata {
 	kind: 'stretch'
 	sourceSize: Vector3Snapshot
 	pivot: Vector3Snapshot
+	texelSizeRatio: number
 	axes: SceneStretchAxisMetadata[]
 }
 

@@ -15,33 +15,51 @@ import { ButtonGroup } from '@/components/ui/button-group'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { Toggle } from '@/components/ui/toggle'
 import { cn } from '@/lib/utils'
 import { MODEL_AXIS_STYLES, ModelAxisBadge } from '@/models/ModelAxisBadge'
 import type { ModelBoundingBoxMetadata } from '@/models/ModelBoundsMetadata'
+import {
+	MAX_CHECKER_TEXTURE_SCALE,
+	MIN_CHECKER_TEXTURE_SCALE,
+} from '@/models/ModelCheckerTexture'
 import { ModelPanelSection } from '@/models/ModelPanelSection'
 import {
 	ModelStretchAxis,
+	getMinimumStretchBoxLength,
+	STRETCH_BOX_STEP,
 	type ModelGeometryAxis,
 	type ModelTextureAxis,
 	type StretchBoundary,
 } from '@/models/ModelStretchMetadata'
 import { createModelStretchSizeConstraint } from '@/models/ModelStretchSizeConstraint'
+import {
+	MAX_MODEL_TEXEL_SIZE_RATIO,
+	MIN_MODEL_TEXEL_SIZE_RATIO,
+	MODEL_TEXEL_SIZE_RATIO_STEP,
+} from '@/models/ModelTexelSizeRatio'
 import { NumericInput } from '@/parametric/components/NumericInput'
-import { Link2, Move3d, Plus, RotateCcw, Scaling, Trash2 } from 'lucide-react'
+import { Grid2X2, Link2, Move3d, Plus, RotateCcw, Scaling, Trash2 } from 'lucide-react'
 
 const GEOMETRY_AXES: ModelGeometryAxis[] = ['x', 'y', 'z']
 
 export function ModelStretchPanel({
 	stretchAxes,
 	stretchEnabled,
+	texelSizeRatio,
+	checkerTextureEnabled,
+	checkerTextureScale,
 	modelSize,
 	previewSize,
 	activeStretchAxis,
 	scaleToolActive,
 	disabled,
 	onEnabledChange,
+	onTexelSizeRatioChange,
+	onCheckerTextureEnabledChange,
+	onCheckerTextureScaleChange,
 	onAdd,
 	onAddBox,
 	onUpdate,
@@ -55,21 +73,22 @@ export function ModelStretchPanel({
 }: {
 	stretchAxes: ModelStretchAxis[]
 	stretchEnabled: boolean
+	texelSizeRatio: number
+	checkerTextureEnabled: boolean
+	checkerTextureScale: number
 	modelSize: ModelBoundingBoxMetadata['size']
 	previewSize: ModelBoundingBoxMetadata['size']
 	activeStretchAxis: ModelGeometryAxis | null
 	scaleToolActive: boolean
 	disabled: boolean
 	onEnabledChange: (enabled: boolean) => void
+	onTexelSizeRatioChange: (ratio: number) => void
+	onCheckerTextureEnabledChange: (enabled: boolean) => void
+	onCheckerTextureScaleChange: (scale: number) => void
 	onAdd: (axis: ModelGeometryAxis) => void
 	onAddBox: (axis: ModelGeometryAxis) => void
 	onUpdate: (axis: ModelStretchAxis) => void
-	onBoundaryChange: (
-		axis: ModelGeometryAxis,
-		boxIndex: number,
-		boundary: StretchBoundary,
-		value: number
-	) => void
+	onBoundaryChange: (axis: ModelGeometryAxis, boxIndex: number, boundary: StretchBoundary, value: number) => void
 	onRemoveBox: (axis: ModelGeometryAxis, boxIndex: number) => void
 	onRemove: (axis: ModelGeometryAxis) => void
 	onToggleBoxEditing: (axis: ModelGeometryAxis) => void
@@ -103,6 +122,27 @@ export function ModelStretchPanel({
 					checked={stretchEnabled}
 					disabled={disabled}
 					onCheckedChange={onEnabledChange}
+				/>
+			</div>
+
+			<div data-id="stretch-texel-size-ratio-field" className="space-y-3 my-6">
+				<div className="flex items-center justify-between gap-3">
+					<Label htmlFor="stretch-texel-size-ratio">Texel size ratio</Label>
+					<span className="text-xs tabular-nums text-muted-foreground">
+						{texelSizeRatio.toFixed(2)} UV/unit
+					</span>
+				</div>
+				<NumericInput
+					id="stretch-texel-size-ratio"
+					data-id="stretch-texel-size-ratio-input"
+					value={texelSizeRatio}
+					min={MIN_MODEL_TEXEL_SIZE_RATIO}
+					max={MAX_MODEL_TEXEL_SIZE_RATIO}
+					roundStep={MODEL_TEXEL_SIZE_RATIO_STEP}
+					dragStep={MODEL_TEXEL_SIZE_RATIO_STEP}
+					className="h-9 w-full"
+					disabled={controlsDisabled}
+					onValueChange={onTexelSizeRatioChange}
 				/>
 			</div>
 
@@ -210,6 +250,41 @@ export function ModelStretchPanel({
 								</Button>
 							</div>
 						)}
+						<div data-id="checker-texture-controls" className="mt-3 rounded-md bg-muted/10 p-3 space-y-3">
+							<div className="flex items-start justify-between gap-4">
+								<div>
+									<Label htmlFor="checker-texture-enabled">Checker texture</Label>
+									<p className="mb-0 mt-1 text-xs text-muted-foreground">
+										Temporarily reveal UV scale and distortion.
+									</p>
+								</div>
+								<Switch
+									id="checker-texture-enabled"
+									data-id="checker-texture-enabled"
+									checked={checkerTextureEnabled}
+									disabled={disabled}
+									aria-label="Toggle checker texture"
+									onCheckedChange={onCheckerTextureEnabledChange}
+								/>
+							</div>
+							<div className="flex items-center justify-between gap-3">
+								<div className="flex items-center gap-2">
+									<Grid2X2 className="size-4 text-muted-foreground" aria-hidden="true" />
+									<Label htmlFor="checker-texture-scale">Tile scale</Label>
+								</div>
+								<span className="text-xs tabular-nums text-muted-foreground">{checkerTextureScale}×</span>
+							</div>
+							<Slider
+								id="checker-texture-scale"
+								data-id="checker-texture-scale"
+								min={MIN_CHECKER_TEXTURE_SCALE}
+								max={MAX_CHECKER_TEXTURE_SCALE}
+								step={1}
+								value={[checkerTextureScale]}
+								disabled={disabled || !checkerTextureEnabled}
+								onValueChange={([value]) => onCheckerTextureScaleChange(value)}
+							/>
+						</div>
 					</div>
 				</>
 			)}
@@ -248,12 +323,7 @@ function StretchAxisFields({
 	textureAxisOwners: Map<ModelTextureAxis, ModelGeometryAxis>
 	onUpdate: (axis: ModelStretchAxis) => void
 	onAddBox: (axis: ModelGeometryAxis) => void
-	onBoundaryChange: (
-		axis: ModelGeometryAxis,
-		boxIndex: number,
-		boundary: StretchBoundary,
-		value: number
-	) => void
+	onBoundaryChange: (axis: ModelGeometryAxis, boxIndex: number, boundary: StretchBoundary, value: number) => void
 	onRemoveBox: (axis: ModelGeometryAxis, boxIndex: number) => void
 	onRemove: (axis: ModelGeometryAxis) => void
 	onToggleBoxEditing: (axis: ModelGeometryAxis) => void
@@ -320,7 +390,7 @@ function StretchAxisFields({
 
 			<div data-id={`stretch-box-list-${axis}`} className="space-y-2">
 				{stretchAxis.boxes.map((box, boxIndex) => {
-					const boundaryGap = Math.max(modelAxisSize / 1_000, 0.000001)
+					const boundaryGap = getMinimumStretchBoxLength(modelAxisSize)
 					return (
 						<div
 							key={boxIndex}
@@ -328,7 +398,15 @@ function StretchAxisFields({
 							className="rounded-md border border-border p-2"
 						>
 							<div className="mb-2 flex items-center justify-between gap-2">
-								<p className="m-0 text-xs font-medium">Box {boxIndex + 1}</p>
+								<div className="flex items-baseline gap-2">
+									<p className="m-0 text-xs font-medium">Box {boxIndex + 1}</p>
+									<span
+										data-id={`stretch-box-${axis}-${boxIndex}-length`}
+										className="text-xs tabular-nums text-muted-foreground"
+									>
+										Length {box.getLength().toFixed(3)}
+									</span>
+								</div>
 								{stretchAxis.boxes.length > 1 && (
 									<Button
 										data-id={`remove-stretch-box-${axis}-${boxIndex}`}
@@ -462,8 +540,8 @@ function BoundaryInput({
 				value={value}
 				min={min}
 				max={max}
-				roundStep={0.000001}
-				dragStep={Math.max(modelAxisSize / 1_000, 0.000001)}
+				roundStep={STRETCH_BOX_STEP}
+				dragStep={getMinimumStretchBoxLength(modelAxisSize)}
 				className="h-9 w-full"
 				disabled={disabled}
 				onValueChange={onValueChange}

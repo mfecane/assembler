@@ -13,9 +13,11 @@ import type { EditorController } from '@/parametric/editor/EditorController'
 export function ProjectJsonControls({
 	projectName,
 	controller,
+	onDownloadPackage,
 }: {
 	projectName: string
 	controller: EditorController
+	onDownloadPackage: () => void
 }) {
 	const fileInputRef = useRef<HTMLInputElement>(null)
 	const [menuOpen, setMenuOpen] = useState(false)
@@ -23,8 +25,13 @@ export function ProjectJsonControls({
 	const handleExport = () => {
 		downloadJson(
 			JSON.stringify(controller.exportGraph(), null, 2),
-			`${safeFileName(projectName)}.json`
+			'project.json'
 		)
+		setMenuOpen(false)
+	}
+
+	const handleDownloadPackage = () => {
+		onDownloadPackage()
 		setMenuOpen(false)
 	}
 
@@ -100,6 +107,17 @@ export function ProjectJsonControls({
 							<Download />
 							Export project JSON
 						</Button>
+						<Button
+							data-id="download-project-package-button"
+							type="button"
+							variant="ghost"
+							className="h-9 justify-start px-2 font-normal"
+							role="menuitem"
+							onClick={handleDownloadPackage}
+						>
+							<Download />
+							Download project package
+						</Button>
 					</div>
 				</PopoverContent>
 				<Input
@@ -114,7 +132,7 @@ export function ProjectJsonControls({
 					}}
 				/>
 			</Popover>
-			<TooltipContent side="top">Import or export project</TooltipContent>
+			<TooltipContent side="top">Project files</TooltipContent>
 		</Tooltip>
 	)
 }
@@ -127,8 +145,4 @@ function downloadJson(json: string, fileName: string): void {
 	link.download = fileName
 	link.click()
 	URL.revokeObjectURL(url)
-}
-
-function safeFileName(value: string): string {
-	return value.trim().replace(/[^a-z0-9-_]+/gi, '-').replace(/^-+|-+$/g, '') || 'project'
 }

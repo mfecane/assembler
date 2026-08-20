@@ -84,6 +84,8 @@ async function loadAssetGeometry(
 	scene.traverse((object) => {
 		if (!(object instanceof Mesh)) return
 		const geometry = object.geometry.clone()
+		// Client scale is applied only during import: bake source transforms and scale into vertex
+		// positions so every geometry stored after this boundary is already in scene units.
 		geometry.applyMatrix4(object.matrixWorld)
 		geometry.scale(scale, scale, scale)
 		geometries.push(geometry)

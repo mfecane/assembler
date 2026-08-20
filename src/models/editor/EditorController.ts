@@ -21,6 +21,7 @@ import {
 	updateModelStretchAxis,
 	withModelStretchEnabled,
 } from '@/models/ModelStretchMetadata'
+import { readModelTexelSizeRatio, withModelTexelSizeRatio } from '@/models/ModelTexelSizeRatio'
 import { ModelProject } from '@/models/editor/ModelProject'
 import { ModelReactBridge } from '@/models/editor/ReactBridge'
 import { ModelCommandFactory } from '@/models/editor/commands/ModelCommandFactory'
@@ -56,6 +57,7 @@ export class ModelEditorController {
 			const record = await this.repository.saveMetadata(this.project.modelId, snapshot.metadata)
 			readModelStretchAxes(record.metadata)
 			readModelStretchEnabled(record.metadata)
+			readModelTexelSizeRatio(record.metadata)
 			readModelPivot(record.metadata)
 			readStoredModelBoundingBox(record.metadata, this.project.modelId)
 			meshRepository.setMetadata(this.project.modelId, record.metadata)
@@ -152,6 +154,15 @@ export class ModelEditorController {
 			enabled ? 'Enable stretch' : 'Disable stretch',
 			`${enabled ? 'enable' : 'disable'} stretch`,
 			(metadata) => withModelStretchEnabled(metadata, enabled)
+		)
+	}
+
+	public setTexelSizeRatio(texelSizeRatio: number): void {
+		this.updateMetadata(
+			'Update texel size ratio',
+			`update texel size ratio to ${texelSizeRatio} UV units per model unit`,
+			(metadata) => withModelTexelSizeRatio(metadata, texelSizeRatio),
+			'model-texel-size-ratio'
 		)
 	}
 
@@ -317,15 +328,8 @@ export class ModelEditorController {
 			)
 			return
 		}
-		const snapshot = this.bridge.getSnapshot()
 		this.bridge.update({
 			uvViewEnabled: enabled,
-			activeStretchAxis: enabled ? null : snapshot.activeStretchAxis,
-			scaleToolActive: enabled ? false : snapshot.scaleToolActive,
-			pivotEditingMode: enabled ? null : snapshot.pivotEditingMode,
-			previewSize: enabled && snapshot.scaleToolActive
-				? { ...snapshot.modelSize }
-				: snapshot.previewSize,
 			viewportError: null,
 		})
 	}
@@ -467,6 +471,7 @@ export function createModelProject(
 	const loadedMetadata = record?.metadata ?? {}
 	readModelStretchAxes(loadedMetadata)
 	readModelStretchEnabled(loadedMetadata)
+	readModelTexelSizeRatio(loadedMetadata)
 	readModelPivot(loadedMetadata)
 	readStoredModelBoundingBox(loadedMetadata, modelId)
 	return new ModelProject(modelId, record, loadedMetadata)

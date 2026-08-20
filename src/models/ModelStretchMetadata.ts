@@ -7,6 +7,8 @@ export type StretchBoundary = 'min' | 'max'
 const MAX_STRETCH_AXES = 3
 const DEFAULT_MIN_FRACTION = 0.05
 const DEFAULT_MAX_FRACTION = 0.95
+export const STRETCH_BOX_DECIMAL_PLACES = 3
+export const STRETCH_BOX_STEP = 10 ** -STRETCH_BOX_DECIMAL_PLACES
 
 export function readModelStretchEnabled(metadata: Record<string, unknown>): boolean {
 	const value = metadata.stretchEnabled
@@ -38,9 +40,13 @@ export class ModelStretchBox {
 
 	public withBoundary(boundary: StretchBoundary, value: number): ModelStretchBox {
 		return new ModelStretchBox(
-			boundary === 'min' ? value : this.min,
-			boundary === 'max' ? value : this.max
+			boundary === 'min' ? roundStretchBoxValue(value) : this.min,
+			boundary === 'max' ? roundStretchBoxValue(value) : this.max
 		)
+	}
+
+	public getLength(): number {
+		return roundStretchBoxValue(this.max - this.min)
 	}
 
 	public toJSON(): Record<string, number> {
@@ -187,7 +193,7 @@ export function addModelStretchBox(
 	}
 	if (cursor < boundsMax) gaps.push(new ModelStretchBox(cursor, boundsMax))
 	const largestGap = gaps.sort((left, right) => (right.max - right.min) - (left.max - left.min))[0]
-	const minimumLength = Math.max(boundingBox.size[axis] / 1_000, 0.000001)
+	const minimumLength = getMinimumStretchBoxLength(boundingBox.size[axis])
 	if (!largestGap || largestGap.max - largestGap.min <= minimumLength) {
 		throw new Error(
 			`Cannot add another ${axis.toUpperCase()} stretch box because the configured boxes leave no `
@@ -319,7 +325,7 @@ function readStretchBox(value: unknown, axisIndex: number, boxIndex: number): Mo
 			+ `min and max. Received ${describe(value)}.`
 		)
 	}
-	return new ModelStretchBox(value.min, value.max)
+	return new ModelStretchBox(roundStretchBoxValue(value.min), roundStretchBoxValue(value.max))
 }
 
 function isGeometryAxis(value: unknown): value is ModelGeometryAxis {
@@ -339,5 +345,19 @@ function describe(value: unknown): string {
 }
 
 function round(value: number): number {
-	return Number(value.toFixed(6))
+	return roundStretchBoxValue(value)
+}
+
+export function roundStretchBoxValue(value: number): number {
+	return Number(value.toFixed(STRETCH_BOX_DECIMAL_PLACES))
+}
+
+export function getMinimumStretchBoxLength(axisSize: number): number {
+	if (!Number.isFinite(axisSize) || axisSize <= 0) {
+		throw new Error(`Stretch-box axis size must be a positive finite number; received ${axisSize}.`)
+	}
+	return roundStretchBoxValue(Math.max(
+		Math.ceil(axisSize / 1_000 / STRETCH_BOX_STEP) * STRETCH_BOX_STEP,
+		STRETCH_BOX_STEP
+	))
 }

@@ -1,7 +1,6 @@
 import {
 	ASSET_METADATA_FORMAT,
 	ASSET_METADATA_FORMAT_VERSION,
-	ASSET_SCALE_BY_CLIENT,
 	type Client,
 } from '@/cosntants'
 import type { ModelCatalogItem, ModelMetadataRecord } from '@/models/ModelCatalogItem'
@@ -23,7 +22,6 @@ export function createModelMetadataDocument(
 	return {
 		format: ASSET_METADATA_FORMAT,
 		version: ASSET_METADATA_FORMAT_VERSION,
-		assetScale: ASSET_SCALE_BY_CLIENT[client],
 		units: 'scene-units',
 		assetCount: models.length,
 		assets: models.map((model) => ({

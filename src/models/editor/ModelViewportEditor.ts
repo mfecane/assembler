@@ -71,6 +71,7 @@ export class ModelViewportEditor {
 	private synchronizeProject(): void {
 		try {
 			const snapshot = this.project.getSnapshot()
+			this.scene?.setTexelSizeRatio(snapshot.texelSizeRatio)
 			this.scene?.setStretchAxes(snapshot.stretchEnabled ? snapshot.stretchAxes : [])
 			this.scene?.setPivot(snapshot.pivot)
 		} catch (cause) {

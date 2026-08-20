@@ -225,6 +225,16 @@ function LoadedModelEditor({
 		executeNavigation(navigation, onBack, onSelectModel, onSignOut)
 	}
 
+	const saveAndNavigate = async (event: React.MouseEvent<HTMLButtonElement>) => {
+		event.preventDefault()
+		if (!pendingNavigation || isSaving) return
+		await editor.controller.save()
+		if (editor.controller.project.getSnapshot().metadataPendingSave) return
+		const navigation = pendingNavigation
+		setPendingNavigation(null)
+		executeNavigation(navigation, onBack, onSelectModel, onSignOut)
+	}
+
 	return (
 		<>
 			<ModelEditorHeader
@@ -256,6 +266,13 @@ function LoadedModelEditor({
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Keep editing</AlertDialogCancel>
+						<AlertDialogAction
+							data-id="save-before-leave-model-changes"
+							disabled={isSaving}
+							onClick={(event) => void saveAndNavigate(event)}
+						>
+							{isSaving ? 'Saving…' : 'Save changes'}
+						</AlertDialogAction>
 						<AlertDialogAction
 							data-id="confirm-discard-model-changes"
 							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"

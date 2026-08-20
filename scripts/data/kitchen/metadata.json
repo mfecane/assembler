@@ -1,448 +1,491 @@
 {
-	"format": "maxshelf-asset-metadata",
-	"version": 1,
-	"assetScale": 1,
-	"units": "scene-units",
-	"assetCount": 18,
-	"assets": [
-		{
-			"id": "asset:kitchen:back-panel",
-			"label": "Back Panel",
-			"pivot": {
-				"x": 0,
-				"y": 0.509364,
-				"z": 0.284101
-			},
-			"stretchAxes": [
-				{
-					"axis": "x",
-					"boxes": [
-						{
-							"max": 0.27,
-							"min": -0.27
-						}
-					],
-					"textureAxis": "u"
-				},
-				{
-					"axis": "y",
-					"boxes": [
-						{
-							"max": 0.833364,
-							"min": 0.185364
-						}
-					],
-					"textureAxis": "v"
-				}
-			],
-			"stretchEnabled": true
-		},
-		{
-			"id": "asset:kitchen:bottom-panel",
-			"label": "Bottom Panel",
-			"pivot": {
-				"x": 0,
-				"y": 0.159264,
-				"z": -0.008999
-			},
-			"stretchAxes": [
-				{
-					"axis": "x",
-					"boxes": [
-						{
-							"max": 0.2538,
-							"min": -0.2538
-						}
-					],
-					"textureAxis": "u"
-				},
-				{
-					"axis": "z",
-					"boxes": [
-						{
-							"max": 0.247501,
-							"min": -0.265499
-						}
-					],
-					"textureAxis": "v"
-				}
-			],
-			"stretchEnabled": true
-		},
-		{
-			"id": "asset:kitchen:cabinet",
-			"label": "Cabinet",
-			"pivot": {
-				"x": 0,
-				"y": 0.435133,
-				"z": 0.000001
-			},
-			"stretchAxes": [
-				{
-					"axis": "x",
-					"boxes": [
-						{
-							"max": 0.2862,
-							"min": -0.270386
-						}
-					],
-					"textureAxis": null
-				}
-			],
-			"stretchEnabled": true
-		},
-		{
-			"id": "asset:kitchen:door:1",
-			"label": "Door 1",
-			"pivot": {
-				"x": 0.00026,
-				"y": 0.36,
-				"z": 0.000022
-			},
-			"boundingBox": {
-				"size": {
-					"x": 0.6,
-					"y": 0.72,
-					"z": 0.023
-				},
-				"center": {
-					"x": 0.00026,
-					"y": 0.36,
-					"z": 0.000022
-				}
-			},
-			"stretchAxes": [
-				{
-					"axis": "x",
-					"boxes": [
-						{
-							"max": 0.242518,
-							"min": -0.237905
-						}
-					],
-					"textureAxis": null
-				},
-				{
-					"axis": "y",
-					"boxes": [
-						{
-							"max": 0.670837,
-							"min": 0.052304
-						}
-					],
-					"textureAxis": null
-				}
-			],
-			"stretchEnabled": true
-		},
-		{
-			"id": "asset:kitchen:door:2",
-			"label": "Door 2",
-			"pivot": {
-				"x": 0,
-				"y": 0.36,
-				"z": -0.000005
-			},
-			"stretchAxes": [
-				{
-					"axis": "x",
-					"boxes": [
-						{
-							"max": 0.202308,
-							"min": -0.207299
-						}
-					],
-					"textureAxis": "u"
-				},
-				{
-					"axis": "y",
-					"boxes": [
-						{
-							"max": 0.629706,
-							"min": 0.090358
-						}
-					],
-					"textureAxis": "v"
-				}
-			],
-			"stretchEnabled": true
-		},
-		{
-			"id": "asset:kitchen:door:3",
-			"label": "Door 3",
-			"pivot": {
-				"x": 0,
-				"y": 0.36,
-				"z": 0
-			},
-			"stretchAxes": [
-				{
-					"axis": "x",
-					"boxes": [
-						{
-							"max": 0.27,
-							"min": -0.27
-						}
-					],
-					"textureAxis": "u"
-				},
-				{
-					"axis": "y",
-					"boxes": [
-						{
-							"max": 0.684,
-							"min": 0.036
-						}
-					],
-					"textureAxis": "v"
-				}
-			],
-			"stretchEnabled": true
-		},
-		{
-			"id": "asset:kitchen:faucet:1",
-			"label": "Faucet 1"
-		},
-		{
-			"id": "asset:kitchen:faucet:2",
-			"label": "Faucet 2"
-		},
-		{
-			"id": "asset:kitchen:front-panel",
-			"label": "Front Panel",
-			"pivot": {
-				"x": 0,
-				"y": 0.519264,
-				"z": -0.284999
-			},
-			"stretchAxes": [
-				{
-					"axis": "x",
-					"boxes": [
-						{
-							"max": 0.2538,
-							"min": -0.2538
-						}
-					],
-					"textureAxis": "u"
-				},
-				{
-					"axis": "y",
-					"boxes": [
-						{
-							"max": 0.835164,
-							"min": 0.203364
-						}
-					],
-					"textureAxis": "v"
-				}
-			],
-			"stretchEnabled": true
-		},
-		{
-			"id": "asset:kitchen:handle:1",
-			"label": "Handle 1",
-			"pivot": {
-				"x": -0.000017,
-				"y": 0.09,
-				"z": -0.02
-			},
-			"stretchAxes": [
-				{
-					"axis": "y",
-					"boxes": [
-						{
-							"max": 0.160733,
-							"min": 0.021269
-						}
-					],
-					"textureAxis": "u"
-				}
-			],
-			"stretchEnabled": true
-		},
-		{
-			"id": "asset:kitchen:handle:2",
-			"label": "Handle 2",
-			"stretchAxes": [
-				{
-					"axis": "y",
-					"boxes": [
-						{
-							"max": 0.160666,
-							"min": 0.020043
-						}
-					],
-					"textureAxis": "u"
-				}
-			],
-			"stretchEnabled": true
-		},
-		{
-			"id": "asset:kitchen:inner-side-panel",
-			"label": "Inner Side Panel",
-			"pivot": {
-				"x": -0.291,
-				"y": 0.510264,
-				"z": -0.008999
-			},
-			"stretchAxes": [
-				{
-					"axis": "z",
-					"boxes": [
-						{
-							"max": 0.247501,
-							"min": -0.265499
-						}
-					],
-					"textureAxis": "u"
-				},
-				{
-					"axis": "y",
-					"boxes": [
-						{
-							"max": 0.834264,
-							"min": 0.186264
-						}
-					],
-					"textureAxis": "v"
-				}
-			],
-			"stretchEnabled": true
-		},
-		{
-			"id": "asset:kitchen:leg",
-			"label": "Leg"
-		},
-		{
-			"id": "asset:kitchen:outer-side-panel",
-			"label": "Outer Side Panel"
-		},
-		{
-			"id": "asset:kitchen:tabletop:1",
-			"label": "Tabletop 1",
-			"pivot": {
-				"x": 0,
-				"y": 0.038,
-				"z": 0
-			},
-			"stretchAxes": [
-				{
-					"axis": "x",
-					"boxes": [
-						{
-							"max": 0.2862,
-							"min": -0.2862
-						}
-					],
-					"textureAxis": null
-				},
-				{
-					"axis": "z",
-					"boxes": [
-						{
-							"max": 0.291318,
-							"min": -0.296537
-						}
-					],
-					"textureAxis": null
-				}
-			],
-			"stretchEnabled": true
-		},
-		{
-			"id": "asset:kitchen:tabletop:2",
-			"label": "Tabletop 2",
-			"pivot": {
-				"x": 0,
-				"y": 0.296582,
-				"z": 0
-			},
-			"stretchAxes": [
-				{
-					"axis": "z",
-					"boxes": [
-						{
-							"max": -0.227928,
-							"min": -0.29339
-						}
-					],
-					"textureAxis": "u"
-				},
-				{
-					"axis": "x",
-					"boxes": [
-						{
-							"max": -0.278273,
-							"min": -0.310568
-						},
-						{
-							"max": 0.303815,
-							"min": 0.275102
-						}
-					],
-					"textureAxis": "v"
-				}
-			],
-			"stretchEnabled": true
-		},
-		{
-			"id": "asset:kitchen:tabletop:3",
-			"label": "Tabletop 3",
-			"pivot": {
-				"x": 0.000001,
-				"y": 0.296587,
-				"z": 0
-			},
-			"stretchAxes": [
-				{
-					"axis": "x",
-					"boxes": [
-						{
-							"max": -0.2979,
-							"min": -0.312517
-						},
-						{
-							"max": 0.309157,
-							"min": 0.293382
-						}
-					],
-					"textureAxis": "u"
-				},
-				{
-					"axis": "z",
-					"boxes": [
-						{
-							"max": -0.22331,
-							"min": -0.291692
-						}
-					],
-					"textureAxis": "v"
-				}
-			],
-			"stretchEnabled": true
-		},
-		{
-			"id": "asset:kitchen:top-panel-small",
-			"label": "Top Panel Small",
-			"pivot": {
-				"x": 0,
-				"y": 0.861264,
-				"z": 0.207751
-			},
-			"stretchAxes": [
-				{
-					"axis": "x",
-					"boxes": [
-						{
-							"max": 0.275221,
-							"min": -0.277894
-						}
-					],
-					"textureAxis": null
-				}
-			],
-			"stretchEnabled": true
-		}
-	]
+  "format": "maxshelf-asset-metadata",
+  "version": 1,
+  "units": "scene-units",
+  "assetCount": 20,
+  "assets": [
+    {
+      "id": "asset:kitchen:back-panel",
+      "label": "Back Panel",
+      "pivot": {
+        "x": 0,
+        "y": 0.509364,
+        "z": 0.284101
+      },
+      "stretchAxes": [
+        {
+          "axis": "x",
+          "boxes": [
+            {
+              "max": 0.28,
+              "min": -0.28
+            }
+          ],
+          "textureAxis": "u"
+        },
+        {
+          "axis": "y",
+          "boxes": [
+            {
+              "max": 0.833,
+              "min": 0.185
+            }
+          ],
+          "textureAxis": "v"
+        }
+      ],
+      "stretchEnabled": true
+    },
+    {
+      "id": "asset:kitchen:bottom-panel",
+      "label": "Bottom Panel",
+      "pivot": {
+        "x": 0,
+        "y": 0.159264,
+        "z": -0.008999
+      },
+      "stretchAxes": [
+        {
+          "axis": "x",
+          "boxes": [
+            {
+              "max": 0.2538,
+              "min": -0.2538
+            }
+          ],
+          "textureAxis": "u"
+        },
+        {
+          "axis": "z",
+          "boxes": [
+            {
+              "max": 0.247501,
+              "min": -0.265499
+            }
+          ],
+          "textureAxis": "v"
+        }
+      ],
+      "stretchEnabled": true
+    },
+    {
+      "id": "asset:kitchen:cabinet",
+      "label": "Cabinet",
+      "pivot": {
+        "x": 0,
+        "y": 0.435133,
+        "z": 0.000001
+      },
+      "stretchAxes": [
+        {
+          "axis": "x",
+          "boxes": [
+            {
+              "max": 0.2862,
+              "min": -0.270386
+            }
+          ],
+          "textureAxis": null
+        }
+      ],
+      "stretchEnabled": true
+    },
+    {
+      "id": "asset:kitchen:door:1",
+      "label": "Door 1",
+      "pivot": {
+        "x": 0.00026,
+        "y": 0.36,
+        "z": 0.000022
+      },
+      "boundingBox": {
+        "size": {
+          "x": 0.6,
+          "y": 0.72,
+          "z": 0.023
+        },
+        "center": {
+          "x": 0.00026,
+          "y": 0.36,
+          "z": 0.000022
+        }
+      },
+      "stretchAxes": [
+        {
+          "axis": "x",
+          "boxes": [
+            {
+              "max": 0.242518,
+              "min": -0.237905
+            }
+          ],
+          "textureAxis": null
+        },
+        {
+          "axis": "y",
+          "boxes": [
+            {
+              "max": 0.670837,
+              "min": 0.052304
+            }
+          ],
+          "textureAxis": null
+        }
+      ],
+      "stretchEnabled": true
+    },
+    {
+      "id": "asset:kitchen:door:2",
+      "label": "Door 2",
+      "pivot": {
+        "x": 0,
+        "y": 0.36,
+        "z": -0.000005
+      },
+      "stretchAxes": [
+        {
+          "axis": "x",
+          "boxes": [
+            {
+              "max": 0.202308,
+              "min": -0.207299
+            }
+          ],
+          "textureAxis": "u"
+        },
+        {
+          "axis": "y",
+          "boxes": [
+            {
+              "max": 0.629706,
+              "min": 0.090358
+            }
+          ],
+          "textureAxis": "v"
+        }
+      ],
+      "stretchEnabled": true
+    },
+    {
+      "id": "asset:kitchen:door:3",
+      "label": "Door 3",
+      "pivot": {
+        "x": 0,
+        "y": 0.36,
+        "z": 0
+      },
+      "stretchAxes": [
+        {
+          "axis": "x",
+          "boxes": [
+            {
+              "max": 0.287411,
+              "min": -0.289298
+            }
+          ],
+          "textureAxis": "u"
+        },
+        {
+          "axis": "y",
+          "boxes": [
+            {
+              "max": 0.70657,
+              "min": 0.013393
+            }
+          ],
+          "textureAxis": "v"
+        }
+      ],
+      "stretchEnabled": true,
+      "texelSizeRatio": 1.39
+    },
+    {
+      "id": "asset:kitchen:faucet:1",
+      "label": "Faucet 1"
+    },
+    {
+      "id": "asset:kitchen:faucet:2",
+      "label": "Faucet 2"
+    },
+    {
+      "id": "asset:kitchen:frame-sink:3",
+      "label": "Frame Sink 3",
+      "pivot": {
+        "x": 0.000001,
+        "y": 0.293849,
+        "z": 0
+      },
+      "stretchAxes": [
+        {
+          "axis": "x",
+          "boxes": [
+            {
+              "max": -0.236,
+              "min": -0.297
+            },
+            {
+              "max": 0.307,
+              "min": 0.246
+            }
+          ],
+          "textureAxis": "u"
+        },
+        {
+          "axis": "z",
+          "boxes": [
+            {
+              "max": -0.236,
+              "min": -0.27
+            }
+          ],
+          "textureAxis": "v"
+        }
+      ],
+      "stretchEnabled": true,
+      "texelSizeRatio": 0.97
+    },
+    {
+      "id": "asset:kitchen:front-panel",
+      "label": "Front Panel",
+      "pivot": {
+        "x": 0,
+        "y": 0.519264,
+        "z": -0.284999
+      },
+      "stretchAxes": [
+        {
+          "axis": "x",
+          "boxes": [
+            {
+              "max": 0.2538,
+              "min": -0.2538
+            }
+          ],
+          "textureAxis": "u"
+        },
+        {
+          "axis": "y",
+          "boxes": [
+            {
+              "max": 0.835164,
+              "min": 0.203364
+            }
+          ],
+          "textureAxis": "v"
+        }
+      ],
+      "stretchEnabled": true
+    },
+    {
+      "id": "asset:kitchen:handle:1",
+      "label": "Handle 1",
+      "pivot": {
+        "x": -0.000017,
+        "y": 0.09,
+        "z": -0.02
+      },
+      "stretchAxes": [
+        {
+          "axis": "y",
+          "boxes": [
+            {
+              "max": 0.160733,
+              "min": 0.021269
+            }
+          ],
+          "textureAxis": "u"
+        }
+      ],
+      "stretchEnabled": true
+    },
+    {
+      "id": "asset:kitchen:handle:2",
+      "label": "Handle 2",
+      "stretchAxes": [
+        {
+          "axis": "y",
+          "boxes": [
+            {
+              "max": 0.160666,
+              "min": 0.020043
+            }
+          ],
+          "textureAxis": "u"
+        }
+      ],
+      "stretchEnabled": true
+    },
+    {
+      "id": "asset:kitchen:inner-side-panel",
+      "label": "Inner Side Panel",
+      "pivot": {
+        "x": -0.291,
+        "y": 0.510264,
+        "z": -0.008999
+      },
+      "stretchAxes": [
+        {
+          "axis": "z",
+          "boxes": [
+            {
+              "max": 0.247501,
+              "min": -0.265499
+            }
+          ],
+          "textureAxis": "u"
+        },
+        {
+          "axis": "y",
+          "boxes": [
+            {
+              "max": 0.834264,
+              "min": 0.186264
+            }
+          ],
+          "textureAxis": "v"
+        }
+      ],
+      "stretchEnabled": true,
+      "texelSizeRatio": 1.35
+    },
+    {
+      "id": "asset:kitchen:leg",
+      "label": "Leg"
+    },
+    {
+      "id": "asset:kitchen:outer-side-panel",
+      "label": "Outer Side Panel"
+    },
+    {
+      "id": "asset:kitchen:sink:3",
+      "label": "Sink 3"
+    },
+    {
+      "id": "asset:kitchen:tabletop:1",
+      "label": "Tabletop 1",
+      "pivot": {
+        "x": 0,
+        "y": 0.038,
+        "z": 0
+      },
+      "stretchAxes": [
+        {
+          "axis": "x",
+          "boxes": [
+            {
+              "max": 0.286,
+              "min": -0.286
+            }
+          ],
+          "textureAxis": "u"
+        },
+        {
+          "axis": "z",
+          "boxes": [
+            {
+              "max": 0.291,
+              "min": -0.297
+            }
+          ],
+          "textureAxis": "v"
+        }
+      ],
+      "stretchEnabled": true,
+      "texelSizeRatio": 1.63
+    },
+    {
+      "id": "asset:kitchen:tabletop:2",
+      "label": "Tabletop 2",
+      "pivot": {
+        "x": 0,
+        "y": 0.296582,
+        "z": 0
+      },
+      "stretchAxes": [
+        {
+          "axis": "z",
+          "boxes": [
+            {
+              "max": -0.227928,
+              "min": -0.29339
+            }
+          ],
+          "textureAxis": "u"
+        },
+        {
+          "axis": "x",
+          "boxes": [
+            {
+              "max": -0.278273,
+              "min": -0.310568
+            },
+            {
+              "max": 0.303815,
+              "min": 0.275102
+            }
+          ],
+          "textureAxis": "v"
+        }
+      ],
+      "stretchEnabled": true
+    },
+    {
+      "id": "asset:kitchen:tabletop:3",
+      "label": "Tabletop 3",
+      "pivot": {
+        "x": 0.000001,
+        "y": 0.296587,
+        "z": 0
+      },
+      "stretchAxes": [
+        {
+          "axis": "x",
+          "boxes": [
+            {
+              "max": -0.2979,
+              "min": -0.312517
+            },
+            {
+              "max": 0.309157,
+              "min": 0.293382
+            }
+          ],
+          "textureAxis": "u"
+        },
+        {
+          "axis": "z",
+          "boxes": [
+            {
+              "max": -0.22331,
+              "min": -0.291692
+            }
+          ],
+          "textureAxis": "v"
+        }
+      ],
+      "stretchEnabled": true
+    },
+    {
+      "id": "asset:kitchen:top-panel-small",
+      "label": "Top Panel Small",
+      "pivot": {
+        "x": 0,
+        "y": 0.861264,
+        "z": 0.207751
+      },
+      "stretchAxes": [
+        {
+          "axis": "x",
+          "boxes": [
+            {
+              "max": 0.275221,
+              "min": -0.277894
+            }
+          ],
+          "textureAxis": null
+        }
+      ],
+      "stretchEnabled": true
+    }
+  ]
 }

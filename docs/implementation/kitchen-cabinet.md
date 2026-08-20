@@ -1,7 +1,11 @@
 # Kitchen cabinet assembly
 
 The seeded Kitchen project builds one cabinet section from reusable graph definitions in
-`scripts/data/kitchen/defaultGraph.json`.
+`scripts/data/kitchen/project.json`.
+
+The Kitchen mesh catalog registers all 20 GLB files in `assets/kitchen`, including the Frame Sink 3
+and Sink 3 models; the latter two are available for selection as standalone assets but are not
+added to the seeded cabinet graph.
 
 ## Assembly hierarchy
 

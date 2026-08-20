@@ -37,7 +37,7 @@ export function ModelEditorHeaderActions({
 			)
 			const link = window.document.createElement('a')
 			link.href = url
-			link.download = `${client}-asset-metadata.json`
+			link.download = 'metadata.json'
 			link.click()
 			URL.revokeObjectURL(url)
 		} catch (cause) {

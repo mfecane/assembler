@@ -3,7 +3,6 @@ import { Accordion } from '@/components/ui/accordion'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { ModelBoundsPanel } from '@/models/ModelBoundsPanel'
-import { ModelCheckerTexturePanel } from '@/models/ModelCheckerTexturePanel'
 import { ModelMaterialsPanel } from '@/models/ModelMaterialsPanel'
 import { ModelPivotPanel } from '@/models/ModelPivotPanel'
 import { ModelStretchPanel } from '@/models/ModelStretchPanel'
@@ -17,7 +16,14 @@ import {
 export function ModelMetadataPanel() {
 	const editor = useModelEditorInstance()
 	const controller = editor.controller
-	const { boundingBox, pivot, stretchAxes, stretchEnabled, boundsPendingSave } = useModelProjectSnapshot()
+	const {
+		boundingBox,
+		pivot,
+		stretchAxes,
+		stretchEnabled,
+		texelSizeRatio,
+		boundsPendingSave,
+	} = useModelProjectSnapshot()
 	const {
 		isSaving,
 		error,
@@ -69,16 +75,9 @@ export function ModelMetadataPanel() {
 
 				<Accordion
 					type="multiple"
-					defaultValue={['model-preview-options-panel', 'model-stretch-panel']}
+					defaultValue={['model-stretch-panel']}
 					className="w-full"
 				>
-						<ModelCheckerTexturePanel
-							enabled={checkerTextureEnabled}
-							scale={checkerTextureScale}
-							disabled={isSaving}
-							onEnabledChange={(enabled) => controller.setCheckerTextureEnabled(enabled)}
-							onScaleChange={(scale) => controller.setCheckerTextureScale(scale)}
-						/>
 						<ModelPivotPanel
 							pivot={pivot}
 							editingMode={pivotEditingMode}
@@ -91,12 +90,18 @@ export function ModelMetadataPanel() {
 						<ModelStretchPanel
 							stretchAxes={stretchAxes}
 							stretchEnabled={stretchEnabled}
+							texelSizeRatio={texelSizeRatio}
+							checkerTextureEnabled={checkerTextureEnabled}
+							checkerTextureScale={checkerTextureScale}
 							modelSize={modelSize}
 							previewSize={previewSize}
 							activeStretchAxis={activeStretchAxis}
 							scaleToolActive={scaleToolActive}
 							disabled={isSaving}
 							onEnabledChange={(enabled) => controller.setStretchEnabled(enabled)}
+							onTexelSizeRatioChange={(ratio) => controller.setTexelSizeRatio(ratio)}
+							onCheckerTextureEnabledChange={(enabled) => controller.setCheckerTextureEnabled(enabled)}
+							onCheckerTextureScaleChange={(scale) => controller.setCheckerTextureScale(scale)}
 							onAdd={(axis) => controller.addStretchAxis(axis)}
 							onUpdate={(axis) => controller.updateStretchAxis(axis)}
 							onBoundaryChange={(axis, boxIndex, boundary, value) =>

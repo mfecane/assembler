@@ -1,10 +1,13 @@
 import { readFileSync } from 'node:fs'
 
+const MIN_MODEL_TEXEL_SIZE_RATIO = 0.01
+const MAX_MODEL_TEXEL_SIZE_RATIO = 10
+
 export function loadSeedData() {
 	const defaultGraphTemplate = readJson('../data/defaultGraph.json')
 	assertDefaultGraphTemplate(defaultGraphTemplate)
 	const maxshelfDefaultGraph = readJson('../data/maxshelf/defaultGraph.json')
-	const kitchenDefaultGraph = readJson('../data/kitchen/defaultGraph.json')
+	const kitchenDefaultGraph = readJson('../data/kitchen/project.json')
 	assertClientDefaultGraph('maxshelf', maxshelfDefaultGraph)
 	assertClientDefaultGraph('kitchen', kitchenDefaultGraph)
 	const maxshelfMetadata = readOptionalJson('../data/maxshelf/metadata.json')
@@ -90,6 +93,20 @@ function readAssetMetadataSeed(client, document) {
 }
 
 function assertStretchMetadata(client, asset) {
+	if (
+		asset.texelSizeRatio !== undefined
+		&& (
+			!Number.isFinite(asset.texelSizeRatio)
+			|| asset.texelSizeRatio < MIN_MODEL_TEXEL_SIZE_RATIO
+			|| asset.texelSizeRatio > MAX_MODEL_TEXEL_SIZE_RATIO
+		)
+	) {
+		throw new Error(
+			`The ${client} metadata seed for asset "${asset.id}" has invalid texelSizeRatio `
+			+ `${JSON.stringify(asset.texelSizeRatio)}. Expected a finite UV-units-per-model-unit ratio from `
+			+ `${MIN_MODEL_TEXEL_SIZE_RATIO} to ${MAX_MODEL_TEXEL_SIZE_RATIO}.`
+		)
+	}
 	if (asset.stretchAxes === undefined) return
 	if (!Array.isArray(asset.stretchAxes)) {
 		throw new Error(
@@ -123,7 +140,9 @@ function assertStretchMetadata(client, asset) {
 			) {
 				throw new Error(
 					`The ${client} metadata seed for asset "${asset.id}" has invalid stretch box ` +
-						`${boxIndex} on axis ${stretchAxis.axis}. Boxes: ${JSON.stringify(stretchAxis.boxes)}.`
+					`${boxIndex} on axis ${stretchAxis.axis}. Box boundaries must be finite numbers with ` +
+						`min below max. They are rounded to three decimals when loaded. ` +
+						`Boxes: ${JSON.stringify(stretchAxis.boxes)}.`
 				)
 			}
 		}

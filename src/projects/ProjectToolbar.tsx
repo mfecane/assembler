@@ -43,6 +43,7 @@ export function ProjectToolbar({
 	onSaveAs,
 	onRename,
 	onSignOut,
+	onDownloadPackage,
 }: {
 	name: string
 	user: User
@@ -62,6 +63,7 @@ export function ProjectToolbar({
 	onSaveAs: (name: string) => void
 	onRename: (name: string) => void
 	onSignOut: () => void
+	onDownloadPackage: () => void
 }) {
 	const saveDisabled = projectRenamePending || saveState === 'saving' || saveAsPending
 	const [saveMenuOpen, setSaveMenuOpen] = useState(false)
@@ -192,7 +194,11 @@ export function ProjectToolbar({
 						</Popover>
 					</div>
 					<TooltipProvider>
-						<ProjectJsonControls projectName={name} controller={controller} />
+						<ProjectJsonControls
+							projectName={name}
+							controller={controller}
+							onDownloadPackage={onDownloadPackage}
+						/>
 					</TooltipProvider>
 					<div className="h-6 w-px bg-border" aria-hidden="true" />
 					<UserMenu

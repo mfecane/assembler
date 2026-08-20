@@ -33,7 +33,11 @@ export function ModelViewport() {
 			data-id="model-viewport"
 			className="relative h-full min-h-0 w-full overflow-hidden bg-background"
 		>
-			<canvas ref={canvasRef} data-id="model-viewport-canvas" className="block h-full w-full" />
+			<canvas
+				ref={canvasRef}
+				data-id="model-viewport-canvas"
+				className="absolute inset-0 block size-full"
+			/>
 			{(scaleToolActive || activeStretchAxis || pivotEditingMode) && (
 				<Button
 					data-id="exit-model-viewport-tool"

@@ -80,7 +80,8 @@ Emits one registered catalog mesh deformed with its model-editor stretch metadat
 - Evaluation: connected dimensions override stored dimensions. Each configured model stretch axis
   may contain multiple non-intersecting boxes. Boxes share one stretch percentage while geometry
   outside them translates rigidly. Every axis uses the model editor's piecewise deformation and
-  optional UV adjustment. Target dimensions are
+  optional UV adjustment. UV displacement uses the model-level texel size ratio in UV units per
+  model-space unit. Target dimensions are
   constrained by the same minimum fixed-region gap and ten-times-natural-size maximum. Changing an
   axis without enabled stretch boxes fails with the asset ID, requested size, natural size, and
   configured axes.

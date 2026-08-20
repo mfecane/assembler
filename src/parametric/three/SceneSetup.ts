@@ -3,7 +3,6 @@ import {
 	AmbientLight,
 	AxesHelper,
 	Box3,
-	type Camera,
 	Clock,
 	Color,
 	DirectionalLight,
@@ -24,8 +23,6 @@ export interface SceneSetupResult {
 	controls: OrbitControls
 	cameraUpdates: CameraUpdateController
 	addRenderListener: (listener: SceneRenderListener) => AbortController
-	setRenderView: (scene: Scene, camera: Camera) => void
-	resetRenderView: () => void
 	fitShadowsToBounds: (bounds: Box3) => void
 	dispose: () => void
 }
@@ -99,8 +96,6 @@ export function createSceneSetup(
 	}
 
 	const clock = new Clock()
-	let renderScene: Scene = scene
-	let renderCamera: Camera = camera
 	const renderListeners = new Set<SceneRenderListener>()
 	const addRenderListener = (listener: SceneRenderListener): AbortController => {
 		renderListeners.add(listener)
@@ -114,7 +109,7 @@ export function createSceneSetup(
 		const deltaSeconds = clock.getDelta()
 		controls.update()
 		cameraUpdates.notify()
-		renderer.render(renderScene, renderCamera)
+		renderer.render(scene, camera)
 		for (const listener of renderListeners) listener(deltaSeconds)
 		animationFrame = requestAnimationFrame(animate)
 	}
@@ -126,15 +121,6 @@ export function createSceneSetup(
 		controls.dispose()
 		renderer.dispose()
 	}
-	const setRenderView = (nextScene: Scene, nextCamera: Camera) => {
-		renderScene = nextScene
-		renderCamera = nextCamera
-	}
-	const resetRenderView = () => {
-		renderScene = scene
-		renderCamera = camera
-	}
-
 	return {
 		scene,
 		camera,
@@ -142,8 +128,6 @@ export function createSceneSetup(
 		controls,
 		cameraUpdates,
 		addRenderListener,
-		setRenderView,
-		resetRenderView,
 		fitShadowsToBounds,
 		dispose,
 	}

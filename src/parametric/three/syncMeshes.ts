@@ -61,6 +61,7 @@ function createGeometry(item: SceneAssetInstanceMetadata): BufferGeometry {
 			sourcePositions,
 			sourceUvs,
 			stretchAxes,
+			item.deformation.texelSizeRatio,
 			item.deformation.sourceSize,
 			item.size
 		)

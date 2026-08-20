@@ -6,6 +6,7 @@ import {
 	readModelStretchEnabled,
 	type ModelStretchAxis,
 } from '@/models/ModelStretchMetadata'
+import { readModelTexelSizeRatio } from '@/models/ModelTexelSizeRatio'
 
 export interface ModelProjectCheckpoint {
 	metadata: Record<string, unknown>
@@ -21,6 +22,7 @@ export interface ModelProjectSnapshot {
 	pivot: ModelPivot
 	stretchAxes: ModelStretchAxis[]
 	stretchEnabled: boolean
+	texelSizeRatio: number
 	metadataPendingSave: boolean
 	boundsPendingSave: boolean
 }
@@ -83,6 +85,7 @@ export class ModelProject {
 			pivot: readModelPivot(this.metadata),
 			stretchAxes: readModelStretchAxes(this.metadata),
 			stretchEnabled: readModelStretchEnabled(this.metadata),
+			texelSizeRatio: readModelTexelSizeRatio(this.metadata),
 			metadataPendingSave: !sameMetadata(this.metadata, this.record?.metadata),
 			boundsPendingSave: !sameBoundingBox(this.metadata, this.record?.metadata),
 		}

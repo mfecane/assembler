@@ -20,9 +20,13 @@ truth for which selectable models belong to each client, including their stable 
   scaling pivot.
 - `metadata.stretchEnabled`, when present, is the persisted master switch for stretch behavior;
   disabling it preserves configured axes.
+- `metadata.texelSizeRatio`, when present, is a finite number from `0.01` to `10` describing the
+  magnitude of UV compensation per model-space unit introduced by stretch deformation. Missing
+  values default to `1`; Y-to-V compensation applies this magnitude in the inverse direction.
 - `metadata.stretchAxes`, when present, contains up to three distinct X/Y/Z stretch axes. Each axis
   stores a non-empty `boxes` list and an optional nullable `textureAxis`. Every box contains finite
-  source-space `min`/`max` coordinates; boxes on the same axis are ordered and cannot intersect.
+  source-space `min`/`max` coordinates; values are rounded to three decimal places when loaded.
+  Boxes on the same axis are ordered and cannot intersect.
   Missing `textureAxis` behaves as `null`. `u` or `v`
   scales that UV coordinate during a stretch test; `null` leaves UVs unchanged. U and V may each be
   assigned to only one geometry axis.

@@ -3,8 +3,9 @@
 ## Editor workspaces
 
 The project header contains only project-level navigation and actions: dashboard return, project
-identity and rename, Graph Editor and Product Editor tabs, saving, whole-project JSON import/export,
-and the user menu. The editor tabs switch the workspace beneath the header without changing the
+identity and rename, Graph Editor and Product Editor tabs, saving, project JSON import/export, package
+download, and the user menu. The package is named `project.zip` and contains `metadata.json` and
+`project.json`. The editor tabs switch the workspace beneath the header without changing the
 open project.
 
 The Graph Editor retains the node canvas, evaluated 3D viewport, and runtime configuration panel.

@@ -8,12 +8,14 @@ import type { Editor } from '@/parametric/editor/Editor'
 import { createEditor } from '@/parametric/editor/createEditor'
 import type { ProjectRepository } from '@/projects/ProjectRepository'
 import type { ModelMetadataRepository } from '@/models/ModelMetadataRepository'
+import { createModelMetadataDocument } from '@/models/ModelMetadataDocument'
 import { getRegisteredModels } from '@/models/getRegisteredModels'
 import { meshRepository } from '@/parametric/three/MeshRepository'
 import { ProjectToolbar, type SaveState } from '@/projects/ProjectToolbar'
 import type { Project } from '@/projects/projectTypes'
 import type { GraphDocument } from '@/parametric/model/GraphSerialization'
 import type { ProjectEditorMode } from '@/projects/ProjectEditorTabs'
+import { downloadProjectPackage } from '@/projects/ProjectPackageDownload'
 
 interface LoadedEditor {
 	project: Project
@@ -43,7 +45,6 @@ export function ProjectEditor({
 	const [loaded, setLoaded] = useState<LoadedEditor | null>(null)
 	const [loadError, setLoadError] = useState<string | null>(null)
 	const [loadErrorDocument, setLoadErrorDocument] = useState<GraphDocument | null>(null)
-	const [loadErrorProjectName, setLoadErrorProjectName] = useState<string | null>(null)
 	const [isLoading, setIsLoading] = useState(true)
 	const [documentVersion, setDocumentVersion] = useState(0)
 	const [savedDocumentVersion, setSavedDocumentVersion] = useState(0)
@@ -63,7 +64,6 @@ export function ProjectEditor({
 		setIsLoading(true)
 		setLoadError(null)
 		setLoadErrorDocument(null)
-		setLoadErrorProjectName(null)
 		let project: Project | null = null
 		try {
 			project = await repository.get(projectId)
@@ -84,7 +84,6 @@ export function ProjectEditor({
 		} catch (cause) {
 			if (project) {
 				setLoadErrorDocument(project.graphDocument)
-				setLoadErrorProjectName(project.name)
 			}
 			setLoadError(
 				cause instanceof Error
@@ -234,6 +233,27 @@ export function ProjectEditor({
 		}
 	}, [loaded, onOpenProject, repository, user.id])
 
+	const downloadPackage = useCallback(async () => {
+		if (!loaded) return
+		const client = loaded.editor.controller.exportGraph().client
+		const models = getRegisteredModels(client)
+		try {
+			const metadataRecords = await modelMetadataRepository.listMetadata(models.map((model) => model.id))
+			downloadProjectPackage(
+				createModelMetadataDocument(client, models, metadataRecords),
+				loaded.editor.controller.exportGraph()
+			)
+		} catch (cause) {
+			const error = [
+				`Failed to download package for project "${loaded.project.name}"`,
+				`(project ID: ${loaded.project.id}, client: ${client}).`,
+				describeError(cause),
+			].join(' ')
+			console.error(error, { cause, projectId: loaded.project.id, client })
+			window.alert(error)
+		}
+	}, [loaded, modelMetadataRepository])
+
 	useEffect(() => {
 		const handleSaveShortcut = (event: KeyboardEvent) => {
 			if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 's') return
@@ -281,7 +301,7 @@ export function ProjectEditor({
 								data-id="download-project-json-button"
 								onClick={() => downloadJsonDocument(
 									loadErrorDocument,
-									`${safeFileName(loadErrorProjectName ?? projectId)}.json`,
+									'project.json',
 								)}
 							>
 								<Download />
@@ -317,6 +337,7 @@ export function ProjectEditor({
 				onSaveAs={(name) => void saveAs(name)}
 				onRename={(name) => void renameProject(name)}
 				onSignOut={() => confirmDiscard(onSignOut)}
+				onDownloadPackage={() => void downloadPackage()}
 			/>
 			{editorMode === 'graph' ? (
 				<ParametricEditor
@@ -376,8 +397,4 @@ function downloadJsonDocument(graphDocument: GraphDocument, fileName: string): v
 	link.download = fileName
 	link.click()
 	URL.revokeObjectURL(url)
-}
-
-function safeFileName(value: string): string {
-	return value.trim().replace(/[^a-z0-9-_]+/gi, '-').replace(/^-+|-+$/g, '') || 'project'
 }

@@ -1,29 +1,19 @@
 import {
 	BufferGeometry,
-	Color,
 	Float32BufferAttribute,
-	GridHelper,
+	Group,
 	LineBasicMaterial,
 	LineSegments,
-	OrthographicCamera,
-	Scene,
 	WireframeGeometry,
 } from 'three'
 
 export class ModelUvPreview {
-	public readonly scene = new Scene()
-	public readonly camera = new OrthographicCamera(-1, 1, 1, -1, 0.1, 10)
+	public readonly group = new Group()
 	private readonly material = new LineBasicMaterial({ color: 0xf8fafc })
 	private wireframe: LineSegments | null = null
 
 	public constructor(geometry: BufferGeometry) {
-		this.scene.background = new Color(0x1b1d21)
-		const grid = new GridHelper(1, 10, 0x64748b, 0x334155)
-		grid.rotation.x = Math.PI / 2
-		grid.position.set(0.5, 0.5, -0.01)
-		this.scene.add(grid)
-		this.camera.position.set(0.5, 0.5, 2)
-		this.camera.lookAt(0.5, 0.5, 0)
+		this.group.visible = false
 		this.update(geometry)
 	}
 
@@ -40,7 +30,7 @@ export class ModelUvPreview {
 				throw new Error(`Cannot draw UV preview because vertex ${vertex} has UV (${u}, ${v}).`)
 			}
 			positions[vertex * 3] = u
-			positions[vertex * 3 + 1] = v
+			positions[vertex * 3 + 2] = v
 		}
 
 		const uvGeometry = new BufferGeometry()
@@ -49,33 +39,15 @@ export class ModelUvPreview {
 		const wireframeGeometry = new WireframeGeometry(uvGeometry)
 		uvGeometry.dispose()
 		if (this.wireframe) {
-			this.scene.remove(this.wireframe)
+			this.group.remove(this.wireframe)
 			this.wireframe.geometry.dispose()
 		}
 		this.wireframe = new LineSegments(wireframeGeometry, this.material)
-		this.scene.add(this.wireframe)
-	}
-
-	public resize(width: number, height: number): void {
-		if (width <= 0 || height <= 0) return
-		const viewportAspect = width / height
-		const halfWidth = viewportAspect > 1 ? viewportAspect / 2 : 0.5
-		const halfHeight = viewportAspect > 1 ? 0.5 : 1 / viewportAspect / 2
-		this.camera.left = 0.5 - halfWidth
-		this.camera.right = 0.5 + halfWidth
-		this.camera.top = 0.5 + halfHeight
-		this.camera.bottom = 0.5 - halfHeight
-		this.camera.updateProjectionMatrix()
+		this.group.add(this.wireframe)
 	}
 
 	public dispose(): void {
 		if (this.wireframe) this.wireframe.geometry.dispose()
 		this.material.dispose()
-		for (const child of this.scene.children) {
-			if (!(child instanceof GridHelper)) continue
-			child.geometry.dispose()
-			const materials = Array.isArray(child.material) ? child.material : [child.material]
-			for (const material of materials) material.dispose()
-		}
 	}
 }

@@ -1,0 +1,3144 @@
+{
+  "client": "kitchen",
+  "rootGraphs": [
+    {
+      "graphId": "graph-1",
+      "inputValues": {
+        "input-1": 0.2,
+        "input-2": 1,
+        "root-depth": 1,
+        "root-width": 120,
+        "root-height": 0,
+        "root-door-style": 3,
+        "root-tabletop-style": 2
+      },
+      "layoutMetadata": {
+        "axisBinding": {
+          "primary": {
+            "inputId": "root-width"
+          }
+        }
+      },
+      "configurationPanel": {
+        "controls": [
+          {
+            "id": "width-control",
+            "max": 120,
+            "min": 60,
+            "step": 1,
+            "type": "slider",
+            "label": "Width (cm)",
+            "inputId": "root-width"
+          },
+          {
+            "id": "height-control",
+            "type": "select",
+            "label": "Height",
+            "inputId": "root-height"
+          },
+          {
+            "id": "depth-control",
+            "type": "select",
+            "label": "Depth",
+            "inputId": "root-depth"
+          },
+          {
+            "id": "tabletop-style-control",
+            "type": "select",
+            "label": "Tabletop style",
+            "inputId": "root-tabletop-style"
+          },
+          {
+            "id": "door-control",
+            "type": "select",
+            "label": "Door",
+            "inputId": "root-door-style"
+          },
+          {
+            "id": "input-1-control",
+            "max": 0.3,
+            "min": 0.15,
+            "step": 0.01,
+            "type": "slider",
+            "label": "Handle size",
+            "inputId": "input-1"
+          },
+          {
+            "id": "input-2-control",
+            "type": "select",
+            "label": "Faucet type",
+            "inputId": "input-2"
+          }
+        ],
+        "templates": []
+      }
+    }
+  ],
+  "enums": [
+    {
+      "id": "tabletop-style",
+      "name": "Tabletop style",
+      "options": [
+        "Tabletop 1",
+        "Tabletop 2",
+        "Tabletop 3"
+      ]
+    },
+    {
+      "id": "door-style",
+      "name": "Door style",
+      "options": [
+        "No door",
+        "Door 1",
+        "Door 2",
+        "Door 3"
+      ]
+    },
+    {
+      "id": "section-height",
+      "name": "Height",
+      "options": [
+        "100 cm",
+        "110 cm",
+        "120 cm"
+      ]
+    },
+    {
+      "id": "section-depth",
+      "name": "Depth",
+      "options": [
+        "60 cm",
+        "80 cm"
+      ]
+    },
+    {
+      "id": "enum-1",
+      "name": "Faucet",
+      "options": [
+        "Faucet 1",
+        "Faucet 2"
+      ]
+    }
+  ],
+  "graphs": [
+    {
+      "id": "main",
+      "label": "Frame",
+      "inputs": [
+        {
+          "id": "input-5",
+          "label": "Size",
+          "valueType": "vector3",
+          "defaultValue": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        {
+          "id": "material-1",
+          "label": "Material",
+          "valueType": "materialInstance",
+          "defaultValue": "wood"
+        }
+      ],
+      "output": {
+        "id": "geometry",
+        "label": "Geometry",
+        "valueType": "geometry"
+      },
+      "nodes": [
+        {
+          "id": "output",
+          "name": "Output",
+          "position": {
+            "x": 1553.4690326217126,
+            "y": -676.0498371235317
+          },
+          "type": "graphOutput",
+          "data": {}
+        },
+        {
+          "id": "material-1",
+          "name": "Material",
+          "position": {
+            "x": -969.6041159898431,
+            "y": -313.950107648239
+          },
+          "type": "input",
+          "data": {
+            "valueType": "materialInstance",
+            "value": "wood",
+            "exported": true
+          }
+        },
+        {
+          "id": "mathExpression-1",
+          "name": "Math Expression",
+          "position": {
+            "x": -506.89456123542044,
+            "y": -448.6100533494023
+          },
+          "type": "mathExpression",
+          "data": {
+            "expression": "= $x / 2 - 0.01"
+          }
+        },
+        {
+          "id": "transform-1",
+          "name": "Transform",
+          "position": {
+            "x": 81.98452487910899,
+            "y": -464.30777247316814
+          },
+          "type": "transform",
+          "data": {}
+        },
+        {
+          "id": "transform-2",
+          "name": "Transform",
+          "position": {
+            "x": 83.49306159184061,
+            "y": -22.713982367021877
+          },
+          "type": "transform",
+          "data": {
+            "rotation": {
+              "y": 180
+            }
+          }
+        },
+        {
+          "id": "mathExpression-2",
+          "name": "Math Expression",
+          "position": {
+            "x": -518.6964603590643,
+            "y": 13.125464106075697
+          },
+          "type": "mathExpression",
+          "data": {
+            "expression": "= -$x/2 + 0.01"
+          }
+        },
+        {
+          "id": "stretchableAsset-2",
+          "name": "Stretchable Asset",
+          "position": {
+            "x": -252.95863508762687,
+            "y": -924.4986980489964
+          },
+          "type": "stretchableAsset",
+          "data": {
+            "meshId": "asset:kitchen:back-panel",
+            "targetSize": {
+              "x": 0.6000003814697266,
+              "y": 0.7199998497962952,
+              "z": 0.018000125885009766
+            }
+          }
+        },
+        {
+          "id": "transform-3",
+          "name": "Transform",
+          "position": {
+            "x": 83.7852360526677,
+            "y": -1042.5634051930106
+          },
+          "type": "transform",
+          "data": {}
+        },
+        {
+          "id": "mathExpression-3",
+          "name": "Math Expression",
+          "position": {
+            "x": -479.1724064244671,
+            "y": -1113.780483706244
+          },
+          "type": "mathExpression",
+          "data": {
+            "expression": "= -$x/2 + 0.01"
+          }
+        },
+        {
+          "id": "stretchableAsset-1",
+          "name": "Stretchable Asset",
+          "position": {
+            "x": -510.6925324375973,
+            "y": -243.31064259477236
+          },
+          "type": "stretchableAsset",
+          "data": {
+            "meshId": "asset:kitchen:inner-side-panel",
+            "targetSize": {
+              "x": 0.017999976873397827,
+              "y": 0.72,
+              "z": 0.57
+            }
+          }
+        },
+        {
+          "id": "stretchableAsset-3",
+          "name": "Stretchable Asset",
+          "position": {
+            "x": -181.61355529905762,
+            "y": 679.8913038176239
+          },
+          "type": "stretchableAsset",
+          "data": {
+            "meshId": "asset:kitchen:bottom-panel",
+            "targetSize": {
+              "x": 0.564000129699707,
+              "y": 0.018000125885009766,
+              "z": 0.570000171661377
+            }
+          }
+        },
+        {
+          "id": "transform-4",
+          "name": "Transform",
+          "position": {
+            "x": 98.38992039752208,
+            "y": 510.84221832254593
+          },
+          "type": "transform",
+          "data": {}
+        },
+        {
+          "id": "mathExpression-4",
+          "name": "Math Expression",
+          "position": {
+            "x": -580.3045330070568,
+            "y": 381.12727304428705
+          },
+          "type": "mathExpression",
+          "data": {
+            "expression": "= -$x/2 + 0.01"
+          }
+        },
+        {
+          "id": "meshAsset-1",
+          "name": "Leg",
+          "position": {
+            "x": -52.368217258377456,
+            "y": -1948.0396085440507
+          },
+          "type": "meshAsset",
+          "data": {
+            "meshId": "asset:kitchen:leg"
+          }
+        },
+        {
+          "id": "array-1",
+          "name": "Array",
+          "position": {
+            "x": 679.1347113441938,
+            "y": -1760.9833644953992
+          },
+          "type": "array",
+          "data": {
+            "countX": 2,
+            "countZ": 2
+          }
+        },
+        {
+          "id": "transform-8",
+          "name": "Transform",
+          "position": {
+            "x": 1019.6619770021134,
+            "y": -1459.8283601989117
+          },
+          "type": "transform",
+          "data": {}
+        },
+        {
+          "id": "input-4",
+          "name": "Material",
+          "position": {
+            "x": -319.690251535847,
+            "y": -1954.3587869464045
+          },
+          "type": "input",
+          "data": {
+            "valueType": "materialInstance",
+            "value": "metal",
+            "exported": false
+          }
+        },
+        {
+          "id": "mathExpression-9",
+          "name": "Math Expression",
+          "position": {
+            "x": 260.18152064007404,
+            "y": -1781.8474781199552
+          },
+          "type": "mathExpression",
+          "data": {
+            "expression": "= $x - 0.15"
+          }
+        },
+        {
+          "id": "mathExpression-10",
+          "name": "Math Expression",
+          "position": {
+            "x": 262.31891428786884,
+            "y": -1594.047129454318
+          },
+          "type": "mathExpression",
+          "data": {
+            "expression": "= $x - 0.15"
+          }
+        },
+        {
+          "id": "mathExpression-11",
+          "name": "Math Expression",
+          "position": {
+            "x": -336.5982320149715,
+            "y": -2306.899286453529
+          },
+          "type": "mathExpression",
+          "data": {
+            "expression": "= -$x/2 + 0.07"
+          }
+        },
+        {
+          "id": "transform-9",
+          "name": "Transform",
+          "position": {
+            "x": 240.03894416830852,
+            "y": -2264.93619275106
+          },
+          "type": "transform",
+          "data": {}
+        },
+        {
+          "id": "vector3-8",
+          "name": "Vector 3",
+          "position": {
+            "x": -14.757028599815804,
+            "y": -2226.9707192942
+          },
+          "type": "vector3",
+          "data": {}
+        },
+        {
+          "id": "mathExpression-12",
+          "name": "Math Expression",
+          "position": {
+            "x": -339.127724958468,
+            "y": -2131.858883557976
+          },
+          "type": "mathExpression",
+          "data": {
+            "expression": "= -$x/2 + 0.07"
+          }
+        },
+        {
+          "id": "input-5",
+          "name": "Size",
+          "position": {
+            "x": -726.7276566311388,
+            "y": -1068.1523247418663
+          },
+          "type": "input",
+          "data": {
+            "valueType": "vector3",
+            "value": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            },
+            "exported": true
+          }
+        },
+        {
+          "id": "mathExpression-5",
+          "name": "Math Expression",
+          "position": {
+            "x": 262.6066991071246,
+            "y": -1387.6822809002017
+          },
+          "type": "mathExpression",
+          "data": {
+            "expression": "= -$x/2 - 0.15"
+          }
+        },
+        {
+          "id": "inputReference-1",
+          "name": "Size",
+          "position": {
+            "x": -203.55559096796816,
+            "y": -1552.5975270871047
+          },
+          "type": "inputReference",
+          "data": {
+            "inputId": "input-5"
+          }
+        },
+        {
+          "id": "inputReference-2",
+          "name": "Material instance",
+          "position": {
+            "x": -957.4680883781316,
+            "y": 567.964625583779
+          },
+          "type": "inputReference",
+          "data": {
+            "inputId": "material-1"
+          }
+        },
+        {
+          "id": "inputReference-3",
+          "name": "Material instance",
+          "position": {
+            "x": -745.6101625713243,
+            "y": -842.3157781077875
+          },
+          "type": "inputReference",
+          "data": {
+            "inputId": "material-1"
+          }
+        },
+        {
+          "id": "inputReference-4",
+          "name": "Size",
+          "position": {
+            "x": -733.8892232163118,
+            "y": -2170.710700423016
+          },
+          "type": "inputReference",
+          "data": {
+            "inputId": "input-5"
+          }
+        },
+        {
+          "id": "inputReference-5",
+          "name": "Size",
+          "position": {
+            "x": -970.0279335721914,
+            "y": -83.44696746893054
+          },
+          "type": "inputReference",
+          "data": {
+            "inputId": "input-5"
+          }
+        },
+        {
+          "id": "inputReference-6",
+          "name": "Size",
+          "position": {
+            "x": -954.1302294346931,
+            "y": 702.4592417466333
+          },
+          "type": "inputReference",
+          "data": {
+            "inputId": "input-5"
+          }
+        },
+        {
+          "id": "mathExpression-6",
+          "name": "Expression",
+          "position": {
+            "x": -573.7107679061032,
+            "y": 761.4326262156125
+          },
+          "type": "mathExpression",
+          "data": {
+            "expression": "= $x - 0.04"
+          }
+        },
+        {
+          "id": "vector3-3",
+          "name": "Vector3",
+          "position": {
+            "x": -119.85850855068905,
+            "y": -1134.91405470902
+          },
+          "type": "vector3",
+          "data": {}
+        },
+        {
+          "id": "input-2",
+          "name": "Number",
+          "position": {
+            "x": -434.61168695318435,
+            "y": -1273.1267050038432
+          },
+          "type": "input",
+          "data": {
+            "valueType": "number",
+            "value": 1,
+            "exported": false
+          }
+        },
+        {
+          "id": "vector3-4",
+          "name": "Vector3",
+          "position": {
+            "x": -138.67781563976894,
+            "y": 416.6043701407057
+          },
+          "type": "vector3",
+          "data": {}
+        },
+        {
+          "id": "primitive-1",
+          "name": "Primitive",
+          "position": {
+            "x": 864.9659499840037,
+            "y": -1165.8893029630874
+          },
+          "type": "primitive",
+          "data": {}
+        },
+        {
+          "id": "geometryToggle-1",
+          "name": "Toggle",
+          "position": {
+            "x": 1210.5857769277734,
+            "y": -1148.1007603143082
+          },
+          "type": "geometryToggle",
+          "data": {
+            "enabled": false
+          }
+        },
+        {
+          "id": "input-1",
+          "name": "Number",
+          "position": {
+            "x": -529.6662489252905,
+            "y": 552.3402142802918
+          },
+          "type": "input",
+          "data": {
+            "valueType": "number",
+            "value": 0.01,
+            "exported": false
+          }
+        },
+        {
+          "id": "mathExpression-7",
+          "name": "Expression",
+          "position": {
+            "x": -571.5278343646628,
+            "y": 933.0929075293272
+          },
+          "type": "mathExpression",
+          "data": {
+            "expression": "= $x - 0.02"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "stretchableAsset-2:geometry->transform-3:geometry",
+          "sourceNodeId": "stretchableAsset-2",
+          "targetNodeId": "transform-3",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "stretchableAsset-1:geometry->transform-1:geometry",
+          "sourceNodeId": "stretchableAsset-1",
+          "targetNodeId": "transform-1",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "stretchableAsset-1:geometry->transform-2:geometry",
+          "sourceNodeId": "stretchableAsset-1",
+          "targetNodeId": "transform-2",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "material-1:value->stretchableAsset-1:material",
+          "sourceNodeId": "material-1",
+          "targetNodeId": "stretchableAsset-1",
+          "sourcePort": "value",
+          "targetPort": "material"
+        },
+        {
+          "id": "stretchableAsset-3:geometry->transform-4:geometry",
+          "sourceNodeId": "stretchableAsset-3",
+          "targetNodeId": "transform-4",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "transform-8:geometry->output:geometry",
+          "sourceNodeId": "transform-8",
+          "targetNodeId": "output",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "input-4:value->meshAsset-1:material",
+          "sourceNodeId": "input-4",
+          "targetNodeId": "meshAsset-1",
+          "sourcePort": "value",
+          "targetPort": "material"
+        },
+        {
+          "id": "array-1:geometry->transform-8:geometry",
+          "sourceNodeId": "array-1",
+          "targetNodeId": "transform-8",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "mathExpression-9:number->array-1:offsetX",
+          "sourceNodeId": "mathExpression-9",
+          "targetNodeId": "array-1",
+          "sourcePort": "number",
+          "targetPort": "offsetX"
+        },
+        {
+          "id": "mathExpression-10:number->array-1:offsetZ",
+          "sourceNodeId": "mathExpression-10",
+          "targetNodeId": "array-1",
+          "sourcePort": "number",
+          "targetPort": "offsetZ"
+        },
+        {
+          "id": "meshAsset-1:geometry->transform-9:geometry",
+          "sourceNodeId": "meshAsset-1",
+          "targetNodeId": "transform-9",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "transform-9:geometry->array-1:geometry",
+          "sourceNodeId": "transform-9",
+          "targetNodeId": "array-1",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "mathExpression-11:number->vector3-8:x",
+          "sourceNodeId": "mathExpression-11",
+          "targetNodeId": "vector3-8",
+          "sourcePort": "number",
+          "targetPort": "x"
+        },
+        {
+          "id": "mathExpression-12:number->vector3-8:z",
+          "sourceNodeId": "mathExpression-12",
+          "targetNodeId": "vector3-8",
+          "sourcePort": "number",
+          "targetPort": "z"
+        },
+        {
+          "id": "transform-3:geometry->output:geometry",
+          "sourceNodeId": "transform-3",
+          "targetNodeId": "output",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "transform-1:geometry->output:geometry",
+          "sourceNodeId": "transform-1",
+          "targetNodeId": "output",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "transform-2:geometry->output:geometry",
+          "sourceNodeId": "transform-2",
+          "targetNodeId": "output",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "transform-4:geometry->output:geometry",
+          "sourceNodeId": "transform-4",
+          "targetNodeId": "output",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "inputReference-2:value->stretchableAsset-3:material",
+          "sourceNodeId": "inputReference-2",
+          "targetNodeId": "stretchableAsset-3",
+          "sourcePort": "value",
+          "targetPort": "material"
+        },
+        {
+          "id": "inputReference-3:value->stretchableAsset-2:material",
+          "sourceNodeId": "inputReference-3",
+          "targetNodeId": "stretchableAsset-2",
+          "sourcePort": "value",
+          "targetPort": "material"
+        },
+        {
+          "id": "mathExpression-5:number->transform-8:translation",
+          "sourceNodeId": "mathExpression-5",
+          "targetNodeId": "transform-8",
+          "sourcePort": "number",
+          "targetPort": "translation",
+          "component": "y"
+        },
+        {
+          "id": "inputReference-1:value->mathExpression-5:0",
+          "sourceNodeId": "inputReference-1",
+          "targetNodeId": "mathExpression-5",
+          "sourcePort": "value",
+          "targetPort": "0",
+          "component": "y"
+        },
+        {
+          "id": "inputReference-4:value->mathExpression-12:0",
+          "sourceNodeId": "inputReference-4",
+          "targetNodeId": "mathExpression-12",
+          "sourcePort": "value",
+          "targetPort": "0",
+          "component": "z"
+        },
+        {
+          "id": "inputReference-4:value->mathExpression-11:0",
+          "sourceNodeId": "inputReference-4",
+          "targetNodeId": "mathExpression-11",
+          "sourcePort": "value",
+          "targetPort": "0",
+          "component": "x"
+        },
+        {
+          "id": "vector3-8:vector3->transform-9:translation",
+          "sourceNodeId": "vector3-8",
+          "targetNodeId": "transform-9",
+          "sourcePort": "vector3",
+          "targetPort": "translation"
+        },
+        {
+          "id": "inputReference-1:value->mathExpression-10:0",
+          "sourceNodeId": "inputReference-1",
+          "targetNodeId": "mathExpression-10",
+          "sourcePort": "value",
+          "targetPort": "0",
+          "component": "z"
+        },
+        {
+          "id": "inputReference-1:value->mathExpression-9:0",
+          "sourceNodeId": "inputReference-1",
+          "targetNodeId": "mathExpression-9",
+          "sourcePort": "value",
+          "targetPort": "0",
+          "component": "x"
+        },
+        {
+          "id": "inputReference-5:value->mathExpression-1:0",
+          "sourceNodeId": "inputReference-5",
+          "targetNodeId": "mathExpression-1",
+          "sourcePort": "value",
+          "targetPort": "0",
+          "component": "x"
+        },
+        {
+          "id": "inputReference-5:value->mathExpression-2:0",
+          "sourceNodeId": "inputReference-5",
+          "targetNodeId": "mathExpression-2",
+          "sourcePort": "value",
+          "targetPort": "0",
+          "component": "x"
+        },
+        {
+          "id": "inputReference-5:value->stretchableAsset-1:stretchY",
+          "sourceNodeId": "inputReference-5",
+          "targetNodeId": "stretchableAsset-1",
+          "sourcePort": "value",
+          "targetPort": "stretchY",
+          "component": "y"
+        },
+        {
+          "id": "inputReference-5:value->stretchableAsset-1:stretchZ",
+          "sourceNodeId": "inputReference-5",
+          "targetNodeId": "stretchableAsset-1",
+          "sourcePort": "value",
+          "targetPort": "stretchZ",
+          "component": "z"
+        },
+        {
+          "id": "inputReference-6:value->mathExpression-4:0",
+          "sourceNodeId": "inputReference-6",
+          "targetNodeId": "mathExpression-4",
+          "sourcePort": "value",
+          "targetPort": "0",
+          "component": "y"
+        },
+        {
+          "id": "input-5:value->stretchableAsset-2:stretchX",
+          "sourceNodeId": "input-5",
+          "targetNodeId": "stretchableAsset-2",
+          "sourcePort": "value",
+          "targetPort": "stretchX",
+          "component": "x"
+        },
+        {
+          "id": "input-5:value->stretchableAsset-2:stretchY",
+          "sourceNodeId": "input-5",
+          "targetNodeId": "stretchableAsset-2",
+          "sourcePort": "value",
+          "targetPort": "stretchY",
+          "component": "y"
+        },
+        {
+          "id": "input-5:value->mathExpression-3:0",
+          "sourceNodeId": "input-5",
+          "targetNodeId": "mathExpression-3",
+          "sourcePort": "value",
+          "targetPort": "0",
+          "component": "z"
+        },
+        {
+          "id": "inputReference-6:value->mathExpression-6:0",
+          "sourceNodeId": "inputReference-6",
+          "targetNodeId": "mathExpression-6",
+          "sourcePort": "value",
+          "targetPort": "0",
+          "component": "x"
+        },
+        {
+          "id": "mathExpression-6:number->stretchableAsset-3:stretchX",
+          "sourceNodeId": "mathExpression-6",
+          "targetNodeId": "stretchableAsset-3",
+          "sourcePort": "number",
+          "targetPort": "stretchX"
+        },
+        {
+          "id": "mathExpression-3:number->vector3-3:z",
+          "sourceNodeId": "mathExpression-3",
+          "targetNodeId": "vector3-3",
+          "sourcePort": "number",
+          "targetPort": "z"
+        },
+        {
+          "id": "vector3-3:vector3->transform-3:translation",
+          "sourceNodeId": "vector3-3",
+          "targetNodeId": "transform-3",
+          "sourcePort": "vector3",
+          "targetPort": "translation"
+        },
+        {
+          "id": "mathExpression-4:number->vector3-4:y",
+          "sourceNodeId": "mathExpression-4",
+          "targetNodeId": "vector3-4",
+          "sourcePort": "number",
+          "targetPort": "y"
+        },
+        {
+          "id": "vector3-4:vector3->transform-4:translation",
+          "sourceNodeId": "vector3-4",
+          "targetNodeId": "transform-4",
+          "sourcePort": "vector3",
+          "targetPort": "translation"
+        },
+        {
+          "id": "primitive-1:geometry->geometryToggle-1:geometry",
+          "sourceNodeId": "primitive-1",
+          "targetNodeId": "geometryToggle-1",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "geometryToggle-1:geometry->output:geometry",
+          "sourceNodeId": "geometryToggle-1",
+          "targetNodeId": "output",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "mathExpression-1:number->transform-1:translation",
+          "sourceNodeId": "mathExpression-1",
+          "targetNodeId": "transform-1",
+          "sourcePort": "number",
+          "targetPort": "translation",
+          "component": "x"
+        },
+        {
+          "id": "mathExpression-2:number->transform-2:translation",
+          "sourceNodeId": "mathExpression-2",
+          "targetNodeId": "transform-2",
+          "sourcePort": "number",
+          "targetPort": "translation",
+          "component": "x"
+        },
+        {
+          "id": "input-1:value->vector3-4:z",
+          "sourceNodeId": "input-1",
+          "targetNodeId": "vector3-4",
+          "sourcePort": "value",
+          "targetPort": "z"
+        },
+        {
+          "id": "inputReference-6:value->mathExpression-7:0",
+          "sourceNodeId": "inputReference-6",
+          "targetNodeId": "mathExpression-7",
+          "sourcePort": "value",
+          "targetPort": "0",
+          "component": "z"
+        },
+        {
+          "id": "mathExpression-7:number->stretchableAsset-3:stretchZ",
+          "sourceNodeId": "mathExpression-7",
+          "targetNodeId": "stretchableAsset-3",
+          "sourcePort": "number",
+          "targetPort": "stretchZ"
+        }
+      ]
+    },
+    {
+      "id": "graph-1",
+      "label": "Kitchen",
+      "inputs": [
+        {
+          "id": "root-width",
+          "label": "Width (cm)",
+          "valueType": "number",
+          "defaultValue": 120
+        },
+        {
+          "id": "root-height",
+          "label": "Height",
+          "enumId": "section-height",
+          "valueType": "enum",
+          "defaultValue": 1
+        },
+        {
+          "id": "root-depth",
+          "label": "Depth",
+          "enumId": "section-depth",
+          "valueType": "enum",
+          "defaultValue": 0
+        },
+        {
+          "id": "root-tabletop-style",
+          "label": "Tabletop style",
+          "enumId": "tabletop-style",
+          "valueType": "enum",
+          "defaultValue": 0
+        },
+        {
+          "id": "root-door-style",
+          "label": "Door",
+          "enumId": "door-style",
+          "valueType": "enum",
+          "defaultValue": 1
+        },
+        {
+          "id": "input-1",
+          "label": "Number",
+          "valueType": "number",
+          "defaultValue": 0.3
+        },
+        {
+          "id": "input-2",
+          "label": "Choice",
+          "enumId": "enum-1",
+          "valueType": "enum",
+          "defaultValue": 1
+        }
+      ],
+      "output": {
+        "id": "geometry",
+        "label": "Geometry",
+        "valueType": "geometry"
+      },
+      "nodes": [
+        {
+          "id": "graph-1-output",
+          "name": "Assembly Output",
+          "position": {
+            "x": 1036.6922081068537,
+            "y": 317.3795487595987
+          },
+          "type": "graphOutput",
+          "data": {}
+        },
+        {
+          "id": "section-instance",
+          "name": "Kitchen Section",
+          "position": {
+            "x": 216.60738482302114,
+            "y": 186.6634170124015
+          },
+          "type": "graphInstance",
+          "data": {
+            "graphId": "graph-2",
+            "inputValues": {
+              "input-8": {
+                "x": 1.2,
+                "y": 1.1,
+                "z": 0.6
+              },
+              "door-style-input": 1,
+              "tabletop-style-input": 0
+            }
+          }
+        },
+        {
+          "id": "root-size",
+          "name": "Section size",
+          "position": {
+            "x": -450.1689871397489,
+            "y": -127.64207953292016
+          },
+          "type": "vector3",
+          "data": {}
+        },
+        {
+          "id": "root-width",
+          "name": "Width (cm)",
+          "position": {
+            "x": -1182.443624359274,
+            "y": -332.56147464779207
+          },
+          "type": "input",
+          "data": {
+            "valueType": "number",
+            "value": 120,
+            "exported": true
+          }
+        },
+        {
+          "id": "root-width-metres",
+          "name": "Width in metres",
+          "position": {
+            "x": -818.1150786541184,
+            "y": -304.2166446499339
+          },
+          "type": "mathExpression",
+          "data": {
+            "expression": "= $x / 100"
+          }
+        },
+        {
+          "id": "root-height",
+          "name": "Height",
+          "position": {
+            "x": -1239.784389891514,
+            "y": -162.16881607920288
+          },
+          "type": "input",
+          "data": {
+            "valueType": "enum",
+            "value": 1,
+            "exported": true,
+            "enumId": "section-height"
+          }
+        },
+        {
+          "id": "root-height-map",
+          "name": "Height",
+          "position": {
+            "x": -818.1150786541184,
+            "y": -104.21664464993393
+          },
+          "type": "choiceToScalarMap",
+          "data": {
+            "mappings": [
+              {
+                "value": 1,
+                "enumIndex": 0
+              },
+              {
+                "value": 1.1,
+                "enumIndex": 1
+              },
+              {
+                "value": 1.2,
+                "enumIndex": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "root-depth",
+          "name": "Depth",
+          "position": {
+            "x": -1235.113532348165,
+            "y": 146.48360577201726
+          },
+          "type": "input",
+          "data": {
+            "valueType": "enum",
+            "value": 0,
+            "exported": true,
+            "enumId": "section-depth"
+          }
+        },
+        {
+          "id": "root-depth-map",
+          "name": "Depth",
+          "position": {
+            "x": -818.1150786541184,
+            "y": 95.78335535006609
+          },
+          "type": "choiceToScalarMap",
+          "data": {
+            "mappings": [
+              {
+                "value": 0.6,
+                "enumIndex": 0
+              },
+              {
+                "value": 0.8,
+                "enumIndex": 1
+              }
+            ]
+          }
+        },
+        {
+          "id": "root-tabletop-style",
+          "name": "Tabletop style",
+          "position": {
+            "x": -273.2604834295739,
+            "y": 192.88678926466892
+          },
+          "type": "input",
+          "data": {
+            "valueType": "enum",
+            "value": 0,
+            "exported": true,
+            "enumId": "tabletop-style"
+          }
+        },
+        {
+          "id": "root-door-style",
+          "name": "Door",
+          "position": {
+            "x": -272.1233686695623,
+            "y": 479.7555684084165
+          },
+          "type": "input",
+          "data": {
+            "valueType": "enum",
+            "value": 1,
+            "exported": true,
+            "enumId": "door-style"
+          }
+        },
+        {
+          "id": "input-1",
+          "name": "Number",
+          "position": {
+            "x": -217.05087393474003,
+            "y": 762.7863420635672
+          },
+          "type": "input",
+          "data": {
+            "valueType": "number",
+            "value": 0.3,
+            "exported": true
+          }
+        },
+        {
+          "id": "input-2",
+          "name": "Choice",
+          "position": {
+            "x": -270.2062364536698,
+            "y": 926.6039224370211
+          },
+          "type": "input",
+          "data": {
+            "valueType": "enum",
+            "value": 1,
+            "exported": true,
+            "enumId": "enum-1"
+          }
+        },
+        {
+          "id": "transform-1",
+          "name": "Transform",
+          "position": {
+            "x": 649.0510609722534,
+            "y": 178.2769939071815
+          },
+          "type": "transform",
+          "data": {}
+        },
+        {
+          "id": "mathExpression-1",
+          "name": "Math Expression",
+          "position": {
+            "x": 46.79178575283089,
+            "y": -111.76158119232362
+          },
+          "type": "mathExpression",
+          "data": {
+            "expression": "= $x / 2 + 0.15"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "root-size:vector3->section-instance:input-8",
+          "sourceNodeId": "root-size",
+          "targetNodeId": "section-instance",
+          "sourcePort": "vector3",
+          "targetPort": "input-8"
+        },
+        {
+          "id": "root-width:value->root-width-metres:0",
+          "sourceNodeId": "root-width",
+          "targetNodeId": "root-width-metres",
+          "sourcePort": "value",
+          "targetPort": "0"
+        },
+        {
+          "id": "root-width-metres:number->root-size:x",
+          "sourceNodeId": "root-width-metres",
+          "targetNodeId": "root-size",
+          "sourcePort": "number",
+          "targetPort": "x"
+        },
+        {
+          "id": "root-height:value->root-height-map:enum",
+          "sourceNodeId": "root-height",
+          "targetNodeId": "root-height-map",
+          "sourcePort": "value",
+          "targetPort": "enum"
+        },
+        {
+          "id": "root-height-map:number->root-size:y",
+          "sourceNodeId": "root-height-map",
+          "targetNodeId": "root-size",
+          "sourcePort": "number",
+          "targetPort": "y"
+        },
+        {
+          "id": "root-depth:value->root-depth-map:enum",
+          "sourceNodeId": "root-depth",
+          "targetNodeId": "root-depth-map",
+          "sourcePort": "value",
+          "targetPort": "enum"
+        },
+        {
+          "id": "root-depth-map:number->root-size:z",
+          "sourceNodeId": "root-depth-map",
+          "targetNodeId": "root-size",
+          "sourcePort": "number",
+          "targetPort": "z"
+        },
+        {
+          "id": "root-tabletop-style:value->section-instance:tabletop-style-input",
+          "sourceNodeId": "root-tabletop-style",
+          "targetNodeId": "section-instance",
+          "sourcePort": "value",
+          "targetPort": "tabletop-style-input"
+        },
+        {
+          "id": "root-door-style:value->section-instance:door-style-input",
+          "sourceNodeId": "root-door-style",
+          "targetNodeId": "section-instance",
+          "sourcePort": "value",
+          "targetPort": "door-style-input"
+        },
+        {
+          "id": "input-1:value->section-instance:input-3",
+          "sourceNodeId": "input-1",
+          "targetNodeId": "section-instance",
+          "sourcePort": "value",
+          "targetPort": "input-3"
+        },
+        {
+          "id": "input-2:value->section-instance:input-4",
+          "sourceNodeId": "input-2",
+          "targetNodeId": "section-instance",
+          "sourcePort": "value",
+          "targetPort": "input-4"
+        },
+        {
+          "id": "section-instance:geometry->transform-1:geometry",
+          "sourceNodeId": "section-instance",
+          "targetNodeId": "transform-1",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "transform-1:geometry->graph-1-output:geometry",
+          "sourceNodeId": "transform-1",
+          "targetNodeId": "graph-1-output",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "root-size:vector3->mathExpression-1:0",
+          "sourceNodeId": "root-size",
+          "targetNodeId": "mathExpression-1",
+          "sourcePort": "vector3",
+          "targetPort": "0",
+          "component": "y"
+        },
+        {
+          "id": "mathExpression-1:number->transform-1:translation",
+          "sourceNodeId": "mathExpression-1",
+          "targetNodeId": "transform-1",
+          "sourcePort": "number",
+          "targetPort": "translation",
+          "component": "y"
+        }
+      ]
+    },
+    {
+      "id": "graph-2",
+      "label": "Section",
+      "inputs": [
+        {
+          "id": "input-8",
+          "label": "Size",
+          "valueType": "vector3",
+          "defaultValue": {
+            "x": 0.8,
+            "y": 1.1,
+            "z": 0.6
+          }
+        },
+        {
+          "id": "tabletop-style-input",
+          "label": "Tabletop style",
+          "enumId": "tabletop-style",
+          "valueType": "enum",
+          "defaultValue": 0
+        },
+        {
+          "id": "door-style-input",
+          "label": "Door",
+          "enumId": "door-style",
+          "valueType": "enum",
+          "defaultValue": 1
+        },
+        {
+          "id": "input-3",
+          "label": "Handle size",
+          "valueType": "number",
+          "defaultValue": 0.25
+        },
+        {
+          "id": "input-4",
+          "label": "Choice",
+          "enumId": "enum-1",
+          "valueType": "enum",
+          "defaultValue": 0
+        }
+      ],
+      "output": {
+        "id": "geometry",
+        "label": "Geometry",
+        "valueType": "geometry"
+      },
+      "nodes": [
+        {
+          "id": "graph-2-output",
+          "name": "Assembly Output",
+          "position": {
+            "x": 860.9445051248731,
+            "y": 132.55096832541741
+          },
+          "type": "graphOutput",
+          "data": {}
+        },
+        {
+          "id": "graphInstance-1",
+          "name": "Frame",
+          "position": {
+            "x": 132.0012996442419,
+            "y": 29.388330533532155
+          },
+          "type": "graphInstance",
+          "data": {
+            "graphId": "main",
+            "inputValues": {
+              "input-5": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            }
+          }
+        },
+        {
+          "id": "input-8",
+          "name": "Size",
+          "position": {
+            "x": -630.7288923013929,
+            "y": 26.140885432760108
+          },
+          "type": "input",
+          "data": {
+            "valueType": "vector3",
+            "value": {
+              "x": 0.8,
+              "y": 1.1,
+              "z": 0.6
+            },
+            "exported": true
+          }
+        },
+        {
+          "id": "tabletop-instance",
+          "name": "Tabletop",
+          "position": {
+            "x": 129.71289552876326,
+            "y": 267.22232093337135
+          },
+          "type": "graphInstance",
+          "data": {
+            "graphId": "graph-3",
+            "inputValues": {
+              "tabletop-size": {
+                "x": 1.2,
+                "y": 1.1,
+                "z": 0.6
+              },
+              "tabletop-material": "marble",
+              "tabletop-style-input": 0
+            }
+          }
+        },
+        {
+          "id": "input-1",
+          "name": "Frame material",
+          "position": {
+            "x": -395.72144788179617,
+            "y": -134.71291708591139
+          },
+          "type": "input",
+          "data": {
+            "valueType": "materialInstance",
+            "value": "wood",
+            "exported": false
+          }
+        },
+        {
+          "id": "tabletop-style-input",
+          "name": "Tabletop style",
+          "position": {
+            "x": -702.4075352515495,
+            "y": 268.8766158512485
+          },
+          "type": "input",
+          "data": {
+            "valueType": "enum",
+            "value": 0,
+            "exported": true,
+            "enumId": "tabletop-style"
+          }
+        },
+        {
+          "id": "door-style-input",
+          "name": "Door",
+          "position": {
+            "x": -700,
+            "y": 845.5920625586693
+          },
+          "type": "input",
+          "data": {
+            "valueType": "enum",
+            "value": 1,
+            "exported": true,
+            "enumId": "door-style"
+          }
+        },
+        {
+          "id": "facade-instance",
+          "name": "Facade",
+          "position": {
+            "x": 128.24618902002297,
+            "y": 622.8285081877696
+          },
+          "type": "graphInstance",
+          "data": {
+            "graphId": "graph-4",
+            "inputValues": {
+              "input-3": 0.25,
+              "facade-size": {
+                "x": 1.2,
+                "y": 1.1,
+                "z": 0.6
+              },
+              "facade-material": "marble",
+              "show-front-panel": false,
+              "facade-door-style": 1
+            }
+          }
+        },
+        {
+          "id": "show-front-panel-map",
+          "name": "Show front panel",
+          "position": {
+            "x": -264.53509780516333,
+            "y": 992.5227417795118
+          },
+          "type": "choiceToBooleanMap",
+          "data": {
+            "mappings": [
+              {
+                "value": true,
+                "enumIndex": 0
+              },
+              {
+                "value": false,
+                "enumIndex": 1
+              },
+              {
+                "value": false,
+                "enumIndex": 2
+              },
+              {
+                "value": false,
+                "enumIndex": 3
+              }
+            ]
+          }
+        },
+        {
+          "id": "input-3",
+          "name": "Handle size",
+          "position": {
+            "x": -640.7493405706197,
+            "y": 1138.2714334700872
+          },
+          "type": "input",
+          "data": {
+            "valueType": "number",
+            "value": 0.25,
+            "exported": true
+          }
+        },
+        {
+          "id": "input-4",
+          "name": "Choice",
+          "position": {
+            "x": -697.5862661764596,
+            "y": 567.9562076846834
+          },
+          "type": "input",
+          "data": {
+            "valueType": "enum",
+            "value": 0,
+            "exported": true,
+            "enumId": "enum-1"
+          }
+        },
+        {
+          "id": "input-5",
+          "name": "Tabletop material",
+          "position": {
+            "x": -387.244935604796,
+            "y": -312.748113479898
+          },
+          "type": "input",
+          "data": {
+            "valueType": "materialInstance",
+            "value": "marble",
+            "exported": false
+          }
+        },
+        {
+          "id": "input-6",
+          "name": "Color",
+          "position": {
+            "x": -629.684445588065,
+            "y": -321.99389913986386
+          },
+          "type": "input",
+          "data": {
+            "valueType": "color",
+            "value": "#ffffff",
+            "exported": false
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "graphInstance-1:geometry->graph-2-output:geometry",
+          "sourceNodeId": "graphInstance-1",
+          "targetNodeId": "graph-2-output",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "input-8:value->graphInstance-1:input-5",
+          "sourceNodeId": "input-8",
+          "targetNodeId": "graphInstance-1",
+          "sourcePort": "value",
+          "targetPort": "input-5"
+        },
+        {
+          "id": "input-8:value->tabletop-instance:tabletop-size",
+          "sourceNodeId": "input-8",
+          "targetNodeId": "tabletop-instance",
+          "sourcePort": "value",
+          "targetPort": "tabletop-size"
+        },
+        {
+          "id": "tabletop-style-input:value->tabletop-instance:tabletop-style-input",
+          "sourceNodeId": "tabletop-style-input",
+          "targetNodeId": "tabletop-instance",
+          "sourcePort": "value",
+          "targetPort": "tabletop-style-input"
+        },
+        {
+          "id": "input-1:value->graphInstance-1:material-1",
+          "sourceNodeId": "input-1",
+          "targetNodeId": "graphInstance-1",
+          "sourcePort": "value",
+          "targetPort": "material-1"
+        },
+        {
+          "id": "input-8:value->facade-instance:facade-size",
+          "sourceNodeId": "input-8",
+          "targetNodeId": "facade-instance",
+          "sourcePort": "value",
+          "targetPort": "facade-size"
+        },
+        {
+          "id": "door-style-input:value->facade-instance:facade-door-style",
+          "sourceNodeId": "door-style-input",
+          "targetNodeId": "facade-instance",
+          "sourcePort": "value",
+          "targetPort": "facade-door-style"
+        },
+        {
+          "id": "door-style-input:value->show-front-panel-map:enum",
+          "sourceNodeId": "door-style-input",
+          "targetNodeId": "show-front-panel-map",
+          "sourcePort": "value",
+          "targetPort": "enum"
+        },
+        {
+          "id": "show-front-panel-map:boolean->facade-instance:show-front-panel",
+          "sourceNodeId": "show-front-panel-map",
+          "targetNodeId": "facade-instance",
+          "sourcePort": "boolean",
+          "targetPort": "show-front-panel"
+        },
+        {
+          "id": "facade-instance:geometry->graph-2-output:geometry",
+          "sourceNodeId": "facade-instance",
+          "targetNodeId": "graph-2-output",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "input-1:value->facade-instance:facade-material",
+          "sourceNodeId": "input-1",
+          "targetNodeId": "facade-instance",
+          "sourcePort": "value",
+          "targetPort": "facade-material"
+        },
+        {
+          "id": "input-3:value->facade-instance:input-3",
+          "sourceNodeId": "input-3",
+          "targetNodeId": "facade-instance",
+          "sourcePort": "value",
+          "targetPort": "input-3"
+        },
+        {
+          "id": "input-4:value->tabletop-instance:input-1",
+          "sourceNodeId": "input-4",
+          "targetNodeId": "tabletop-instance",
+          "sourcePort": "value",
+          "targetPort": "input-1"
+        },
+        {
+          "id": "tabletop-instance:geometry->graph-2-output:geometry",
+          "sourceNodeId": "tabletop-instance",
+          "targetNodeId": "graph-2-output",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "input-5:value->tabletop-instance:tabletop-material",
+          "sourceNodeId": "input-5",
+          "targetNodeId": "tabletop-instance",
+          "sourcePort": "value",
+          "targetPort": "tabletop-material"
+        },
+        {
+          "id": "input-6:value->input-5:color",
+          "sourceNodeId": "input-6",
+          "targetNodeId": "input-5",
+          "sourcePort": "value",
+          "targetPort": "color"
+        }
+      ]
+    },
+    {
+      "id": "graph-3",
+      "label": "Tabletop",
+      "inputs": [
+        {
+          "id": "tabletop-size",
+          "label": "Size",
+          "valueType": "vector3",
+          "defaultValue": {
+            "x": 1.4,
+            "y": 1.1,
+            "z": 0.8
+          }
+        },
+        {
+          "id": "tabletop-style-input",
+          "label": "Tabletop style",
+          "enumId": "tabletop-style",
+          "valueType": "enum",
+          "defaultValue": 0
+        },
+        {
+          "id": "tabletop-material",
+          "label": "Material",
+          "valueType": "materialInstance",
+          "defaultValue": "marble"
+        },
+        {
+          "id": "input-1",
+          "label": "Choice",
+          "enumId": "enum-1",
+          "valueType": "enum",
+          "defaultValue": 0
+        }
+      ],
+      "output": {
+        "id": "geometry",
+        "label": "Geometry",
+        "valueType": "geometry"
+      },
+      "nodes": [
+        {
+          "id": "tabletop-output",
+          "name": "Tabletop Output",
+          "position": {
+            "x": 904.4104992348482,
+            "y": -39.5707529150578
+          },
+          "type": "graphOutput",
+          "data": {}
+        },
+        {
+          "id": "tabletop-size",
+          "name": "Size",
+          "position": {
+            "x": -2139.994586047894,
+            "y": 610.1586384850801
+          },
+          "type": "input",
+          "data": {
+            "valueType": "vector3",
+            "value": {
+              "x": 1.4,
+              "y": 1.1,
+              "z": 0.8
+            },
+            "exported": true
+          }
+        },
+        {
+          "id": "tabletop-1-asset",
+          "name": "Tabletop 1",
+          "position": {
+            "x": -1325.039923619186,
+            "y": 187.83060073553384
+          },
+          "type": "stretchableAsset",
+          "data": {
+            "meshId": "asset:kitchen:tabletop:1",
+            "targetSize": {
+              "x": 0.6359999775886536,
+              "y": 0.03800010867416859,
+              "z": 0.5999999642372131
+            }
+          }
+        },
+        {
+          "id": "tabletop-2-asset",
+          "name": "Tabletop 2",
+          "position": {
+            "x": -1327.5787221225173,
+            "y": 403.87727946086864
+          },
+          "type": "stretchableAsset",
+          "data": {
+            "meshId": "asset:kitchen:tabletop:2",
+            "targetSize": {
+              "x": 0.6359999775886536,
+              "y": 0.2965729236602783,
+              "z": 0.5999999642372131
+            }
+          }
+        },
+        {
+          "id": "tabletop-3-asset",
+          "name": "Tabletop 3",
+          "position": {
+            "x": -1325.039923619186,
+            "y": 617.0110604110804
+          },
+          "type": "stretchableAsset",
+          "data": {
+            "meshId": "asset:kitchen:frame-sink:3",
+            "targetSize": {
+              "x": 0.6359999775886536,
+              "y": 0.03800010681152344,
+              "z": 0.5999999046325684
+            }
+          }
+        },
+        {
+          "id": "faucet-1-asset",
+          "name": "Faucet 1",
+          "position": {
+            "x": -1632.2573124802057,
+            "y": 1498.5858549573766
+          },
+          "type": "meshAsset",
+          "data": {
+            "meshId": "asset:kitchen:faucet:1"
+          }
+        },
+        {
+          "id": "faucet-2-asset",
+          "name": "Faucet 2",
+          "position": {
+            "x": -1628.7608324158725,
+            "y": 1638.804179627454
+          },
+          "type": "meshAsset",
+          "data": {
+            "meshId": "asset:kitchen:faucet:2",
+            "transform": {
+              "translation": {
+                "z": 0.03
+              }
+            }
+          }
+        },
+        {
+          "id": "tabletop-2-group",
+          "name": "Tabletop 2 with faucet",
+          "position": {
+            "x": -408.14224262882925,
+            "y": 574.4106805424757
+          },
+          "type": "group",
+          "data": {}
+        },
+        {
+          "id": "tabletop-3-group",
+          "name": "Tabletop 3 with faucet",
+          "position": {
+            "x": -407.8358143386407,
+            "y": 732.2863882635514
+          },
+          "type": "group",
+          "data": {}
+        },
+        {
+          "id": "tabletop-style-input",
+          "name": "Tabletop style",
+          "position": {
+            "x": -611.8031923056292,
+            "y": -189.61757891339036
+          },
+          "type": "input",
+          "data": {
+            "valueType": "enum",
+            "value": 0,
+            "exported": true,
+            "enumId": "tabletop-style"
+          }
+        },
+        {
+          "id": "tabletop-choice",
+          "name": "Tabletop style",
+          "position": {
+            "x": 90.6266775044873,
+            "y": 396.24557927308143
+          },
+          "type": "choiceToMeshMap",
+          "data": {
+            "mappings": [
+              {
+                "id": "tabletop-1",
+                "enumIndex": 0
+              },
+              {
+                "id": "tabletop-2",
+                "enumIndex": 1
+              },
+              {
+                "id": "tabletop-3",
+                "enumIndex": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "tabletop-height",
+          "name": "Tabletop Height",
+          "position": {
+            "x": 107.09895608148051,
+            "y": 58.11636619757869
+          },
+          "type": "mathExpression",
+          "data": {
+            "expression": "= $x / 2 + 0.04"
+          }
+        },
+        {
+          "id": "tabletop-transform",
+          "name": "Position Tabletop",
+          "position": {
+            "x": 487.72103634592645,
+            "y": 26.139481827036743
+          },
+          "type": "transform",
+          "data": {}
+        },
+        {
+          "id": "mathExpression-2",
+          "name": "Math Expression",
+          "position": {
+            "x": -1271.992193133383,
+            "y": 1014.8232414701516
+          },
+          "type": "mathExpression",
+          "data": {
+            "expression": "= $x/2 - 0.52"
+          }
+        },
+        {
+          "id": "tabletop-material",
+          "name": "Material",
+          "position": {
+            "x": -2156.5264025339375,
+            "y": 420
+          },
+          "type": "input",
+          "data": {
+            "valueType": "materialInstance",
+            "value": "marble",
+            "exported": true
+          }
+        },
+        {
+          "id": "input-1",
+          "name": "Choice",
+          "position": {
+            "x": -1682.1085739726964,
+            "y": 1233.62412492546
+          },
+          "type": "input",
+          "data": {
+            "valueType": "enum",
+            "value": 0,
+            "exported": true,
+            "enumId": "enum-1"
+          }
+        },
+        {
+          "id": "choiceToMeshMap-1",
+          "name": "Map to Mesh",
+          "position": {
+            "x": -1246.7254769608035,
+            "y": 1221.1240513923522
+          },
+          "type": "choiceToMeshMap",
+          "data": {}
+        },
+        {
+          "id": "transform-1",
+          "name": "Transform",
+          "position": {
+            "x": -870.3485173206502,
+            "y": 938.6189542495516
+          },
+          "type": "transform",
+          "data": {}
+        },
+        {
+          "id": "mathExpression-1",
+          "name": "Math Expression",
+          "position": {
+            "x": -1728.0652608961504,
+            "y": 42.41715790767984
+          },
+          "type": "mathExpression",
+          "data": {}
+        },
+        {
+          "id": "input-3",
+          "name": "Material",
+          "position": {
+            "x": -1950.9404538500578,
+            "y": 1569.0842520234535
+          },
+          "type": "input",
+          "data": {
+            "valueType": "materialInstance",
+            "value": "metal",
+            "exported": false
+          }
+        },
+        {
+          "id": "meshAsset-1",
+          "name": "Mesh Asset",
+          "position": {
+            "x": -1311.6240975965202,
+            "y": 825.5751049692304
+          },
+          "type": "meshAsset",
+          "data": {
+            "meshId": "asset:kitchen:sink:3",
+            "transform": {
+              "translation": {
+                "y": -0.295,
+                "z": 0.1
+              }
+            }
+          }
+        },
+        {
+          "id": "inputReference-1",
+          "name": "Size",
+          "position": {
+            "x": -1551.9199188061207,
+            "y": 1060.410108111355
+          },
+          "type": "inputReference",
+          "data": {
+            "inputId": "tabletop-size"
+          }
+        },
+        {
+          "id": "inputReference-2",
+          "name": "Size",
+          "position": {
+            "x": -150.87755482601128,
+            "y": 102.48057874183473
+          },
+          "type": "inputReference",
+          "data": {
+            "inputId": "tabletop-size"
+          }
+        },
+        {
+          "id": "input-5",
+          "name": "Material",
+          "position": {
+            "x": -1658.4788018797424,
+            "y": 818.025183972155
+          },
+          "type": "input",
+          "data": {
+            "valueType": "materialInstance",
+            "value": "metal",
+            "exported": false
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "tabletop-2-asset:geometry->tabletop-2-group:geometry",
+          "sourceNodeId": "tabletop-2-asset",
+          "targetNodeId": "tabletop-2-group",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "tabletop-2-group:geometry->tabletop-choice:tabletop-2",
+          "sourceNodeId": "tabletop-2-group",
+          "targetNodeId": "tabletop-choice",
+          "sourcePort": "geometry",
+          "targetPort": "tabletop-2"
+        },
+        {
+          "id": "tabletop-3-asset:geometry->tabletop-3-group:geometry",
+          "sourceNodeId": "tabletop-3-asset",
+          "targetNodeId": "tabletop-3-group",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "tabletop-3-group:geometry->tabletop-choice:tabletop-3",
+          "sourceNodeId": "tabletop-3-group",
+          "targetNodeId": "tabletop-choice",
+          "sourcePort": "geometry",
+          "targetPort": "tabletop-3"
+        },
+        {
+          "id": "tabletop-style-input:value->tabletop-choice:enum",
+          "sourceNodeId": "tabletop-style-input",
+          "targetNodeId": "tabletop-choice",
+          "sourcePort": "value",
+          "targetPort": "enum"
+        },
+        {
+          "id": "tabletop-choice:geometry->tabletop-transform:geometry",
+          "sourceNodeId": "tabletop-choice",
+          "targetNodeId": "tabletop-transform",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "tabletop-transform:geometry->tabletop-output:geometry",
+          "sourceNodeId": "tabletop-transform",
+          "targetNodeId": "tabletop-output",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "tabletop-material:value->tabletop-1-asset:material",
+          "sourceNodeId": "tabletop-material",
+          "targetNodeId": "tabletop-1-asset",
+          "sourcePort": "value",
+          "targetPort": "material"
+        },
+        {
+          "id": "tabletop-material:value->tabletop-2-asset:material",
+          "sourceNodeId": "tabletop-material",
+          "targetNodeId": "tabletop-2-asset",
+          "sourcePort": "value",
+          "targetPort": "material"
+        },
+        {
+          "id": "tabletop-material:value->tabletop-3-asset:material",
+          "sourceNodeId": "tabletop-material",
+          "targetNodeId": "tabletop-3-asset",
+          "sourcePort": "value",
+          "targetPort": "material"
+        },
+        {
+          "id": "input-1:value->choiceToMeshMap-1:enum",
+          "sourceNodeId": "input-1",
+          "targetNodeId": "choiceToMeshMap-1",
+          "sourcePort": "value",
+          "targetPort": "enum"
+        },
+        {
+          "id": "faucet-1-asset:geometry->choiceToMeshMap-1:mesh-1",
+          "sourceNodeId": "faucet-1-asset",
+          "targetNodeId": "choiceToMeshMap-1",
+          "sourcePort": "geometry",
+          "targetPort": "mesh-1"
+        },
+        {
+          "id": "faucet-2-asset:geometry->choiceToMeshMap-1:mesh-2",
+          "sourceNodeId": "faucet-2-asset",
+          "targetNodeId": "choiceToMeshMap-1",
+          "sourcePort": "geometry",
+          "targetPort": "mesh-2"
+        },
+        {
+          "id": "choiceToMeshMap-1:geometry->transform-1:geometry",
+          "sourceNodeId": "choiceToMeshMap-1",
+          "targetNodeId": "transform-1",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "transform-1:geometry->tabletop-2-group:geometry",
+          "sourceNodeId": "transform-1",
+          "targetNodeId": "tabletop-2-group",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "transform-1:geometry->tabletop-3-group:geometry",
+          "sourceNodeId": "transform-1",
+          "targetNodeId": "tabletop-3-group",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "mathExpression-1:number->tabletop-1-asset:stretchZ",
+          "sourceNodeId": "mathExpression-1",
+          "targetNodeId": "tabletop-1-asset",
+          "sourcePort": "number",
+          "targetPort": "stretchZ"
+        },
+        {
+          "id": "input-3:value->faucet-1-asset:material",
+          "sourceNodeId": "input-3",
+          "targetNodeId": "faucet-1-asset",
+          "sourcePort": "value",
+          "targetPort": "material"
+        },
+        {
+          "id": "input-3:value->faucet-2-asset:material",
+          "sourceNodeId": "input-3",
+          "targetNodeId": "faucet-2-asset",
+          "sourcePort": "value",
+          "targetPort": "material"
+        },
+        {
+          "id": "tabletop-size:value->tabletop-1-asset:stretchX",
+          "sourceNodeId": "tabletop-size",
+          "targetNodeId": "tabletop-1-asset",
+          "sourcePort": "value",
+          "targetPort": "stretchX",
+          "component": "x"
+        },
+        {
+          "id": "tabletop-size:value->tabletop-2-asset:stretchX",
+          "sourceNodeId": "tabletop-size",
+          "targetNodeId": "tabletop-2-asset",
+          "sourcePort": "value",
+          "targetPort": "stretchX",
+          "component": "x"
+        },
+        {
+          "id": "tabletop-size:value->tabletop-2-asset:stretchZ",
+          "sourceNodeId": "tabletop-size",
+          "targetNodeId": "tabletop-2-asset",
+          "sourcePort": "value",
+          "targetPort": "stretchZ",
+          "component": "z"
+        },
+        {
+          "id": "tabletop-size:value->tabletop-3-asset:stretchX",
+          "sourceNodeId": "tabletop-size",
+          "targetNodeId": "tabletop-3-asset",
+          "sourcePort": "value",
+          "targetPort": "stretchX",
+          "component": "x"
+        },
+        {
+          "id": "tabletop-size:value->tabletop-3-asset:stretchZ",
+          "sourceNodeId": "tabletop-size",
+          "targetNodeId": "tabletop-3-asset",
+          "sourcePort": "value",
+          "targetPort": "stretchZ",
+          "component": "z"
+        },
+        {
+          "id": "tabletop-size:value->mathExpression-1:0",
+          "sourceNodeId": "tabletop-size",
+          "targetNodeId": "mathExpression-1",
+          "sourcePort": "value",
+          "targetPort": "0",
+          "component": "z"
+        },
+        {
+          "id": "tabletop-height:number->tabletop-transform:translation",
+          "sourceNodeId": "tabletop-height",
+          "targetNodeId": "tabletop-transform",
+          "sourcePort": "number",
+          "targetPort": "translation",
+          "component": "y"
+        },
+        {
+          "id": "mathExpression-2:number->transform-1:translation",
+          "sourceNodeId": "mathExpression-2",
+          "targetNodeId": "transform-1",
+          "sourcePort": "number",
+          "targetPort": "translation",
+          "component": "z"
+        },
+        {
+          "id": "meshAsset-1:geometry->tabletop-3-group:geometry",
+          "sourceNodeId": "meshAsset-1",
+          "targetNodeId": "tabletop-3-group",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "inputReference-1:value->mathExpression-2:0",
+          "sourceNodeId": "inputReference-1",
+          "targetNodeId": "mathExpression-2",
+          "sourcePort": "value",
+          "targetPort": "0",
+          "component": "z"
+        },
+        {
+          "id": "inputReference-2:value->tabletop-height:0",
+          "sourceNodeId": "inputReference-2",
+          "targetNodeId": "tabletop-height",
+          "sourcePort": "value",
+          "targetPort": "0",
+          "component": "y"
+        },
+        {
+          "id": "input-5:value->meshAsset-1:material",
+          "sourceNodeId": "input-5",
+          "targetNodeId": "meshAsset-1",
+          "sourcePort": "value",
+          "targetPort": "material"
+        },
+        {
+          "id": "tabletop-1-asset:geometry->tabletop-choice:tabletop-1",
+          "sourceNodeId": "tabletop-1-asset",
+          "targetNodeId": "tabletop-choice",
+          "sourcePort": "geometry",
+          "targetPort": "tabletop-1"
+        }
+      ]
+    },
+    {
+      "id": "graph-4",
+      "label": "Facade",
+      "inputs": [
+        {
+          "id": "facade-size",
+          "label": "Size",
+          "valueType": "vector3",
+          "defaultValue": {
+            "x": 1.2,
+            "y": 0.87,
+            "z": 0.6
+          }
+        },
+        {
+          "id": "facade-door-style",
+          "label": "Door",
+          "enumId": "door-style",
+          "valueType": "enum",
+          "defaultValue": 3
+        },
+        {
+          "id": "show-front-panel",
+          "label": "Show front panel",
+          "valueType": "boolean",
+          "defaultValue": false
+        },
+        {
+          "id": "facade-material",
+          "label": "Material",
+          "valueType": "materialInstance",
+          "defaultValue": "wood"
+        },
+        {
+          "id": "input-3",
+          "label": "Handle size",
+          "valueType": "number",
+          "defaultValue": 0.25
+        }
+      ],
+      "output": {
+        "id": "geometry",
+        "label": "Geometry",
+        "valueType": "geometry"
+      },
+      "nodes": [
+        {
+          "id": "facade-output",
+          "name": "Facade Output",
+          "position": {
+            "x": 1255.749145062282,
+            "y": 260
+          },
+          "type": "graphOutput",
+          "data": {}
+        },
+        {
+          "id": "facade-size",
+          "name": "Size",
+          "position": {
+            "x": -2006.361742594378,
+            "y": 668.4446814562543
+          },
+          "type": "input",
+          "data": {
+            "valueType": "vector3",
+            "value": {
+              "x": 1.2,
+              "y": 0.87,
+              "z": 0.6
+            },
+            "exported": true
+          }
+        },
+        {
+          "id": "facade-door-style",
+          "name": "Door",
+          "position": {
+            "x": -632.8282736386632,
+            "y": -23.448137341189053
+          },
+          "type": "input",
+          "data": {
+            "valueType": "enum",
+            "value": 3,
+            "exported": true,
+            "enumId": "door-style"
+          }
+        },
+        {
+          "id": "show-front-panel",
+          "name": "Show front panel",
+          "position": {
+            "x": 282.74009413271204,
+            "y": 80.54353400751732
+          },
+          "type": "input",
+          "data": {
+            "valueType": "boolean",
+            "value": false,
+            "exported": true
+          }
+        },
+        {
+          "id": "facade-material",
+          "name": "Material",
+          "position": {
+            "x": -1355.3575469045702,
+            "y": 314.319532485633
+          },
+          "type": "input",
+          "data": {
+            "valueType": "materialInstance",
+            "value": "wood",
+            "exported": true
+          }
+        },
+        {
+          "id": "stretchableAsset-2",
+          "name": "Door 1",
+          "position": {
+            "x": -875.197178001095,
+            "y": 406.880561137352
+          },
+          "type": "stretchableAsset",
+          "data": {
+            "meshId": "asset:kitchen:door:1",
+            "targetSize": {
+              "x": 1.7,
+              "y": 2.02,
+              "z": 0.023
+            }
+          }
+        },
+        {
+          "id": "door-2-asset",
+          "name": "Door 2",
+          "position": {
+            "x": -876.1701961968728,
+            "y": 626.2610957325035
+          },
+          "type": "stretchableAsset",
+          "data": {
+            "meshId": "asset:kitchen:door:2",
+            "targetSize": {
+              "x": 1.7,
+              "y": 2.02,
+              "z": 0.023000121116638184
+            }
+          }
+        },
+        {
+          "id": "door-3-asset",
+          "name": "Door 3",
+          "position": {
+            "x": -876.1701961968727,
+            "y": 832.8614391462532
+          },
+          "type": "stretchableAsset",
+          "data": {
+            "meshId": "asset:kitchen:door:3",
+            "targetSize": {
+              "x": 1.7,
+              "y": 2.02,
+              "z": 0.018000125885009766
+            }
+          }
+        },
+        {
+          "id": "group-1",
+          "name": "Door 1 assembly",
+          "position": {
+            "x": -238.78239300172814,
+            "y": 493.9585262613292
+          },
+          "type": "group",
+          "data": {}
+        },
+        {
+          "id": "door-2-group",
+          "name": "Door 2 assembly",
+          "position": {
+            "x": -229.80710397631842,
+            "y": 630.3695617681395
+          },
+          "type": "group",
+          "data": {}
+        },
+        {
+          "id": "door-3-group",
+          "name": "Door 3 assembly",
+          "position": {
+            "x": -218.82639357868658,
+            "y": 743.2698677004539
+          },
+          "type": "group",
+          "data": {}
+        },
+        {
+          "id": "transform-2",
+          "name": "Position door",
+          "position": {
+            "x": 665.2460597670229,
+            "y": 273.4512342831275
+          },
+          "type": "transform",
+          "data": {}
+        },
+        {
+          "id": "mathExpression-3",
+          "name": "Door depth",
+          "position": {
+            "x": -403.4846235299324,
+            "y": 289.8058586856725
+          },
+          "type": "mathExpression",
+          "data": {
+            "expression": "= $x/2 + 0.01"
+          }
+        },
+        {
+          "id": "stretchableAsset-3",
+          "name": "Handle",
+          "position": {
+            "x": -1105.0719303762457,
+            "y": 1500.5440578183384
+          },
+          "type": "stretchableAsset",
+          "data": {
+            "meshId": "asset:kitchen:handle:1",
+            "targetSize": {
+              "x": 0.009999990463256836,
+              "y": 0.18000001460313797,
+              "z": 0.04000005125999451
+            }
+          }
+        },
+        {
+          "id": "transform-3",
+          "name": "Position handle",
+          "position": {
+            "x": -785.192899503185,
+            "y": 1328.7836946522123
+          },
+          "type": "transform",
+          "data": {}
+        },
+        {
+          "id": "mathExpression-4",
+          "name": "Handle offset",
+          "position": {
+            "x": -1395.240996969011,
+            "y": 1241.2552741197117
+          },
+          "type": "mathExpression",
+          "data": {
+            "expression": "= -$x/2 + 0.15"
+          }
+        },
+        {
+          "id": "door-choice",
+          "name": "Door style",
+          "position": {
+            "x": 182.238958207523,
+            "y": 394.3510936806246
+          },
+          "type": "choiceToMeshMap",
+          "data": {
+            "mappings": [
+              {
+                "id": "no-door",
+                "enumIndex": 0
+              },
+              {
+                "id": "door-1",
+                "enumIndex": 1
+              },
+              {
+                "id": "door-2",
+                "enumIndex": 2
+              },
+              {
+                "id": "door-3",
+                "enumIndex": 3
+              }
+            ]
+          }
+        },
+        {
+          "id": "input-3",
+          "name": "Handle length",
+          "position": {
+            "x": -1519.0135073683623,
+            "y": 1514.209291267441
+          },
+          "type": "input",
+          "data": {
+            "valueType": "number",
+            "value": 0.25,
+            "exported": true
+          }
+        },
+        {
+          "id": "stretchableAsset-5",
+          "name": "Front panel",
+          "position": {
+            "x": -70.41718403875569,
+            "y": -462.52964099580385
+          },
+          "type": "stretchableAsset",
+          "data": {
+            "meshId": "asset:kitchen:front-panel",
+            "targetSize": {
+              "x": 0.564000129699707,
+              "y": 0.702000081539154,
+              "z": 0.018000125885009766
+            }
+          }
+        },
+        {
+          "id": "transform-6",
+          "name": "Position front panel",
+          "position": {
+            "x": 294.71652151124806,
+            "y": -345.98989287337065
+          },
+          "type": "transform",
+          "data": {}
+        },
+        {
+          "id": "mathExpression-7",
+          "name": "Front panel depth",
+          "position": {
+            "x": -95.94947760496186,
+            "y": -254.68246623262107
+          },
+          "type": "mathExpression",
+          "data": {
+            "expression": "= $x/2"
+          }
+        },
+        {
+          "id": "front-panel-toggle",
+          "name": "Show front panel",
+          "position": {
+            "x": 657.520460823484,
+            "y": 83.0602953206328
+          },
+          "type": "geometryToggle",
+          "data": {}
+        },
+        {
+          "id": "input-1",
+          "name": "Material",
+          "position": {
+            "x": -1524.9927248312604,
+            "y": 1663.6300324546548
+          },
+          "type": "input",
+          "data": {
+            "valueType": "materialInstance",
+            "value": "metal",
+            "exported": false
+          }
+        },
+        {
+          "id": "inputReference-1",
+          "name": "Size",
+          "position": {
+            "x": -439.6275735026495,
+            "y": -331.7547242608742
+          },
+          "type": "inputReference",
+          "data": {
+            "inputId": "facade-size"
+          }
+        },
+        {
+          "id": "inputReference-2",
+          "name": "Size",
+          "position": {
+            "x": -447.4562586573752,
+            "y": -464.8111190430385
+          },
+          "type": "inputReference",
+          "data": {
+            "inputId": "facade-material"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "stretchableAsset-2:geometry->group-1:geometry",
+          "sourceNodeId": "stretchableAsset-2",
+          "targetNodeId": "group-1",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "door-2-asset:geometry->door-2-group:geometry",
+          "sourceNodeId": "door-2-asset",
+          "targetNodeId": "door-2-group",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "door-3-asset:geometry->door-3-group:geometry",
+          "sourceNodeId": "door-3-asset",
+          "targetNodeId": "door-3-group",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "stretchableAsset-3:geometry->transform-3:geometry",
+          "sourceNodeId": "stretchableAsset-3",
+          "targetNodeId": "transform-3",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "input-3:value->stretchableAsset-3:stretchY",
+          "sourceNodeId": "input-3",
+          "targetNodeId": "stretchableAsset-3",
+          "sourcePort": "value",
+          "targetPort": "stretchY"
+        },
+        {
+          "id": "transform-3:geometry->group-1:geometry",
+          "sourceNodeId": "transform-3",
+          "targetNodeId": "group-1",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "transform-3:geometry->door-2-group:geometry",
+          "sourceNodeId": "transform-3",
+          "targetNodeId": "door-2-group",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "transform-3:geometry->door-3-group:geometry",
+          "sourceNodeId": "transform-3",
+          "targetNodeId": "door-3-group",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "group-1:geometry->door-choice:door-1",
+          "sourceNodeId": "group-1",
+          "targetNodeId": "door-choice",
+          "sourcePort": "geometry",
+          "targetPort": "door-1"
+        },
+        {
+          "id": "door-2-group:geometry->door-choice:door-2",
+          "sourceNodeId": "door-2-group",
+          "targetNodeId": "door-choice",
+          "sourcePort": "geometry",
+          "targetPort": "door-2"
+        },
+        {
+          "id": "door-3-group:geometry->door-choice:door-3",
+          "sourceNodeId": "door-3-group",
+          "targetNodeId": "door-choice",
+          "sourcePort": "geometry",
+          "targetPort": "door-3"
+        },
+        {
+          "id": "facade-door-style:value->door-choice:enum",
+          "sourceNodeId": "facade-door-style",
+          "targetNodeId": "door-choice",
+          "sourcePort": "value",
+          "targetPort": "enum"
+        },
+        {
+          "id": "door-choice:geometry->transform-2:geometry",
+          "sourceNodeId": "door-choice",
+          "targetNodeId": "transform-2",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "transform-2:geometry->facade-output:geometry",
+          "sourceNodeId": "transform-2",
+          "targetNodeId": "facade-output",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "stretchableAsset-5:geometry->transform-6:geometry",
+          "sourceNodeId": "stretchableAsset-5",
+          "targetNodeId": "transform-6",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "transform-6:geometry->front-panel-toggle:geometry",
+          "sourceNodeId": "transform-6",
+          "targetNodeId": "front-panel-toggle",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "show-front-panel:value->front-panel-toggle:enabled",
+          "sourceNodeId": "show-front-panel",
+          "targetNodeId": "front-panel-toggle",
+          "sourcePort": "value",
+          "targetPort": "enabled"
+        },
+        {
+          "id": "front-panel-toggle:geometry->facade-output:geometry",
+          "sourceNodeId": "front-panel-toggle",
+          "targetNodeId": "facade-output",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        },
+        {
+          "id": "facade-material:value->door-3-asset:material",
+          "sourceNodeId": "facade-material",
+          "targetNodeId": "door-3-asset",
+          "sourcePort": "value",
+          "targetPort": "material"
+        },
+        {
+          "id": "facade-material:value->door-2-asset:material",
+          "sourceNodeId": "facade-material",
+          "targetNodeId": "door-2-asset",
+          "sourcePort": "value",
+          "targetPort": "material"
+        },
+        {
+          "id": "facade-material:value->stretchableAsset-2:material",
+          "sourceNodeId": "facade-material",
+          "targetNodeId": "stretchableAsset-2",
+          "sourcePort": "value",
+          "targetPort": "material"
+        },
+        {
+          "id": "input-1:value->stretchableAsset-3:material",
+          "sourceNodeId": "input-1",
+          "targetNodeId": "stretchableAsset-3",
+          "sourcePort": "value",
+          "targetPort": "material"
+        },
+        {
+          "id": "facade-size:value->stretchableAsset-2:stretchX",
+          "sourceNodeId": "facade-size",
+          "targetNodeId": "stretchableAsset-2",
+          "sourcePort": "value",
+          "targetPort": "stretchX",
+          "component": "x"
+        },
+        {
+          "id": "facade-size:value->stretchableAsset-2:stretchY",
+          "sourceNodeId": "facade-size",
+          "targetNodeId": "stretchableAsset-2",
+          "sourcePort": "value",
+          "targetPort": "stretchY",
+          "component": "y"
+        },
+        {
+          "id": "facade-size:value->door-2-asset:stretchX",
+          "sourceNodeId": "facade-size",
+          "targetNodeId": "door-2-asset",
+          "sourcePort": "value",
+          "targetPort": "stretchX",
+          "component": "x"
+        },
+        {
+          "id": "facade-size:value->door-2-asset:stretchY",
+          "sourceNodeId": "facade-size",
+          "targetNodeId": "door-2-asset",
+          "sourcePort": "value",
+          "targetPort": "stretchY",
+          "component": "y"
+        },
+        {
+          "id": "facade-size:value->door-3-asset:stretchX",
+          "sourceNodeId": "facade-size",
+          "targetNodeId": "door-3-asset",
+          "sourcePort": "value",
+          "targetPort": "stretchX",
+          "component": "x"
+        },
+        {
+          "id": "facade-size:value->door-3-asset:stretchY",
+          "sourceNodeId": "facade-size",
+          "targetNodeId": "door-3-asset",
+          "sourcePort": "value",
+          "targetPort": "stretchY",
+          "component": "y"
+        },
+        {
+          "id": "facade-size:value->mathExpression-4:0",
+          "sourceNodeId": "facade-size",
+          "targetNodeId": "mathExpression-4",
+          "sourcePort": "value",
+          "targetPort": "0",
+          "component": "x"
+        },
+        {
+          "id": "facade-size:value->mathExpression-3:0",
+          "sourceNodeId": "facade-size",
+          "targetNodeId": "mathExpression-3",
+          "sourcePort": "value",
+          "targetPort": "0",
+          "component": "z"
+        },
+        {
+          "id": "mathExpression-3:number->transform-2:translation",
+          "sourceNodeId": "mathExpression-3",
+          "targetNodeId": "transform-2",
+          "sourcePort": "number",
+          "targetPort": "translation",
+          "component": "z"
+        },
+        {
+          "id": "mathExpression-4:number->transform-3:translation",
+          "sourceNodeId": "mathExpression-4",
+          "targetNodeId": "transform-3",
+          "sourcePort": "number",
+          "targetPort": "translation",
+          "component": "x"
+        },
+        {
+          "id": "mathExpression-7:number->transform-6:translation",
+          "sourceNodeId": "mathExpression-7",
+          "targetNodeId": "transform-6",
+          "sourcePort": "number",
+          "targetPort": "translation",
+          "component": "z"
+        },
+        {
+          "id": "inputReference-2:value->stretchableAsset-5:material",
+          "sourceNodeId": "inputReference-2",
+          "targetNodeId": "stretchableAsset-5",
+          "sourcePort": "value",
+          "targetPort": "material"
+        },
+        {
+          "id": "inputReference-1:value->stretchableAsset-5:stretchX",
+          "sourceNodeId": "inputReference-1",
+          "targetNodeId": "stretchableAsset-5",
+          "sourcePort": "value",
+          "targetPort": "stretchX",
+          "component": "x"
+        },
+        {
+          "id": "inputReference-1:value->stretchableAsset-5:stretchY",
+          "sourceNodeId": "inputReference-1",
+          "targetNodeId": "stretchableAsset-5",
+          "sourcePort": "value",
+          "targetPort": "stretchY",
+          "component": "y"
+        },
+        {
+          "id": "inputReference-1:value->mathExpression-7:0",
+          "sourceNodeId": "inputReference-1",
+          "targetNodeId": "mathExpression-7",
+          "sourcePort": "value",
+          "targetPort": "0",
+          "component": "z"
+        }
+      ]
+    }
+  ],
+  "layout": {
+    "activeProductId": "product-single",
+    "layouts": [
+      {
+        "id": "layout-row",
+        "label": "Product row",
+        "configurationHeader": "Configure your kitchen",
+        "type": "row",
+        "slotId": "product-slot",
+        "slotsCount": {
+          "max": 20,
+          "min": 1
+        },
+        "axis": "x"
+      },
+      {
+        "id": "layout-single",
+        "label": "Single product",
+        "configurationHeader": "Configure your kitchen",
+        "type": "single",
+        "slotId": "product-slot",
+        "slotsCount": {
+          "max": 1,
+          "min": 1
+        }
+      }
+    ],
+    "products": [
+      {
+        "id": "product-single",
+        "label": "Kitchen",
+        "layoutId": "layout-row",
+        "instances": [
+          {
+            "id": "layout-instance-05f613db-b983-4560-8655-ebbc877f5350",
+            "graphId": "graph-1",
+            "inputValues": {
+              "input-1": 0.3,
+              "root-depth": 1,
+              "root-width": 60,
+              "root-door-style": 2,
+              "root-tabletop-style": 0
+            }
+          },
+          {
+            "id": "layout-instance-69822b8c-d710-4137-b09e-2b0c055cfe58",
+            "graphId": "graph-1",
+            "inputValues": {
+              "root-depth": 1,
+              "root-door-style": 3,
+              "root-tabletop-style": 2
+            }
+          },
+          {
+            "id": "layout-instance-a39a335a-4f5c-4633-9c2b-4d8e1d751621",
+            "graphId": "graph-1",
+            "inputValues": {
+              "root-depth": 1,
+              "root-width": 60,
+              "root-door-style": 3
+            }
+          },
+          {
+            "id": "layout-instance-6e6d155b-0b43-49b5-ae9a-7e312fd8b760",
+            "graphId": "graph-1",
+            "inputValues": {
+              "input-1": 0.3,
+              "root-depth": 1,
+              "root-width": 83,
+              "root-door-style": 3,
+              "root-tabletop-style": 2
+            }
+          }
+        ]
+      }
+    ],
+    "slots": [
+      {
+        "id": "product-slot",
+        "label": "Cabinet",
+        "graphs": [
+          "graph-1"
+        ],
+        "instanceBounds": {
+          "width": {
+            "max": 0.8,
+            "min": 0.5
+          },
+          "depth": {
+            "max": 0.8,
+            "min": 0.5
+          },
+          "height": {
+            "max": 2,
+            "min": 0.5
+          }
+        }
+      }
+    ]
+  }
+}

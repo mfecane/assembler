@@ -5,6 +5,7 @@ import {
 	type ModelGeometryAxis,
 	type ModelStretchAxis,
 } from '@/models/ModelStretchMetadata'
+import { readModelTexelSizeRatio } from '@/models/ModelTexelSizeRatio'
 import { readModelPivot, type ModelPivot } from '@/models/ModelPivotMetadata'
 import type { MeshBounds } from '@/parametric/model/MeshCatalog'
 import { Vector3Value, type Vector3Snapshot } from '@/parametric/model/Vector3Value'
@@ -15,6 +16,7 @@ export class StretchableAssetMetadata {
 	public readonly naturalSize: Vector3Value
 	public readonly pivot: ModelPivot
 	public readonly stretchAxes: ModelStretchAxis[]
+	public readonly texelSizeRatio: number
 
 	public constructor(
 		public readonly meshId: string,
@@ -24,6 +26,7 @@ export class StretchableAssetMetadata {
 		this.naturalSize = Vector3Value.from(readNaturalSize(meshId, metadata, bounds))
 		this.pivot = readModelPivot(metadata)
 		this.stretchAxes = readModelStretchEnabled(metadata) ? readModelStretchAxes(metadata) : []
+		this.texelSizeRatio = readModelTexelSizeRatio(metadata)
 	}
 
 	public constrainTargetSize(requested: Vector3Snapshot): Vector3Value {

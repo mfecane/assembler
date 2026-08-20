@@ -829,6 +829,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 				deformation: {
 					kind: 'stretch' as const,
 					sourceSize: metadata.naturalSize.toSnapshot(),
+					texelSizeRatio: metadata.texelSizeRatio,
 					pivot: {
 						x: metadata.pivot.x,
 						y: metadata.pivot.y,

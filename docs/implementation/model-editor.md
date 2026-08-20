@@ -78,6 +78,11 @@ are selectable.
 
 ## Preview
 
+Client asset scale is applied exactly once while a source model is loaded: the importer bakes the
+source hierarchy transform and client scale into geometry positions before registration. All
+downstream bounds, metadata, graph transforms, and viewport operations therefore use only those
+scene-unit geometries; client scale is neither persisted nor exposed after import.
+
 The main workspace is a full-height standalone Three.js preview with a docked settings sidebar on
 the right. The sidebar can collapse to a narrow docked rail, expanding the viewport without placing
 configuration controls over the preview. The preview clones the selected asset's geometry from the
@@ -88,8 +93,8 @@ the camera orientation and accepts axis clicks.
 
 **Scale in viewport** activates a Three.js scale gizmo for every configured geometry axis. Test
 sizes are absolute model dimensions initialized from the geometry bounding box. Dragging a handle
-updates the preview geometry without persisting the test size. **Finish scale preview**, the viewport exit
-action, and switching directly to UV view deactivate the scale tool and restore the source size.
+updates the preview geometry without persisting the test size. **Finish scale preview** and the viewport
+exit action deactivate the scale tool and restore the source size.
 
 The Pivot section displays the local X/Y/Z pivot and can reset it to zero. **Edit in viewport**
 opens a translation gizmo at the current pivot. Its placement mode switches between free movement
@@ -102,7 +107,9 @@ radius while the larger invisible hit targets preserve easy selection. Selecting
 commits the pivot and exits pivot editing; free-move drag commits leave editing active. Pivot changes
 are persisted metadata commands and participate in undo/redo.
 
-The Stretch section has a persisted **Enabled** switch. Disabling it keeps the configured axes,
+The Stretch section has a persisted **Enabled** switch and model-level **Texel size ratio** slider.
+The ratio ranges from 0.01 to 10 UV units per model-space unit and defaults to 1 when absent.
+Disabling stretch keeps the configured axes and ratio,
 resets the preview to its source size, closes the active stretch tool, and disables all stretch
 controls. Each configured axis has an **Adjust boxes in viewport** toggle. Only the selected axis shows a
 translucent face plane behind each spherical handle. The mesh surface inside each box is overlaid in the axis color
@@ -113,17 +120,16 @@ Scale and box tools are mutually exclusive,
 and the active tool can also be exited from
 the bottom-left viewport button.
 
-The **Preview** section applies a generated black-and-white checker texture to the preview material.
-Its scale slider changes texture repetition from 1× to 16×. Both controls are temporary and never
-change model metadata.
+The **Scale preview** section includes a temporary generated black-and-white checker texture for the
+preview material. Its scale slider changes texture repetition from 1× to 16×. Both controls are
+temporary and never change model metadata.
 
 The separate **UVs** section summarizes whether the loaded geometry has a UV attribute and, when it
 does, reports its coordinate-entry count. An attribute with zero U or V span is explicitly reported
 as degenerate; when every entry collapses to one point, the panel shows that coordinate and explains
-why the UV view has no visible edges. Its temporary **UV view** switch closes active stretch tools
-and replaces the 3D render with the current UV triangle wireframe on an XY plane, framed by an
-orthographic camera. A ten-division 0–1 grid provides the reference tile and always fits the viewport;
-UVs outside that tile are clipped. Models without a UV attribute show an explicit empty summary and disable the
+why the UV view has no visible edges. Its temporary **Preview UVs** checkbox overlays the current UV
+triangle wireframe on the existing horizontal XZ plane. It does not change the model, grid, helpers,
+camera, controls, or active editing tools. Models without a UV attribute show an explicit empty summary and disable the
 switch. The inspector orders Preview, Pivot, Stretch, UVs, Materials, and Bounding box as independent
 accordion sections. Preview and Stretch default open; diagnostic sections remain collapsed with
 their status visible in the section header.
@@ -163,7 +169,8 @@ the source bounds. Boxes on one axis are ordered and cannot intersect; numeric i
 dragging stop each face at its neighboring box.
 **Scale UV** selects U, V, or Nothing independently for each geometry axis. U and V can each belong
 to only one geometry axis; the remaining axis can still stretch geometry with Nothing selected.
-Values can always be entered in the panel while Stretch is enabled. **Adjust boxes in viewport**
+Values can always be entered in the panel while Stretch is enabled. Each box displays its
+three-decimal source-space length. **Adjust boxes in viewport**
 shows the affected mesh surface between two translucent axis-colored face planes. Each plane extends
 0.1 world units past both sides of the mesh on the two perpendicular axes and remains exactly at its
 saved minimum or maximum. Each face has a camera-scaled spherical handle with a larger invisible sphere
@@ -171,7 +178,8 @@ collider and a white hover state. Dragging the sphere moves only that face along
 the previous arrow controls are not used. Axis cards and viewport tool
 labels consistently identify X in red, Y in green, and Z in blue while retaining their text labels.
 Horizontal dragging of the minimum and maximum fields uses a perceptible step based on 0.1% of the
-source axis size; typed values retain fine precision, and Ctrl or Command provides a tenth-step drag adjustment.
+source axis size; loaded and edited values use three decimal places, and Ctrl or Command provides a
+tenth-step drag adjustment.
 
 The persisted stretch shape includes the master enabled state whenever axes are configured. Metadata
 without any stretch configuration remains valid:
@@ -179,6 +187,7 @@ without any stretch configuration remains valid:
 ```json
 {
 	"stretchEnabled": true,
+	"texelSizeRatio": 0.83,
 	"stretchAxes": [
 		{
 			"axis": "x",
@@ -211,8 +220,10 @@ ordinary scaling from the source size to the test size around the persisted pivo
 the offset is zero. The viewport scale gizmo is centered on that same pivot, so its visual origin and
 the preview placement follow one rule.
 
-When U or V scaling is selected, geometry displacement divided by the combined stretch-box length
-is applied to that UV coordinate. Nothing leaves UVs unchanged and permits geometry-only tests
+When U or V scaling is selected, geometry displacement multiplied by the model's texel size ratio
+is applied to that UV coordinate. Y-to-V compensation uses the inverse direction because V decreases
+as Y increases for the vertical model UV convention; the other mappings use the positive direction.
+Nothing leaves UVs unchanged and permits geometry-only tests
 for models without UV data. Every calculation starts from copied original position and UV buffers,
 so tests do not accumulate. **Reset size** restores the source bounding-box dimensions; test values
 are never included in Save. Entering box editing also resets the test so box values remain in

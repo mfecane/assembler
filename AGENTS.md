@@ -37,3 +37,5 @@ Do not use editor-architecture skill for already powered by react flow parts of 
 Stop leaking prompt spec details into the UI labels and text!
 
 Do not use tables in ansers.
+
+Keep json schemas permissive towards missing nodes/values, etc. Maximum tolerance to errors in input data.

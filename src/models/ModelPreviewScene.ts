@@ -25,12 +25,15 @@ import { TransformControls } from 'three/examples/jsm/controls/TransformControls
 import { ViewHelper } from 'three/examples/jsm/helpers/ViewHelper.js'
 import {
 	ModelStretchAxis,
+	getMinimumStretchBoxLength,
+	roundStretchBoxValue,
 	type ModelGeometryAxis,
 	type StretchBoundary,
 } from '@/models/ModelStretchMetadata'
 import { readModelBoundingBox } from '@/models/ModelBoundsMetadata'
 import { createModelStretchSizeConstraint } from '@/models/ModelStretchSizeConstraint'
 import { ModelStretchService } from '@/models/ModelStretchService'
+import { DEFAULT_MODEL_TEXEL_SIZE_RATIO } from '@/models/ModelTexelSizeRatio'
 import {
 	ModelPivot,
 	type ModelPivotEditingMode,
@@ -117,6 +120,7 @@ export class ModelPreviewScene {
 	private readonly widgetInteractionListeners = new Set<WidgetInteractionListener>()
 	private readonly previewSizeListeners = new Set<PreviewSizeListener>()
 	private stretchAxes: ModelStretchAxis[] = []
+	private texelSizeRatio = DEFAULT_MODEL_TEXEL_SIZE_RATIO
 	private stretchGizmos: StretchGizmo[] = []
 	private stretchBoxWidgets: StretchBoxWidget[] = []
 	private stretchBoundaryHitTargets: Mesh[] = []
@@ -131,7 +135,6 @@ export class ModelPreviewScene {
 	private pivotAnchorHitTargets: Mesh[] = []
 	private pivotAnchorMarkers: Mesh[] = []
 	private hoveredPivotAnchor: Mesh | null = null
-	private uvViewEnabled = false
 	private previewSize: Record<ModelGeometryAxis, number> = { x: 1, y: 1, z: 1 }
 	private editOverlay: {
 		wireframe: Mesh
@@ -182,7 +185,6 @@ export class ModelPreviewScene {
 		this.viewHelper.location.right = 12
 		this.viewHelper.location.bottom = 12
 		this.viewHelperRenderListener = this.setup.addRenderListener((deltaSeconds) => {
-			if (this.uvViewEnabled) return
 			if (this.viewHelper.animating) this.viewHelper.update(deltaSeconds)
 			const autoClear = this.setup.renderer.autoClear
 			this.setup.renderer.autoClear = false
@@ -207,6 +209,7 @@ export class ModelPreviewScene {
 		this.mesh.userData.interactionTarget = new InteractionTarget(modelId, MODEL_INTERACTION_TARGET)
 		this.setup.scene.add(this.mesh)
 		this.uvPreview = uv ? new ModelUvPreview(geometry) : null
+		if (this.uvPreview) this.setup.scene.add(this.uvPreview.group)
 		this.sourceBounds = new Box3().setFromObject(this.mesh)
 		this.setup.fitShadowsToBounds(this.sourceBounds)
 		this.sourceSize = this.sourceBounds.getSize(new Vector3())
@@ -274,6 +277,12 @@ export class ModelPreviewScene {
 		}
 		this.applyStretchPreview()
 		this.rebuildEditingGizmos()
+	}
+
+	public setTexelSizeRatio(texelSizeRatio: number): void {
+		if (this.texelSizeRatio === texelSizeRatio) return
+		this.texelSizeRatio = texelSizeRatio
+		this.applyStretchPreview()
 	}
 
 	public setPreviewSize(previewSize: Record<ModelGeometryAxis, number>): void {
@@ -408,7 +417,7 @@ export class ModelPreviewScene {
 		this.updateStretchBoundaryDrag(x, y)
 		const stretchAxis = this.requireStretchAxis(drag.target.axis)
 		this.activeStretchBoundaryDrag = null
-		this.setup.controls.enabled = !this.uvViewEnabled
+		this.setup.controls.enabled = true
 		this.publishStretchWidgetInteraction(
 			'widget-commit',
 			stretchAxis,
@@ -418,18 +427,11 @@ export class ModelPreviewScene {
 	}
 
 	public setUvViewEnabled(enabled: boolean): void {
-		if (enabled && !this.uvPreview) {
-			throw new Error('Cannot enable UV view because this model has no UV attribute.')
+		if (!this.uvPreview) {
+			if (enabled) throw new Error('Cannot enable UV view because this model has no UV attribute.')
+			return
 		}
-		if (this.uvViewEnabled === enabled) return
-		this.uvViewEnabled = enabled
-		this.setup.controls.enabled = !enabled
-		if (enabled && this.uvPreview) {
-			this.setup.setRenderView(this.uvPreview.scene, this.uvPreview.camera)
-			this.resizeUvPreview()
-		} else {
-			this.setup.resetRenderView()
-		}
+		this.uvPreview.group.visible = enabled
 	}
 
 	public resize(): void {
@@ -438,11 +440,9 @@ export class ModelPreviewScene {
 		this.setup.renderer.setSize(clientWidth, clientHeight, false)
 		this.setup.camera.aspect = clientWidth / clientHeight
 		this.setup.camera.updateProjectionMatrix()
-		this.resizeUvPreview()
 	}
 
 	public hitTest(x: number, y: number): InteractionHit | null {
-		if (this.uvViewEnabled) return null
 		const bounds = this.setup.renderer.domElement.getBoundingClientRect()
 		if (bounds.width === 0 || bounds.height === 0) return null
 		const pointer = new Vector2(
@@ -492,6 +492,7 @@ export class ModelPreviewScene {
 		this.widgetInteractionListeners.clear()
 		this.previewSizeListeners.clear()
 		this.setup.scene.remove(this.mesh, this.pivotMarker)
+		if (this.uvPreview) this.setup.scene.remove(this.uvPreview.group)
 		this.mesh.geometry.dispose()
 		this.material.dispose()
 		this.pivotMarker.geometry.dispose()
@@ -505,7 +506,6 @@ export class ModelPreviewScene {
 	}
 
 	private readonly handleViewHelperClick = (event: PointerEvent): void => {
-		if (this.uvViewEnabled) return
 		if (!this.viewHelper.handleClick(event)) return
 		event.preventDefault()
 		event.stopImmediatePropagation()
@@ -522,11 +522,11 @@ export class ModelPreviewScene {
 			this.sourcePositions,
 			this.sourceUvs,
 			this.stretchAxes,
+			this.texelSizeRatio,
 			this.sourceSize,
 			this.previewSize
 		)
 		this.uvPreview?.update(this.mesh.geometry)
-		if (this.uvViewEnabled) this.resizeUvPreview()
 		this.updateMeshPivotOffset()
 	}
 
@@ -882,7 +882,7 @@ export class ModelPreviewScene {
 		value: number
 	): number {
 		const fullSpan = this.sourceBounds.max[stretchAxis.axis] - this.sourceBounds.min[stretchAxis.axis]
-		const minimumGap = Math.max(fullSpan / 1_000, 0.000001)
+		const minimumGap = getMinimumStretchBoxLength(fullSpan)
 		const box = stretchAxis.boxes[boxIndex]
 		if (!box) {
 			throw new Error(
@@ -892,10 +892,10 @@ export class ModelPreviewScene {
 		}
 		if (boundary === 'min') {
 			const previousMax = stretchAxis.boxes[boxIndex - 1]?.max ?? -Infinity
-			return round(Math.max(previousMax, Math.min(value, box.max - minimumGap)))
+			return roundStretchBoxValue(Math.max(previousMax, Math.min(value, box.max - minimumGap)))
 		}
 		const nextMin = stretchAxis.boxes[boxIndex + 1]?.min ?? Infinity
-		return round(Math.min(nextMin, Math.max(value, box.min + minimumGap)))
+		return roundStretchBoxValue(Math.min(nextMin, Math.max(value, box.min + minimumGap)))
 	}
 
 	private requireStretchAxis(axis: ModelGeometryAxis): ModelStretchAxis {
@@ -1073,7 +1073,7 @@ export class ModelPreviewScene {
 			this.editOverlay = null
 			this.setup.renderer.localClippingEnabled = false
 		}
-		this.setup.controls.enabled = !this.uvViewEnabled
+		this.setup.controls.enabled = true
 	}
 
 	private updateCameraScaledWidgets(): void {
@@ -1087,10 +1087,6 @@ export class ModelPreviewScene {
 				* pixelRadius / viewportHeight
 			widget.scale.setScalar(worldRadius / radius)
 		}
-	}
-
-	private resizeUvPreview(): void {
-		this.uvPreview?.resize(this.container.clientWidth, this.container.clientHeight)
 	}
 
 	private fitCamera(modelId: string): void {

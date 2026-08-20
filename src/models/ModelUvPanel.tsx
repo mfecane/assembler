@@ -1,6 +1,6 @@
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Switch } from '@/components/ui/switch'
+import { Checkbox } from '@/components/ui/checkbox'
 import { ModelPanelSection } from '@/models/ModelPanelSection'
 import type { ModelUvAttribute } from '@/models/ModelUvAttribute'
 import { CheckCircle2, CircleSlash2, Grid3X3, TriangleAlert } from 'lucide-react'
@@ -53,15 +53,15 @@ export function ModelUvPanel({
 					</p>
 				</div>
 			</div>
-			<div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3">
-				<Label htmlFor="uv-view-enabled">UV view</Label>
-				<Switch
+			<div className="mt-3 flex items-center gap-3 border-t border-border pt-3">
+				<Checkbox
 					id="uv-view-enabled"
 					data-id="uv-view-enabled"
 					checked={uvViewEnabled}
 					disabled={disabled || !hasUvs}
-					onCheckedChange={onUvViewChange}
+					onCheckedChange={(checked) => onUvViewChange(checked === true)}
 				/>
+				<Label htmlFor="uv-view-enabled">Preview UVs</Label>
 			</div>
 		</ModelPanelSection>
 	)
