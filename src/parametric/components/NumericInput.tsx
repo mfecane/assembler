@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 import { ChevronsLeftRight } from 'lucide-react'
-import { type ComponentProps, useEffect, useRef, useState } from 'react'
+import { type ComponentProps, useCallback, useEffect, useRef, useState } from 'react'
 
 interface NumericInputProps extends Omit<
 	ComponentProps<'input'>,
@@ -33,18 +33,70 @@ export function NumericInput({
 }: NumericInputProps) {
 	const [draft, setDraft] = useState(String(value))
 	const isEditing = useRef(false)
-	const dragStart = useRef<{ x: number; value: number } | null>(null)
+	const dragHandle = useRef<HTMLButtonElement>(null)
+	const dragPointerId = useRef<number | null>(null)
+	const dragFrameValue = useRef(value)
 	const lastDragValue = useRef(value)
+	const dragSettings = useRef({ disabled, dragStep, min, max, onValueChange, roundStep })
+	dragSettings.current = { disabled, dragStep, min, max, onValueChange, roundStep }
+	const stopDragging = useCallback(() => {
+		const handle = dragHandle.current
+		const pointerId = dragPointerId.current
+		if (handle && pointerId !== null && handle.hasPointerCapture(pointerId)) {
+			handle.releasePointerCapture(pointerId)
+		}
+		if (document.pointerLockElement === handle) document.exitPointerLock()
+		dragPointerId.current = null
+	}, [])
 
 	useEffect(() => {
 		if (!isEditing.current) setDraft(String(value))
 	}, [value])
 	useEffect(() => {
 		if (!disabled) return
-		dragStart.current = null
+		stopDragging()
 		isEditing.current = false
 		setDraft(String(value))
-	}, [disabled, value])
+	}, [disabled, stopDragging, value])
+	useEffect(() => {
+		const handleMouseMove = (event: MouseEvent) => {
+			const settings = dragSettings.current
+			if (settings.disabled || document.pointerLockElement !== dragHandle.current) return
+			const precision = event.ctrlKey || event.metaKey
+			const effectiveStep = precision ? settings.dragStep / 10 : settings.dragStep
+			const delta = event.movementX / DRAG_PIXELS_PER_STEP * effectiveStep
+			dragFrameValue.current = constrain(
+				dragFrameValue.current + delta,
+				settings.min,
+				settings.max
+			)
+			const constrainedValue = roundToStep(dragFrameValue.current, settings.roundStep)
+			if (constrainedValue === lastDragValue.current) return
+			lastDragValue.current = constrainedValue
+			settings.onValueChange(constrainedValue)
+		}
+		const handleMouseUp = () => {
+			if (dragPointerId.current !== null) stopDragging()
+		}
+		const handlePointerCancel = (event: PointerEvent) => {
+			if (event.pointerId === dragPointerId.current) stopDragging()
+		}
+		const handlePointerLockChange = () => {
+			if (document.pointerLockElement !== dragHandle.current) stopDragging()
+		}
+
+		document.addEventListener('mousemove', handleMouseMove)
+		document.addEventListener('mouseup', handleMouseUp)
+		document.addEventListener('pointercancel', handlePointerCancel)
+		document.addEventListener('pointerlockchange', handlePointerLockChange)
+		return () => {
+			document.removeEventListener('mousemove', handleMouseMove)
+			document.removeEventListener('mouseup', handleMouseUp)
+			document.removeEventListener('pointercancel', handlePointerCancel)
+			document.removeEventListener('pointerlockchange', handlePointerLockChange)
+			stopDragging()
+		}
+	}, [stopDragging])
 
 	const applyValue = (value: number): number | undefined => {
 		if (disabled) return undefined
@@ -94,6 +146,7 @@ export function NumericInput({
 				}}
 			/>
 			<button
+				ref={dragHandle}
 				type="button"
 				data-id={id ? `${id}-drag-handle` : 'number-drag-handle'}
 				className={cn(
@@ -106,32 +159,10 @@ export function NumericInput({
 				onPointerDown={(event) => {
 					if (disabled) return
 					event.currentTarget.setPointerCapture(event.pointerId)
-					dragStart.current = { x: event.clientX, value }
+					dragPointerId.current = event.pointerId
+					dragFrameValue.current = value
 					lastDragValue.current = value
-				}}
-				onPointerMove={(event) => {
-					if (disabled || !dragStart.current || !event.currentTarget.hasPointerCapture(event.pointerId))
-						return
-					const precision = event.ctrlKey || event.metaKey
-					const effectiveStep = precision ? dragStep / 10 : dragStep
-					const stepCount = Math.round((event.clientX - dragStart.current.x) / DRAG_PIXELS_PER_STEP)
-					const nextValue = roundToStep(dragStart.current.value + stepCount * effectiveStep, roundStep)
-					const constrainedValue = constrain(nextValue, min, max)
-					if (constrainedValue === lastDragValue.current) return
-					lastDragValue.current = constrainedValue
-					onValueChange(constrainedValue)
-				}}
-				onPointerUp={(event) => {
-					dragStart.current = null
-					if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-						event.currentTarget.releasePointerCapture(event.pointerId)
-					}
-				}}
-				onPointerCancel={() => {
-					dragStart.current = null
-				}}
-				onLostPointerCapture={() => {
-					dragStart.current = null
+					void event.currentTarget.requestPointerLock()
 				}}
 			>
 				<ChevronsLeftRight aria-hidden="true" className="size-4" />

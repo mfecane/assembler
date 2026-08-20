@@ -1,31 +1,16 @@
-import { useMemo, useState, useSyncExternalStore } from 'react'
-import { ChevronDown, ChevronRight, FileBox, Network } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from '@/components/ui/popover'
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from '@/components/ui/tooltip'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import type { EditorController } from '@/parametric/editor/EditorController'
 import {
 	buildGraphDependencyForest,
 	type GraphDependencyTreeItem,
 } from '@/parametric/components/buildGraphDependencyForest'
+import type { EditorController } from '@/parametric/editor/EditorController'
+import { ChevronDown, ChevronRight, FileBox, Network } from 'lucide-react'
+import { useMemo, useState, useSyncExternalStore } from 'react'
 
-export function GraphTree({
-	controller,
-	disabled = false,
-}: {
-	controller: EditorController
-	disabled?: boolean
-}) {
+export function GraphTree({ controller, disabled = false }: { controller: EditorController; disabled?: boolean }) {
 	const { document, activeGraphId, activeRootGraphId, revision } = useSyncExternalStore(
 		controller.subscribe,
 		controller.getSnapshot,
@@ -33,10 +18,7 @@ export function GraphTree({
 	)
 	const activeGraph = document.requireGraph(activeGraphId)
 	const [open, setOpen] = useState(false)
-	const { rootTrees, unusedTrees } = useMemo(
-		() => buildGraphDependencyForest(document),
-		[document, revision]
-	)
+	const { rootTrees, unusedTrees } = useMemo(() => buildGraphDependencyForest(document), [document, revision])
 	const openGraph = (graphId: string, rootGraphId?: string) => {
 		controller.openGraph(graphId, rootGraphId)
 		setOpen(false)
@@ -53,7 +35,7 @@ export function GraphTree({
 								type="button"
 								variant="outline"
 								size="sm"
-								className="min-w-0 max-w-64 justify-start gap-2 bg-muted/40 px-3 shadow-none"
+								className="w-42 max-w-64 justify-start gap-2 bg-muted/40 px-3 shadow-none"
 								disabled={disabled}
 								aria-label="Select graph"
 								aria-haspopup="listbox"
@@ -147,8 +129,7 @@ function GraphTreeBranch({
 	depth?: number
 	onOpen: (graphId: string, rootGraphId?: string) => void
 }) {
-	const active = tree.graph.id === activeGraphId
-		&& (!rootGraphId || rootGraphId === activeRootGraphId)
+	const active = tree.graph.id === activeGraphId && (!rootGraphId || rootGraphId === activeRootGraphId)
 
 	return (
 		<div data-id={`graph-selector-branch-${tree.graph.id}`}>
@@ -168,9 +149,11 @@ function GraphTreeBranch({
 				title={tree.graph.label}
 			>
 				{depth > 0 && <ChevronRight className="h-3 w-3 shrink-0 opacity-50" />}
-				{tree.root
-					? <FileBox className="h-3.5 w-3.5 shrink-0" />
-					: <Network className="h-3.5 w-3.5 shrink-0" />}
+				{tree.root ? (
+					<FileBox className="h-3.5 w-3.5 shrink-0" />
+				) : (
+					<Network className="h-3.5 w-3.5 shrink-0" />
+				)}
 				<span className="truncate">{tree.graph.label}</span>
 			</Button>
 			{tree.children.map((child) => (

@@ -8,26 +8,33 @@ import { VectorComponentSelector } from '@/parametric/components/VectorComponent
 import { useFlowGraph, type ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 import { ThreeViewport } from '@/parametric/three/ThreeViewport'
 import type { Editor } from '@/parametric/editor/Editor'
-import { EditorProvider } from '@/parametric/editor/react/EditorContext'
+import { EditorProvider, useReactBridgeSnapshot } from '@/parametric/editor/react/EditorContext'
 import { nodeViewTypes } from '@/parametric/nodes/nodeViewRegistry'
 import { cn } from '@/lib/utils'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
 import { useEditorShortcuts } from '@/parametric/editor/react/useEditorShortcuts'
+import { ConfiguratorPanel } from '@/parametric/components/ConfiguratorPanel'
 
 function ParametricEditorContent() {
 	useEditorShortcuts()
 	const { activeGraphId } = useGraphSnapshot()
+	const { previewNodeId } = useReactBridgeSnapshot()
 
 	return (
-		<ResizableSplitView
-			className="h-full w-full"
-			first={<GraphCanvas key={activeGraphId} />}
-			second={
-				<div className="h-full">
-					<ThreeViewport />
-				</div>
-			}
-		/>
+		<div data-id="graph-editor-workspace" className="h-full min-h-0">
+			<ResizableSplitView
+				className="h-full"
+				first={<GraphCanvas key={activeGraphId} />}
+				second={
+					<div data-id="parametric-viewport-workspace" className="flex h-full min-w-0">
+						<div className="min-w-0 flex-1">
+							<ThreeViewport />
+						</div>
+						{!previewNodeId && <ConfiguratorPanel />}
+					</div>
+				}
+			/>
+		</div>
 	)
 }
 
@@ -68,7 +75,13 @@ export function ParametricEditor({
 	className?: string
 }) {
 	return (
-		<div data-id="parametric-editor" className={cn('h-screen w-screen', className)}>
+		<div
+			id="graph-editor-panel"
+			data-id="parametric-editor"
+			role="tabpanel"
+			aria-labelledby="graph-editor-tab"
+			className={cn('h-screen w-screen', className)}
+		>
 			<TooltipProvider>
 				<EditorProvider editor={editor}>
 					<ParametricEditorContent />

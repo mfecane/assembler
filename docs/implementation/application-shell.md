@@ -22,14 +22,18 @@ The projects header contains the active client selector. Its value determines wh
 default graph is used when a project is created and persists in the `assembler.selected-client`
 local-storage entry. MaxShelf is selected when no supported stored value exists.
 
+The project editor header owns only project-level concerns: project navigation and identity, editor
+selection, save actions, whole-project JSON import/export, and the authenticated user menu. Graph
+selection and graph actions stay inside the Graph Editor workspace.
+
 `HashRouter` is mounted inside the Supabase configuration check and outside the auth-aware
 application. Dashboard, project-editor, and model-editor components remain unaware of URL parsing.
 
 ## Authenticated user menu
 
 The user menu displays the Supabase `avatar_url` through the shadcn Avatar primitive and falls
-back to initials derived from the user's name or email. The email and sign-out action remain
-visible beside the avatar.
+back to initials derived from the user's name or email. The circular avatar is the only header
+trigger; it opens an account menu containing the user's name, email, and sign-out action.
 
 ## Component conventions
 

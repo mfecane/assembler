@@ -36,6 +36,7 @@ export interface SceneAssetInstanceMetadata {
 	assetId: string
 	assetKind: 'catalog' | 'primitive'
 	size: Vector3Snapshot
+	boundsCenter: Vector3Snapshot
 	transform: Matrix4Snapshot
 	originNode: SceneNodeInstanceReference
 	material?: SceneMaterialMetadata

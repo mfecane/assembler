@@ -1,21 +1,8 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import {
-	ArrowLeft,
-	Check,
-	ChevronDown,
-	ChevronRight,
-	Copy,
-	Eraser,
-	FolderKanban,
-	Loader2,
-	MoreHorizontal,
-	Pencil,
-	Plus,
-	Save,
-	Trash2,
-} from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ArrowLeft, Check, ChevronDown, Copy, FolderKanban, Loader2, Save } from 'lucide-react'
+import type { User } from '@supabase/supabase-js'
+import { UserMenu } from '@/auth/UserMenu'
 import { Button } from '@/components/ui/button'
-import { ButtonGroup } from '@/components/ui/button-group'
 import {
 	Dialog,
 	DialogContent,
@@ -25,41 +12,32 @@ import {
 	DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from '@/components/ui/popover'
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from '@/components/ui/tooltip'
-import { UserMenu } from '@/auth/UserMenu'
-import { ConfirmationDialog } from '@/parametric/components/ConfirmationDialog'
-import { CreateGraphDialog } from '@/parametric/components/CreateGraphDialog'
-import { GraphEditDialog } from '@/parametric/components/GraphEditDialog'
-import { GraphJsonControls } from '@/parametric/components/GraphJsonControls'
-import { GraphTree } from '@/parametric/components/GraphTree'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import type { EditorController } from '@/parametric/editor/EditorController'
-import { GraphInstanceGraphNode } from '@/parametric/model/GraphNode'
-import type { User } from '@supabase/supabase-js'
+import {
+	ProjectEditorTabs,
+	type ProjectEditorMode,
+} from '@/projects/ProjectEditorTabs'
+import { ProjectJsonControls } from '@/projects/ProjectJsonControls'
+import { cn } from '@/lib/utils'
 
 export type SaveState = 'clean' | 'dirty' | 'saving' | 'saved' | 'failed'
 
 export function ProjectToolbar({
 	name,
 	user,
+	editorMode,
+	controller,
 	saveState,
 	saveError,
-	controller,
 	projectRenamePending,
 	projectRenameError,
 	saveAsPending,
 	saveAsError,
 	navigationDisabled,
 	onBack,
+	onEditorModeChange,
 	onSave,
 	onPrepareSaveAs,
 	onSaveAs,
@@ -68,15 +46,17 @@ export function ProjectToolbar({
 }: {
 	name: string
 	user: User
+	editorMode: ProjectEditorMode
+	controller: EditorController
 	saveState: SaveState
 	saveError: string | null
-	controller: EditorController
 	projectRenamePending: boolean
 	projectRenameError: string | null
 	saveAsPending: boolean
 	saveAsError: string | null
 	navigationDisabled: boolean
 	onBack: () => void
+	onEditorModeChange: (mode: ProjectEditorMode) => void
 	onSave: () => void
 	onPrepareSaveAs: () => void
 	onSaveAs: (name: string) => void
@@ -87,7 +67,6 @@ export function ProjectToolbar({
 	const [saveMenuOpen, setSaveMenuOpen] = useState(false)
 	const [saveAsOpen, setSaveAsOpen] = useState(false)
 	const [saveAsName, setSaveAsName] = useState(`${name} copy`)
-	const [createGraphOpen, setCreateGraphOpen] = useState(false)
 
 	const openSaveAs = () => {
 		setSaveAsName(`${name} copy`)
@@ -108,7 +87,7 @@ export function ProjectToolbar({
 				data-id="project-toolbar"
 				className="flex min-h-14 items-center justify-between gap-4 border-b border-border bg-surface px-3"
 			>
-				<div className="flex min-w-0 items-center gap-2">
+				<div className="flex min-w-0 items-center gap-3">
 					<Button
 						data-id="project-back-button"
 						type="button"
@@ -133,55 +112,24 @@ export function ProjectToolbar({
 								onRename={onRename}
 							/>
 							{projectRenameError && (
-								<details
-									data-id="project-rename-error-details"
-									className="relative text-xs"
+								<ErrorDetails
+									dataId="project-rename-error-details"
+									summary="Project rename error details"
+									error={projectRenameError}
 									open
-								>
-									<summary className="cursor-pointer text-danger underline underline-offset-2">
-										Project rename error details
-									</summary>
-									<pre className="absolute left-0 top-full z-50 mt-2 max-h-80 w-[min(40rem,calc(100vw-1.5rem))] overflow-auto whitespace-pre-wrap rounded-md border border-danger/40 bg-surface p-3 text-left text-xs text-foreground shadow-lg">
-										{projectRenameError}
-									</pre>
-								</details>
+								/>
 							)}
 							{saveState === 'failed' && saveError && (
-								<details data-id="project-save-error-details" className="relative text-xs">
-									<summary className="cursor-pointer text-danger underline underline-offset-2">
-										Save error details
-									</summary>
-									<pre className="absolute left-0 top-full z-50 mt-2 max-h-80 w-[min(40rem,calc(100vw-1.5rem))] overflow-auto whitespace-pre-wrap rounded-md border border-danger/40 bg-surface p-3 text-left text-xs text-foreground shadow-lg">
-										{saveError}
-									</pre>
-								</details>
+								<ErrorDetails
+									dataId="project-save-error-details"
+									summary="Save error details"
+									error={saveError}
+								/>
 							)}
 						</div>
 					</div>
-					<ChevronRight
-						className="size-4 shrink-0 text-muted-foreground/60"
-						aria-hidden="true"
-					/>
-					<div
-						data-id="project-assembly-controls"
-						className="flex items-center gap-1"
-					>
-						<AssemblyHeaderControls
-							controller={controller}
-							disabled={projectRenamePending || saveState === 'saving'}
-						/>
-						<Button
-							data-id="add-graph-button"
-							type="button"
-							variant="outline"
-							size="sm"
-							disabled={projectRenamePending || saveState === 'saving'}
-							onClick={() => setCreateGraphOpen(true)}
-						>
-							<Plus />
-							New…
-						</Button>
-					</div>
+					<div className="h-6 w-px shrink-0 bg-border" aria-hidden="true" />
+					<ProjectEditorTabs value={editorMode} onValueChange={onEditorModeChange} />
 				</div>
 				<div className="flex items-center gap-3">
 					<div data-id="project-save-controls" className="flex items-center">
@@ -219,18 +167,14 @@ export function ProjectToolbar({
 									type="button"
 									size="sm"
 									className="w-8 rounded-l-none border-l border-primary-foreground/25 px-0"
-									disabled={saveState === 'saving' || projectRenamePending || saveAsPending}
+									disabled={saveDisabled}
 									aria-label="Open save menu"
 									aria-haspopup="menu"
 								>
 									<ChevronDown className="size-3.5" />
 								</Button>
 							</PopoverTrigger>
-							<PopoverContent
-								data-id="project-save-menu"
-								align="end"
-								className="w-48 p-1"
-							>
+							<PopoverContent data-id="project-save-menu" align="end" className="w-48 p-1">
 								<div role="menu" aria-label="Project save actions">
 									<Button
 										data-id="project-save-as-menu-item"
@@ -248,12 +192,12 @@ export function ProjectToolbar({
 						</Popover>
 					</div>
 					<TooltipProvider>
-						<GraphJsonControls controller={controller} />
+						<ProjectJsonControls projectName={name} controller={controller} />
 					</TooltipProvider>
 					<div className="h-6 w-px bg-border" aria-hidden="true" />
 					<UserMenu
 						user={user}
-						disabled={saveState === 'saving' || projectRenamePending || saveAsPending}
+						disabled={saveDisabled}
 						onSignOut={onSignOut}
 					/>
 				</div>
@@ -298,7 +242,12 @@ export function ProjectToolbar({
 								<summary className="cursor-pointer text-danger underline underline-offset-2">
 									Save as error details
 								</summary>
-								<pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap rounded-md border border-danger/40 bg-surface p-3 text-left text-xs text-foreground">
+								<pre
+									className={cn(
+										'mt-2 max-h-56 overflow-auto whitespace-pre-wrap rounded-md border',
+										'border-danger/40 bg-surface p-3 text-left text-xs text-foreground'
+									)}
+								>
 									{saveAsError}
 								</pre>
 							</details>
@@ -325,203 +274,36 @@ export function ProjectToolbar({
 					</form>
 				</DialogContent>
 			</Dialog>
-			<CreateGraphDialog
-				open={createGraphOpen}
-				onOpenChange={setCreateGraphOpen}
-				onCreate={(name, root) => {
-					if (root) controller.addRootGraph(name)
-					else controller.addGraph(name)
-				}}
-			/>
 		</>
 	)
 }
 
-function AssemblyHeaderControls({
-	controller,
-	disabled,
+function ErrorDetails({
+	dataId,
+	summary,
+	error,
+	open = false,
 }: {
-	controller: EditorController
-	disabled: boolean
+	dataId: string
+	summary: string
+	error: string
+	open?: boolean
 }) {
-	const { document, activeGraphId } = useSyncExternalStore(
-		controller.subscribe,
-		controller.getSnapshot,
-		controller.getSnapshot
-	)
-	const activeGraph = document.requireGraph(activeGraphId)
-	const canRemoveGraph = controller.canRemoveGraph(activeGraphId)
-	const isRootGraph = document.isRootGraph(activeGraphId)
-	const isLastRootGraph = isRootGraph && document.getRootGraphs().length === 1
-	const referencingGraphs = document.getGraphs().flatMap((graph) => {
-		const instanceCount = graph.model.getNodes().filter(
-			(node) => node instanceof GraphInstanceGraphNode && node.getGraphId() === activeGraphId
-		).length
-		return instanceCount > 0 ? [{ label: graph.label, instanceCount }] : []
-	})
-	const graphInstanceCount = referencingGraphs.reduce(
-		(total, graph) => total + graph.instanceCount,
-		0
-	)
-	const deleteDisabledReason = isLastRootGraph
-		? `“${activeGraph.label}” is the project's only root assembly and cannot be deleted.`
-		: !canRemoveGraph
-			? `“${activeGraph.label}” is used by ${graphInstanceCount} instance${graphInstanceCount === 1 ? '' : 's'} in ${referencingGraphs.map((graph) => `“${graph.label}”`).join(', ')}. Remove ${graphInstanceCount === 1 ? 'that instance' : 'those instances'} before deleting the assembly.`
-			: 'Delete current assembly'
-	const [actionMenuOpen, setActionMenuOpen] = useState(false)
-	const [editOpen, setEditOpen] = useState(false)
-	const [confirmingClear, setConfirmingClear] = useState(false)
-	const [confirmingRemove, setConfirmingRemove] = useState(false)
-
-	useEffect(() => {
-		setEditOpen(false)
-		setActionMenuOpen(false)
-		setConfirmingClear(false)
-		setConfirmingRemove(false)
-	}, [activeGraphId, activeGraph.label])
-
-	const openEdit = () => {
-		setActionMenuOpen(false)
-		setEditOpen(true)
-	}
-
 	return (
-		<>
-			<ButtonGroup
-				data-id="active-assembly-header-controls"
-				className="min-w-0"
-				aria-label={`Current assembly: ${activeGraph.label}`}
+		<details data-id={dataId} className="relative text-xs" open={open}>
+			<summary className="cursor-pointer text-danger underline underline-offset-2">
+				{summary}
+			</summary>
+			<pre
+				className={cn(
+					'absolute left-0 top-full z-50 mt-2 max-h-80',
+					'w-[min(40rem,calc(100vw-1.5rem))] overflow-auto whitespace-pre-wrap rounded-md border',
+					'border-danger/40 bg-surface p-3 text-left text-xs text-foreground shadow-lg'
+				)}
 			>
-				<GraphTree controller={controller} disabled={disabled} />
-				<Popover open={actionMenuOpen} onOpenChange={setActionMenuOpen}>
-					<PopoverTrigger asChild>
-						<Button
-							data-id="assembly-actions-menu-button"
-							type="button"
-							variant="outline"
-							size="icon"
-							className="h-8 w-8 bg-muted/40 text-muted-foreground shadow-none"
-							disabled={disabled}
-							aria-label="Open assembly actions"
-							aria-haspopup="menu"
-						>
-							<MoreHorizontal />
-						</Button>
-					</PopoverTrigger>
-					<PopoverContent
-						data-id="assembly-actions-menu"
-						align="end"
-						className="w-52 p-1"
-					>
-						<div role="menu" aria-label={`Actions for ${activeGraph.label}`}>
-							<Button
-								data-id="edit-graph-menu-item"
-								type="button"
-								variant="ghost"
-								className="h-9 w-full justify-start px-2 font-normal"
-								role="menuitem"
-								onClick={openEdit}
-							>
-								<Pencil />
-								Edit graph…
-							</Button>
-							<Button
-								data-id="copy-assembly-menu-item"
-								type="button"
-								variant="ghost"
-								className="h-9 w-full justify-start px-2 font-normal"
-								role="menuitem"
-								onClick={() => {
-									setActionMenuOpen(false)
-									controller.copyGraph(activeGraph.id)
-								}}
-							>
-								<Copy />
-								Copy assembly
-							</Button>
-							<Button
-								data-id="clear-assembly-menu-item"
-								type="button"
-								variant="ghost"
-								className="h-9 w-full justify-start px-2 font-normal text-destructive hover:text-destructive"
-								role="menuitem"
-								onClick={() => {
-									setActionMenuOpen(false)
-									setConfirmingClear(true)
-								}}
-							>
-								<Eraser />
-								Clear assembly…
-							</Button>
-							<TooltipProvider delayDuration={300}>
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<span
-											data-id="delete-assembly-tooltip-trigger"
-											className="block"
-											tabIndex={canRemoveGraph ? -1 : 0}
-										>
-											<Button
-												data-id="delete-assembly-menu-item"
-												type="button"
-												variant="ghost"
-												className="h-9 w-full justify-start px-2 font-normal text-destructive hover:text-destructive"
-												role="menuitem"
-												disabled={!canRemoveGraph}
-												onClick={() => {
-													setActionMenuOpen(false)
-													setConfirmingRemove(true)
-												}}
-											>
-												<Trash2 />
-												Delete assembly
-											</Button>
-										</span>
-									</TooltipTrigger>
-									<TooltipContent side="right" className="max-w-80">
-										{deleteDisabledReason}
-									</TooltipContent>
-								</Tooltip>
-							</TooltipProvider>
-						</div>
-					</PopoverContent>
-				</Popover>
-			</ButtonGroup>
-			<GraphEditDialog
-				open={editOpen}
-				graphId={activeGraph.id}
-				graphLabel={activeGraph.label}
-				isRoot={isRootGraph}
-				isOnlyRoot={isLastRootGraph}
-				configurationControlCount={
-					isRootGraph ? document.getConfigurationControls(activeGraph.id).length : 0
-				}
-				onOpenChange={setEditOpen}
-				onSave={(name, root) => controller.editGraph(activeGraph.id, name, root)}
-			/>
-			<ConfirmationDialog
-				open={confirmingClear}
-				title={`Clear "${activeGraph.label}"?`}
-				message="All nodes and connections except the Output node will be removed."
-				confirmLabel="Clear assembly"
-				onCancel={() => setConfirmingClear(false)}
-				onConfirm={() => {
-					controller.clearGraph()
-					setConfirmingClear(false)
-				}}
-			/>
-			<ConfirmationDialog
-				open={confirmingRemove}
-				title={`Delete "${activeGraph.label}"?`}
-				message="The assembly and all of its nodes and connections will be permanently removed."
-				confirmLabel="Delete assembly"
-				onCancel={() => setConfirmingRemove(false)}
-				onConfirm={() => {
-					controller.removeGraph(activeGraph.id)
-					setConfirmingRemove(false)
-				}}
-			/>
-		</>
+				{error}
+			</pre>
+		</details>
 	)
 }
 

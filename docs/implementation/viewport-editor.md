@@ -16,6 +16,8 @@ The root `Editor` owns the `ViewportEditor` rather than leaving lifetime to its 
 transform values remain on transform-capable graph nodes and are updated through `EditorController`.
 Graph evaluation supplies plain scene metadata to `ViewportScene`; its synchronizer resolves the
 assets and builds the corresponding Three.js meshes.
+The scene uses the studio KTX2 texture for image-based lighting and reflections without assigning
+it as the scene background, preserving the Graph Editor's technical background and grid.
 
 Evaluation-triggering graph changes are debounced for 300 milliseconds. Preview evaluation runs as
 an asynchronous scheduled task with a monotonically increasing sequence; a newer request cancels a

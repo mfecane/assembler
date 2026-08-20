@@ -7,6 +7,7 @@ import type {
 	GraphInputValue,
 } from '@/parametric/model/GraphDocumentModel'
 import type { Vector3Snapshot } from '@/parametric/model/Vector3Value'
+import { createConfigurationFields } from '@/parametric/model/createConfigurationFields'
 
 export function useConfiguration() {
 	const controller = useEditorController()
@@ -14,85 +15,17 @@ export function useConfiguration() {
 	const activeGraph = document.requireGraph(activeGraphId)
 	const isRootGraphOpen = activeGraphId === activeRootGraphId
 	const rootGraph = document.requireGraph(activeRootGraphId)
+	const templates = isRootGraphOpen
+		? document.getConfigurationTemplates(activeRootGraphId)
+		: []
 	const values = isRootGraphOpen
-		? document.getConfigurationControls(activeRootGraphId).reduce<ConfigurationField[]>(
-		(fields, control) => {
-			const input = rootGraph.inputs.find((candidate) => candidate.id === control.inputId)
-			const value = input
-				? document.getRootInputValue(activeRootGraphId, input.id)
-				: undefined
-			if (!input || value === undefined) return fields
-			if (input.valueType === 'number' && typeof value === 'number' && control.type === 'number') {
-				fields.push({
-					id: input.id,
-					type: 'number',
-					label: control.label,
-					value,
-					step: control.step,
-				})
-			}
-			if (input.valueType === 'number' && typeof value === 'number' && control.type === 'slider') {
-				fields.push({
-					id: input.id,
-					type: 'slider',
-					label: control.label,
-					value,
-					min: control.min,
-					max: control.max,
-					step: control.step,
-				})
-			}
-			if (
-				input.valueType === 'numberArray'
-				&& Array.isArray(value)
-				&& control.type === 'numberArray'
-			) {
-				fields.push({
-					id: input.id,
-					type: 'numberArray',
-					label: control.label,
-					value,
-					labels: control.labels,
-					total: control.total,
-					step: control.step,
-				})
-			}
-			if (input.valueType === 'enum' && typeof value === 'number' && control.type === 'select') {
-				fields.push({
-					id: input.id,
-					type: 'enum',
-					label: control.label,
-					value,
-					options: document.getInputOptions(input),
-				})
-			}
-			if (
-				input.valueType === 'materialInstance'
-				&& typeof value === 'string'
-				&& control.type === 'material'
-			) {
-				fields.push({
-					id: input.id,
-					type: 'material',
-					label: control.label,
-					value,
-				})
-			}
-			if (
-				input.valueType === 'boolean'
-				&& typeof value === 'boolean'
-				&& control.type === 'switch'
-			) {
-				fields.push({
-					id: input.id,
-					type: 'boolean',
-					label: control.label,
-					value,
-				})
-			}
-			return fields
-		},
-		[]
+		? createConfigurationFields(
+			document,
+			activeRootGraphId,
+			Object.fromEntries(rootGraph.inputs.flatMap((input) => {
+				const value = document.getRootInputValue(activeRootGraphId, input.id)
+				return value === undefined ? [] : [[input.id, value]]
+			}))
 		)
 		: activeGraph.inputs.flatMap((input) => {
 			if (input.defaultValue === undefined || input.valueType === 'geometry') return []
@@ -104,59 +37,33 @@ export function useConfiguration() {
 				document.getInputOptions(input)
 			)
 		})
-	const setNumberValue = useCallback(
-		(id: string, value: number) => (
+	const setValue = useCallback(
+		(id: string, value: GraphInputValue) => (
 			setInputValue(controller, activeGraphId, isRootGraphOpen, id, value)
 		),
 		[activeGraphId, controller, isRootGraphOpen]
 	)
-	const setEnumValue = useCallback(
-		(id: string, value: number) => (
-			setInputValue(controller, activeGraphId, isRootGraphOpen, id, value)
+	const createTemplate = useCallback(
+		(label: string) => controller.createConfigurationTemplate(activeRootGraphId, label),
+		[activeRootGraphId, controller]
+	)
+	const removeTemplate = useCallback(
+		(templateId: string) => controller.removeConfigurationTemplate(activeRootGraphId, templateId),
+		[activeRootGraphId, controller]
+	)
+	const updateTemplate = useCallback(
+		(templateId: string) => controller.updateConfigurationTemplate(activeRootGraphId, templateId),
+		[activeRootGraphId, controller]
+	)
+	const renameTemplate = useCallback(
+		(templateId: string, label: string) => (
+			controller.renameConfigurationTemplate(activeRootGraphId, templateId, label)
 		),
-		[activeGraphId, controller, isRootGraphOpen]
+		[activeRootGraphId, controller]
 	)
-	const setMaterialValue = useCallback(
-		(id: string, value: string) => (
-			setInputValue(controller, activeGraphId, isRootGraphOpen, id, value)
-		),
-		[activeGraphId, controller, isRootGraphOpen]
-	)
-	const setColorValue = useCallback(
-		(id: string, value: string) => (
-			setInputValue(controller, activeGraphId, isRootGraphOpen, id, value)
-		),
-		[activeGraphId, controller, isRootGraphOpen]
-	)
-	const setVector3Value = useCallback(
-		(id: string, value: Vector3Snapshot) => (
-			setInputValue(controller, activeGraphId, isRootGraphOpen, id, value)
-		),
-		[activeGraphId, controller, isRootGraphOpen]
-	)
-	const setBooleanValue = useCallback(
-		(id: string, value: boolean) => setInputValue(controller, activeGraphId, isRootGraphOpen, id, value),
-		[activeGraphId, controller, isRootGraphOpen]
-	)
-	const setNumberArrayValue = useCallback(
-		(id: string, index: number, value: number) => {
-			const field = values.find((candidate) => candidate.id === id)
-			if (field?.type !== 'numberArray') return
-			const next = field.value.map((item, candidateIndex) =>
-				candidateIndex === index
-					? Math.max(0, value)
-					: item
-			)
-			if (field.type === 'numberArray' && field.total !== undefined) {
-				const otherTotal = field.value.reduce(
-					(total, item, candidateIndex) => total + (candidateIndex === index ? 0 : item),
-					0
-				)
-				next[index] = Math.min(next[index], Math.max(0, field.total - otherTotal))
-			}
-			setInputValue(controller, activeGraphId, isRootGraphOpen, id, next)
-		},
-		[activeGraphId, controller, isRootGraphOpen, values]
+	const applyTemplate = useCallback(
+		(templateId: string) => controller.applyConfigurationTemplate(activeRootGraphId, templateId),
+		[activeRootGraphId, controller]
 	)
 
 	return {
@@ -164,13 +71,13 @@ export function useConfiguration() {
 		rootGraphId: activeRootGraphId,
 		rootLabel: isRootGraphOpen ? rootGraph.label : activeGraph.label,
 		values,
-		setNumberValue,
-		setEnumValue,
-		setMaterialValue,
-		setColorValue,
-		setVector3Value,
-		setBooleanValue,
-		setNumberArrayValue,
+		templates,
+		setValue,
+		createTemplate,
+		removeTemplate,
+		updateTemplate,
+		renameTemplate,
+		applyTemplate,
 	}
 }
 

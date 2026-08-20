@@ -48,6 +48,9 @@ import type { MeshCatalog, MeshDescriptor } from '@/parametric/model/MeshCatalog
 import type { MaterialCatalog } from '@/parametric/model/MaterialCatalog'
 import type { CreatableNodeDefinition, NodeRegistry } from '@/parametric/model/NodeDefinition'
 import { StretchableAssetMetadata } from '@/parametric/model/StretchableAssetMetadata'
+import { LayoutEvaluator } from '@/layout/LayoutEvaluator'
+import type { LayoutInstanceBoundsDocument, LayoutRangeDocument } from '@/layout/LayoutDocument'
+import type { LayoutAxisRole, RootGraphAxisBinding } from '@/layout/GraphLayoutMetadata'
 
 export type EditorControllerSnapshot = GraphStateSnapshot
 
@@ -73,6 +76,7 @@ export class EditorController {
 	private readonly state: GraphState
 	private readonly commandFactory: CommandFactory
 	private readonly evaluator: GraphEvaluator
+	private readonly layoutEvaluator: LayoutEvaluator
 
 	public constructor(
 		document: GraphDocumentModel,
@@ -84,6 +88,7 @@ export class EditorController {
 		this.state = new GraphState(document, nodeRegistry)
 		this.commandFactory = new CommandFactory(this.state)
 		this.evaluator = new GraphEvaluator(nodeRegistry, meshCatalog)
+		this.layoutEvaluator = new LayoutEvaluator(this.evaluator)
 		this.publishHistory()
 	}
 
@@ -836,6 +841,180 @@ export class EditorController {
 		return this.state.serialize()
 	}
 
+	public setActiveProduct(productId: string): void {
+		this.execute(
+			`Select product "${productId}"`,
+			() => this.document.setActiveProduct(productId)
+		)
+	}
+
+	public addProduct(layoutId: string, label?: string): void {
+		const layout = this.document.getLayout()
+		const number = layout.products.length + 1
+		const productId = `product-${crypto.randomUUID()}`
+		const productLabel = label?.trim() || `Product ${number}`
+		this.execute(
+			`Add product "${productLabel}"`,
+			() => this.document.addProduct({
+				id: productId,
+				label: productLabel,
+				layoutId,
+				instances: [],
+			})
+		)
+		this.setActiveProduct(productId)
+	}
+
+	public setProductLabel(productId: string, label: string): void {
+		this.execute(
+			`Rename product "${productId}"`,
+			() => this.document.setProductLabel(productId, label),
+			`product-label:${productId}`
+		)
+	}
+
+	public removeProduct(productId: string): void {
+		this.execute(`Delete product "${productId}"`, () => this.document.removeProduct(productId))
+	}
+
+	public setProductLayout(productId: string, layoutId: string): void {
+		this.execute(
+			`Assign layout "${layoutId}" to product "${productId}"`,
+			() => this.document.setProductLayout(productId, layoutId)
+		)
+	}
+
+	public setLayoutConfigurationHeader(layoutId: string, header: string): void {
+		this.execute(
+			`Set customer panel heading on product layout "${layoutId}"`,
+			() => this.document.setLayoutConfigurationHeader(layoutId, header),
+			`layout-configuration-header:${layoutId}`
+		)
+	}
+
+	public setLayoutSlot(layoutId: string, slotId: string): void {
+		this.execute(
+			`Assign slot "${slotId}" to product layout "${layoutId}"`,
+			() => this.document.setLayoutSlot(layoutId, slotId)
+		)
+	}
+
+	public addDefaultProductInstance(productId: string): void {
+		const instanceId = `layout-instance-${crypto.randomUUID()}`
+		this.execute(
+			`Add product item "${instanceId}" to product "${productId}"`,
+			() => this.document.addDefaultProductInstance(productId, instanceId)
+		)
+	}
+
+	public removeProductInstance(productId: string, instanceId: string): void {
+		this.execute(
+			`Remove product item "${instanceId}" from product "${productId}"`,
+			() => this.document.removeProductInstance(productId, instanceId)
+		)
+	}
+
+	public setProductInstanceGraph(
+		productId: string,
+		instanceId: string,
+		graphId: string
+	): void {
+		this.execute(
+			`Set graph "${graphId}" on product item "${instanceId}" in product "${productId}"`,
+			() => this.document.setProductInstanceGraph(productId, instanceId, graphId)
+		)
+	}
+
+	public setProductInstanceInputValue(
+		productId: string,
+		instanceId: string,
+		inputId: string,
+		value: GraphInputValue
+	): void {
+		this.execute(
+			`Set input "${inputId}" on product item "${instanceId}" in product "${productId}"`,
+			() => this.document.setProductInstanceInputValue(productId, instanceId, inputId, value),
+			`product-input:${productId}:${instanceId}:${inputId}`
+		)
+	}
+
+	public setLayoutSlotGraphs(slotId: string, graphIds: string[]): void {
+		this.execute(
+			`Set allowed graphs on layout slot definition "${slotId}"`,
+			() => this.document.setLayoutSlotGraphs(slotId, graphIds)
+		)
+	}
+
+	public setLayoutSlotLabel(slotId: string, label: string): void {
+		this.execute(
+			`Rename slot "${slotId}"`,
+			() => this.document.setLayoutSlotLabel(slotId, label),
+			`layout-slot-label:${slotId}`
+		)
+	}
+
+	public addLayoutSlot(label: string): string {
+		const slotId = `product-type-${crypto.randomUUID()}`
+		this.execute(
+			`Add slot "${slotId}"`,
+			() => this.document.addLayoutSlot({
+				id: slotId,
+				label,
+				graphs: [],
+				instanceBounds: {
+					width: { min: 0.6, max: 2 },
+					depth: { min: 0.6, max: 2 },
+					height: { min: 0.6, max: 2 },
+				},
+			})
+		)
+		return slotId
+	}
+
+	public removeLayoutSlot(slotId: string): void {
+		this.execute(`Remove slot "${slotId}"`, () => this.document.removeLayoutSlot(slotId))
+	}
+
+	public setLayoutSlotsCount(layoutId: string, slotsCount: LayoutRangeDocument): void {
+		this.execute(
+			`Set slot count on product layout "${layoutId}"`,
+			() => this.document.setLayoutSlotsCount(layoutId, slotsCount)
+		)
+	}
+
+	public setLayoutSlotInstanceBounds(
+		slotId: string,
+		instanceBounds: LayoutInstanceBoundsDocument
+	): void {
+		this.execute(
+			`Set instance bounds on layout slot definition "${slotId}"`,
+			() => this.document.setLayoutSlotInstanceBounds(slotId, instanceBounds)
+		)
+	}
+
+	public setProductInstanceLayoutAxisBinding(
+		productId: string,
+		instanceId: string,
+		role: LayoutAxisRole,
+		path: string | null
+	): void {
+		this.execute(
+			`Set layout ${role} axis binding on product item "${instanceId}"`,
+			() => this.document.setProductInstanceLayoutAxisBinding(productId, instanceId, role, path)
+		)
+	}
+
+	public setRootGraphLayoutAxisBinding(
+		graphId: string,
+		role: LayoutAxisRole,
+		binding: RootGraphAxisBinding | null
+	): void {
+		this.execute(
+			`Set layout ${role} axis binding on root graph "${graphId}"`,
+			() => this.document.setRootGraphLayoutAxisBinding(graphId, role, binding)
+		)
+	}
+
 	public importGraph(value: unknown): void {
 		let document: GraphDocumentModel
 		try {
@@ -998,6 +1177,44 @@ export class EditorController {
 		})
 	}
 
+	public createConfigurationTemplate(rootGraphId: string, label: string): string {
+		let templateId = ''
+		this.execute(`Create configuration template "${label}" for root graph "${rootGraphId}"`, () => {
+			templateId = this.document.createConfigurationTemplate(rootGraphId, label)
+		})
+		if (!templateId) {
+			throw new Error(
+				`Failed to create configuration template "${label}" for root graph "${rootGraphId}": `
+				+ 'the command completed without returning a template ID.'
+			)
+		}
+		return templateId
+	}
+
+	public removeConfigurationTemplate(rootGraphId: string, templateId: string): void {
+		this.execute(`Remove configuration template "${templateId}" from root graph "${rootGraphId}"`, () => {
+			this.document.removeConfigurationTemplate(rootGraphId, templateId)
+		})
+	}
+
+	public updateConfigurationTemplate(rootGraphId: string, templateId: string): void {
+		this.execute(`Update configuration template "${templateId}" on root graph "${rootGraphId}"`, () => {
+			this.document.updateConfigurationTemplate(rootGraphId, templateId)
+		})
+	}
+
+	public renameConfigurationTemplate(rootGraphId: string, templateId: string, label: string): void {
+		this.execute(`Rename configuration template "${templateId}" to "${label}"`, () => {
+			this.document.renameConfigurationTemplate(rootGraphId, templateId, label)
+		})
+	}
+
+	public applyConfigurationTemplate(rootGraphId: string, templateId: string): void {
+		this.execute(`Apply configuration template "${templateId}" on root graph "${rootGraphId}"`, () => {
+			this.document.applyConfigurationTemplate(rootGraphId, templateId)
+		})
+	}
+
 	public undo(): void {
 		this.applyHistory('undo', () => this.history.undo())
 	}
@@ -1008,6 +1225,10 @@ export class EditorController {
 
 	public evaluateGraphOutput(graphId = this.activeGraphId) {
 		return this.evaluator.evaluateGraphOutput(this.document, graphId)
+	}
+
+	public evaluateActiveLayout() {
+		return this.layoutEvaluator.evaluate(this.document)
 	}
 
 	public evaluateGeometryOutput(graphId: string, nodeId: string) {

@@ -78,11 +78,13 @@ are selectable.
 
 ## Preview
 
-The main workspace is a full-height standalone Three.js preview. It clones the selected asset's
-geometry from the shared mesh repository, adds neutral preview material, frames the camera from the
-geometry bounds, and supports orbit controls. Rendering resources and cloned geometry are disposed
-when the selected model changes or the route unmounts. A labeled Three.js view helper in the
-bottom-right corner shows the camera orientation and accepts axis clicks.
+The main workspace is a full-height standalone Three.js preview with a docked settings sidebar on
+the right. The sidebar can collapse to a narrow docked rail, expanding the viewport without placing
+configuration controls over the preview. The preview clones the selected asset's geometry from the
+shared mesh repository, adds neutral preview material, frames the camera from the geometry bounds,
+and supports orbit controls. Rendering resources and cloned geometry are disposed when the selected
+model changes or the route unmounts. A labeled Three.js view helper in the bottom-right corner shows
+the camera orientation and accepts axis clicks.
 
 **Scale in viewport** activates a Three.js scale gizmo for every configured geometry axis. Test
 sizes are absolute model dimensions initialized from the geometry bounding box. Dragging a handle
@@ -120,8 +122,8 @@ does, reports its coordinate-entry count. An attribute with zero U or V span is 
 as degenerate; when every entry collapses to one point, the panel shows that coordinate and explains
 why the UV view has no visible edges. Its temporary **UV view** switch closes active stretch tools
 and replaces the 3D render with the current UV triangle wireframe on an XY plane, framed by an
-orthographic camera. A ten-division 0–1 grid provides the reference tile; UVs outside that tile
-remain in frame. Models without a UV attribute show an explicit empty summary and disable the
+orthographic camera. A ten-division 0–1 grid provides the reference tile and always fits the viewport;
+UVs outside that tile are clipped. Models without a UV attribute show an explicit empty summary and disable the
 switch. The inspector orders Preview, Pivot, Stretch, UVs, Materials, and Bounding box as independent
 accordion sections. Preview and Stretch default open; diagnostic sections remain collapsed with
 their status visible in the section header.

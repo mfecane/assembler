@@ -1,10 +1,49 @@
 {
+  "layout": {
+	"activeProductId": "product-row",
+    "layouts": [
+	  {
+		"id": "layout-row",
+		"label": "Product row",
+		"configurationHeader": "Configure your product",
+		"type": "row",
+		"axis": "x",
+		"slotId": "product-slot",
+		"slotsCount": { "min": 1, "max": 20 }
+	  },
+	  {
+		"id": "layout-single",
+		"label": "Single product",
+		"configurationHeader": "Configure your product",
+		"type": "single",
+		"slotId": "product-slot",
+		"slotsCount": { "min": 1, "max": 1 }
+	  }
+    ],
+	"products": [
+	  { "id": "product-row", "label": "Product row", "layoutId": "layout-row", "instances": [] },
+	  { "id": "product-single", "label": "Single product", "layoutId": "layout-single", "instances": [] }
+	],
+    "slots": [
+	  {
+		"id": "product-slot",
+		"label": "Product type",
+		"graphs": ["main"],
+		"instanceBounds": {
+		  "width": { "min": 0.6, "max": 2 },
+		  "depth": { "min": 0.6, "max": 2 },
+		  "height": { "min": 0.6, "max": 2 }
+		}
+	  }
+    ]
+  },
   "rootGraphs": [
     {
       "graphId": "main",
       "inputValues": {},
       "configurationPanel": {
-        "controls": []
+        "controls": [],
+        "templates": []
       }
     }
   ],

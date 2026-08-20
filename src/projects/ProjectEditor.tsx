@@ -3,6 +3,7 @@ import type { User } from '@supabase/supabase-js'
 import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ParametricEditor } from '@/parametric/ParametricEditor'
+import { LayoutEditor } from '@/layout/LayoutEditor'
 import type { Editor } from '@/parametric/editor/Editor'
 import { createEditor } from '@/parametric/editor/createEditor'
 import type { ProjectRepository } from '@/projects/ProjectRepository'
@@ -12,6 +13,7 @@ import { meshRepository } from '@/parametric/three/MeshRepository'
 import { ProjectToolbar, type SaveState } from '@/projects/ProjectToolbar'
 import type { Project } from '@/projects/projectTypes'
 import type { GraphDocument } from '@/parametric/model/GraphSerialization'
+import type { ProjectEditorMode } from '@/projects/ProjectEditorTabs'
 
 interface LoadedEditor {
 	project: Project
@@ -52,6 +54,7 @@ export function ProjectEditor({
 	const [isSavingAs, setIsSavingAs] = useState(false)
 	const [saveAsError, setSaveAsError] = useState<string | null>(null)
 	const [showSavedConfirmation, setShowSavedConfirmation] = useState(false)
+	const [editorMode, setEditorMode] = useState<ProjectEditorMode>('graph')
 	const saveInFlight = useRef(false)
 	const renameInFlight = useRef(false)
 	const saveAsInFlight = useRef(false)
@@ -298,26 +301,36 @@ export function ProjectEditor({
 			<ProjectToolbar
 				name={loaded.project.name}
 				user={user}
+				editorMode={editorMode}
+				controller={loaded.editor.controller}
 				saveState={saveState}
 				saveError={saveError}
-				controller={loaded.editor.controller}
 				projectRenamePending={isRenamingProject}
 				projectRenameError={projectRenameError}
 				saveAsPending={isSavingAs}
 				saveAsError={saveAsError}
 				navigationDisabled={isSaving || isRenamingProject || isSavingAs}
 				onBack={() => confirmDiscard(onBack)}
+				onEditorModeChange={setEditorMode}
 				onSave={() => void save()}
 				onPrepareSaveAs={() => setSaveAsError(null)}
 				onSaveAs={(name) => void saveAs(name)}
 				onRename={(name) => void renameProject(name)}
 				onSignOut={() => confirmDiscard(onSignOut)}
 			/>
-			<ParametricEditor
-				key={loaded.project.id}
-				editor={loaded.editor}
-				className="h-auto w-full min-h-0 flex-1"
-			/>
+			{editorMode === 'graph' ? (
+				<ParametricEditor
+					key={loaded.project.id}
+					editor={loaded.editor}
+					className="h-auto w-full min-h-0 flex-1"
+				/>
+			) : (
+				<LayoutEditor
+					key={loaded.project.id}
+					editor={loaded.editor}
+					className="h-auto w-full min-h-0 flex-1"
+				/>
+			)}
 		</div>
 	)
 }

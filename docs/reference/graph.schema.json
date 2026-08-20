@@ -6,6 +6,7 @@
   "additionalProperties": false,
   "required": [
     "client",
+    "layout",
     "rootGraphs",
     "enums",
     "graphs"
@@ -37,13 +38,126 @@
       "items": {
         "$ref": "#/$defs/graph"
       }
+    },
+    "layout": {
+      "$ref": "#/$defs/layout"
     }
   },
   "$defs": {
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["activeProductId", "layouts", "products", "slots"],
+      "properties": {
+		"activeProductId": { "$ref": "#/$defs/id" },
+        "layouts": { "type": "array", "items": { "$ref": "#/$defs/layoutDefinition" } },
+		"products": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/productDefinition" } },
+        "slots": { "type": "array", "items": { "$ref": "#/$defs/layoutSlot" } }
+      }
+    },
+    "layoutDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "configurationHeader", "type", "slotId", "slotsCount"],
+	  "allOf": [
+		{
+		  "if": { "properties": { "type": { "const": "row" } }, "required": ["type"] },
+		  "then": { "required": ["axis"] },
+		  "else": { "not": { "required": ["axis"] } }
+		}
+	  ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "label": { "type": "string", "minLength": 1 },
+		"configurationHeader": { "type": "string", "minLength": 1 },
+        "type": { "enum": ["row", "single"] },
+		"axis": { "const": "x" },
+		"slotId": { "$ref": "#/$defs/id" },
+		"slotsCount": { "$ref": "#/$defs/layoutRange" }
+      }
+    },
+	"productDefinition": {
+	  "type": "object",
+	  "additionalProperties": false,
+	  "required": ["id", "label", "layoutId", "instances"],
+	  "properties": {
+		"id": { "$ref": "#/$defs/id" },
+		"label": { "type": "string", "minLength": 1 },
+		"layoutId": { "$ref": "#/$defs/id" },
+		"instances": { "type": "array", "items": { "$ref": "#/$defs/layoutGraphInstance" } }
+	  }
+	},
+    "layoutSlot": {
+      "type": "object",
+      "additionalProperties": false,
+	  "required": ["id", "label", "graphs", "instanceBounds"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+		"label": { "type": "string", "minLength": 1 },
+		"graphs": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+		"instanceBounds": {
+		  "type": "object",
+		  "additionalProperties": false,
+		  "required": ["width", "depth", "height"],
+		  "properties": {
+			"width": { "$ref": "#/$defs/layoutRange" },
+			"depth": { "$ref": "#/$defs/layoutRange" },
+			"height": { "$ref": "#/$defs/layoutRange" }
+		  }
+		}
+      }
+    },
+	"layoutGraphInstance": {
+	  "type": "object",
+	  "additionalProperties": false,
+	  "required": ["id", "graphId", "inputValues"],
+	  "properties": {
+		"id": { "$ref": "#/$defs/id" },
+		"graphId": { "$ref": "#/$defs/id" },
+		"inputValues": {
+		  "type": "object",
+		  "additionalProperties": {
+			"oneOf": [
+			  { "type": "number" },
+			  { "type": "string" },
+			  { "type": "boolean" },
+			  { "type": "array", "items": { "type": "number", "minimum": 0 } },
+			  { "$ref": "#/$defs/point3" }
+			]
+		  }
+		},
+		"layoutMetadata": { "$ref": "#/$defs/layoutInstanceMetadata" }
+	  }
+	},
+	"layoutRange": {
+	  "type": "object",
+	  "additionalProperties": false,
+	  "required": ["min", "max"],
+	  "properties": {
+		"min": { "type": "number", "minimum": 0 },
+		"max": { "type": "number", "minimum": 0 }
+	  }
+	},
     "id": {
       "type": "string",
       "minLength": 1
     },
+	"layoutInstanceMetadata": {
+	  "type": "object",
+	  "additionalProperties": false,
+	  "required": ["axisBinding"],
+	  "properties": {
+		"axisBinding": {
+		  "type": "object",
+		  "additionalProperties": false,
+		  "properties": {
+			"primary": { "type": "string", "minLength": 1 },
+			"secondary": { "type": "string", "minLength": 1 },
+			"tertiary": { "type": "string", "minLength": 1 }
+		  }
+		}
+	  }
+	},
     "rootGraph": {
       "type": "object",
       "additionalProperties": false,
@@ -82,22 +196,90 @@
             ]
           }
         },
+        "layoutMetadata": {
+          "$ref": "#/$defs/rootGraphLayoutMetadata"
+        },
         "configurationPanel": {
           "$ref": "#/$defs/configurationPanel"
         }
       }
     },
+	"rootGraphLayoutMetadata": {
+	  "type": "object",
+	  "additionalProperties": false,
+	  "required": ["axisBinding"],
+	  "properties": {
+		"axisBinding": {
+		  "type": "object",
+		  "additionalProperties": false,
+		  "properties": {
+			"primary": { "$ref": "#/$defs/rootGraphAxisBinding" },
+			"secondary": { "$ref": "#/$defs/rootGraphAxisBinding" },
+			"tertiary": { "$ref": "#/$defs/rootGraphAxisBinding" }
+		  }
+		}
+	  }
+	},
+	"rootGraphAxisBinding": {
+	  "type": "object",
+	  "additionalProperties": false,
+	  "required": ["inputId"],
+	  "properties": {
+		"inputId": { "$ref": "#/$defs/id" },
+		"component": { "enum": ["x", "y", "z"] }
+	  }
+	},
     "configurationPanel": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "controls"
+        "controls",
+        "templates"
       ],
       "properties": {
         "controls": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/configurationControl"
+          }
+        },
+        "templates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/configurationTemplate"
+          }
+        }
+      }
+    },
+    "configurationTemplate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "values"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "values": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              { "type": "number" },
+              { "type": "string" },
+              { "type": "boolean" },
+              {
+                "type": "array",
+                "items": { "type": "number", "minimum": 0 }
+              },
+              { "$ref": "#/$defs/point3" }
+            ]
           }
         }
       }

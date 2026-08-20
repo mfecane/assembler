@@ -1,0 +1,10 @@
+{
+	"id": "kitchen-cabinets-slot-random-ass-id",
+	"label": "Kitchen cabinets slot",
+	"graphs": ["graph-id-1", "graph-id-1"],
+	"instance-bounds": {
+		"width": { "min": 0.6, "max": 2.0 },
+		"depth": { "min": 0.6, "max": 2.0 },
+		"height": { "min": 0.6, "max": 2.0 }
+	}
+}

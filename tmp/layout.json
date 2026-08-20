@@ -1,0 +1,11 @@
+{
+	"id": "cabinet-row-random-ass-id",
+	"label": "Cabinet Row",
+	"type": "row",
+	"axis": "x",
+	"slot": "kitchen-cabinets-slot-random-ass-id",
+	"slotsCount": {
+		"min": 1,
+		"max": 20
+	}
+}

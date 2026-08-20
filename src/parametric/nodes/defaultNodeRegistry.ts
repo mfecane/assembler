@@ -345,6 +345,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 				assetId: `primitive:${node.getPrimitive()}`,
 				assetKind: 'primitive',
 				size: node.getSize().toSnapshot(),
+				boundsCenter: { x: 0, y: 0, z: 0 },
 				transform: matrixSnapshot(new Matrix4()),
 				originNode: context.getNodeInstanceReference(node.id),
 				material: resolveMaterial(context, node),
@@ -689,13 +690,14 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			),
 		evaluate: (node, context) => {
 			const meshId = node.getMeshId()
-			const size = context.getMeshBounds(meshId)
-			if (!meshId || !size) return new Map()
+			const bounds = context.getMeshBounds(meshId)
+			if (!meshId || !bounds) return new Map()
 			const instances = [{
 					instanceId: node.id,
 					assetId: meshId,
 					assetKind: 'catalog' as const,
-					size,
+					size: { x: bounds.x, y: bounds.y, z: bounds.z },
+					boundsCenter: bounds.center,
 					transform: matrixSnapshot(new Matrix4()),
 					originNode: context.getNodeInstanceReference(node.id),
 					material: resolveMaterial(context, node),
@@ -816,6 +818,11 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 				assetId: meshId,
 				assetKind: 'catalog' as const,
 				size: targetSize.toSnapshot(),
+				boundsCenter: {
+					x: (bounds.center.x - metadata.pivot.x) * targetSize.x / metadata.naturalSize.x,
+					y: (bounds.center.y - metadata.pivot.y) * targetSize.y / metadata.naturalSize.y,
+					z: (bounds.center.z - metadata.pivot.z) * targetSize.z / metadata.naturalSize.z,
+				},
 				transform: matrixSnapshot(new Matrix4()),
 				originNode: context.getNodeInstanceReference(node.id),
 				material: resolveMaterial(context, node),

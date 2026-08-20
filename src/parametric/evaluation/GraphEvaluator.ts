@@ -14,6 +14,7 @@ import {
 	type GraphDefinition,
 	GraphDocumentModel,
 	type GraphInputDefinition,
+	type GraphInputValue,
 } from '@/parametric/model/GraphDocumentModel'
 import {
 	GraphInstanceGraphNode,
@@ -56,6 +57,22 @@ export class GraphEvaluator {
 			graph,
 			this.previewInputs(document, graph),
 			[graph.id]
+		)
+		return this.toSceneMetadata(value)
+	}
+
+	public evaluateGraphInstance(
+		document: GraphDocumentModel,
+		graphId: string,
+		inputValues: Record<string, GraphInputValue>,
+		instanceId: string
+	): SceneMetadata {
+		const graph = document.requireGraph(graphId)
+		const value = this.evaluateGraph(
+			document,
+			graph,
+			this.instanceInputs(graph, inputValues),
+			[instanceId, graph.id]
 		)
 		return this.toSceneMetadata(value)
 	}
@@ -317,6 +334,18 @@ export class GraphEvaluator {
 		const inputs = new Map<string, GraphValue>()
 		for (const input of graph.inputs) {
 			const value = document.getRootInputValue(graph.id, input.id)
+			if (value !== undefined) inputs.set(input.id, this.inputValue(input, value))
+		}
+		return inputs
+	}
+
+	private instanceInputs(
+		graph: GraphDefinition,
+		inputValues: Record<string, GraphInputValue>
+	): Map<string, GraphValue> {
+		const inputs = new Map<string, GraphValue>()
+		for (const input of graph.inputs) {
+			const value = inputValues[input.id] ?? input.defaultValue
 			if (value !== undefined) inputs.set(input.id, this.inputValue(input, value))
 		}
 		return inputs

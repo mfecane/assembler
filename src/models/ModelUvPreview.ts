@@ -1,5 +1,4 @@
 import {
-	Box2,
 	BufferGeometry,
 	Color,
 	Float32BufferAttribute,
@@ -8,14 +7,12 @@ import {
 	LineSegments,
 	OrthographicCamera,
 	Scene,
-	Vector2,
 	WireframeGeometry,
 } from 'three'
 
 export class ModelUvPreview {
 	public readonly scene = new Scene()
 	public readonly camera = new OrthographicCamera(-1, 1, 1, -1, 0.1, 10)
-	private readonly bounds = new Box2()
 	private readonly material = new LineBasicMaterial({ color: 0xf8fafc })
 	private wireframe: LineSegments | null = null
 
@@ -36,7 +33,6 @@ export class ModelUvPreview {
 			throw new Error('Cannot draw UV preview because geometry has no two-component UV attribute.')
 		}
 		const positions = new Float32Array(uv.count * 3)
-		this.bounds.set(new Vector2(0, 0), new Vector2(1, 1))
 		for (let vertex = 0; vertex < uv.count; vertex += 1) {
 			const u = uv.getX(vertex)
 			const v = uv.getY(vertex)
@@ -45,7 +41,6 @@ export class ModelUvPreview {
 			}
 			positions[vertex * 3] = u
 			positions[vertex * 3 + 1] = v
-			this.bounds.expandByPoint(new Vector2(u, v))
 		}
 
 		const uvGeometry = new BufferGeometry()
@@ -63,22 +58,13 @@ export class ModelUvPreview {
 
 	public resize(width: number, height: number): void {
 		if (width <= 0 || height <= 0) return
-		const size = this.bounds.getSize(new Vector2())
-		const center = this.bounds.getCenter(new Vector2())
-		const contentWidth = Math.max(size.x * 1.2, 0.1)
-		const contentHeight = Math.max(size.y * 1.2, 0.1)
 		const viewportAspect = width / height
-		const contentAspect = contentWidth / contentHeight
-		const halfWidth = viewportAspect > contentAspect
-			? contentHeight * viewportAspect / 2
-			: contentWidth / 2
-		const halfHeight = viewportAspect > contentAspect
-			? contentHeight / 2
-			: contentWidth / viewportAspect / 2
-		this.camera.left = center.x - halfWidth
-		this.camera.right = center.x + halfWidth
-		this.camera.top = center.y + halfHeight
-		this.camera.bottom = center.y - halfHeight
+		const halfWidth = viewportAspect > 1 ? viewportAspect / 2 : 0.5
+		const halfHeight = viewportAspect > 1 ? 0.5 : 1 / viewportAspect / 2
+		this.camera.left = 0.5 - halfWidth
+		this.camera.right = 0.5 + halfWidth
+		this.camera.top = 0.5 + halfHeight
+		this.camera.bottom = 0.5 - halfHeight
 		this.camera.updateProjectionMatrix()
 	}
 

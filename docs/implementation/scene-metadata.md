@@ -15,7 +15,7 @@ instance records:
 
 - a deterministic `instanceId` used to synchronize the corresponding rendered mesh;
 - the catalog or primitive asset ID and asset kind;
-- the requested asset size;
+- the requested asset size and local bounding-box center;
 - a plain 16-number transformation matrix;
 - the final optional registered material ID;
 - the graph ID, node ID, and scoped node-instance ID of the node that introduced the asset.

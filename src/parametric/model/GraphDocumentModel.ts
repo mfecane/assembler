@@ -7,6 +7,22 @@ import {
 } from '@/parametric/model/EnumDefinition'
 import { RootGraph } from '@/parametric/model/RootGraph'
 import type { Client } from '@/cosntants'
+import {
+	LayoutModel,
+	type LayoutDataDocument,
+	type LayoutGraphInstanceDocument,
+	type LayoutInstanceBoundsDocument,
+	type LayoutRangeDocument,
+	type LayoutSlotDocument,
+	type ProductDocument,
+} from '@/layout/LayoutDocument'
+import {
+	assertLayoutInstanceMetadata,
+	type LayoutAxisRole,
+	assertRootGraphLayoutMetadata,
+	type RootGraphAxisBinding,
+	type RootGraphLayoutMetadata,
+} from '@/layout/GraphLayoutMetadata'
 
 export type GraphInputValue = number | number[] | Vector3Snapshot | string | boolean
 export type GraphInputValueType = Exclude<GraphValueType, 'meshArray'>
@@ -68,6 +84,12 @@ export type ConfigurationPanelControl =
 		step: number
 	})
 
+export interface ConfigurationTemplate {
+	id: string
+	label: string
+	values: Record<string, GraphInputValue>
+}
+
 export type ConfigurationField =
 	| { id: string; type: 'number'; label: string; value: number; step: number }
 	| {
@@ -95,7 +117,9 @@ export type ConfigurationField =
 	| { id: string; type: 'boolean'; label: string; value: boolean }
 
 export interface GraphDocumentReader {
+	getLayout(): LayoutDataDocument
 	getRootGraphs(): RootGraphReader[]
+	getRootGraphLayoutMetadata(graphId: string): RootGraphLayoutMetadata | undefined
 	isRootGraph(graphId: string): boolean
 	getEnumDefinitions(): EnumDefinitionSnapshot[]
 	requireEnumDefinition(enumId: string): EnumDefinitionSnapshot
@@ -106,18 +130,21 @@ export interface GraphDocumentReader {
 	requireGraph(graphId: string): GraphDefinitionReader
 	getRootInputValue(graphId: string, inputId: string): GraphInputValue | undefined
 	getConfigurationControls(graphId: string): ConfigurationPanelControl[]
+	getConfigurationTemplates(graphId: string): ConfigurationTemplate[]
 }
 
 export class GraphDocumentModel implements GraphDocumentReader {
 	private readonly graphs = new Map<string, GraphDefinition>()
 	private readonly enumDefinitions = new Map<string, EnumDefinition>()
 	private readonly rootGraphs = new Map<string, RootGraph>()
+	private layout: LayoutModel
 
 	public constructor(
 		private readonly client: Client,
 		rootGraphs: RootGraph[],
 		enumDefinitions: EnumDefinitionSnapshot[],
-		graphs: GraphDefinition[]
+		graphs: GraphDefinition[],
+		layout: LayoutDataDocument
 	) {
 		for (const definition of enumDefinitions) {
 			if (this.enumDefinitions.has(definition.id)) {
@@ -131,6 +158,11 @@ export class GraphDocumentModel implements GraphDocumentReader {
 		for (const graph of graphs) {
 			if (this.graphs.has(graph.id)) throw new Error(`Duplicate graph ID "${graph.id}"`)
 			this.graphs.set(graph.id, graph)
+		}
+		for (const product of layout.products) {
+			for (const instance of product.instances) {
+				assertLayoutInstanceMetadata(this.requireGraph(instance.graphId), instance.layoutMetadata)
+			}
 		}
 		if (rootGraphs.length === 0) throw new Error('Graph document requires at least one root graph')
 		for (const root of rootGraphs) {
@@ -148,12 +180,181 @@ export class GraphDocumentModel implements GraphDocumentReader {
 				}
 			}
 			for (const control of root.getConfigurationControls()) assertConfigurationControl(control)
+			assertRootGraphLayoutMetadata(graph, root.getLayoutMetadata())
 			this.rootGraphs.set(graphId, root)
 		}
 		for (const root of this.rootGraphs.values()) {
 			this.validateReferences(root)
 			this.validateConfigurationValues(root)
+			this.reconcileConfigurationTemplates(root)
 		}
+		this.layout = this.createLayoutModel(layout)
+	}
+
+	public getLayout(): LayoutDataDocument {
+		return this.layout.toDocument()
+	}
+
+	public setActiveProduct(productId: string): void {
+		this.layout.setActiveProduct(productId)
+	}
+
+	public addProduct(product: ProductDocument): void {
+		this.layout.addProduct(product)
+	}
+
+	public setProductLabel(productId: string, label: string): void {
+		this.layout.setProductLabel(productId, label)
+	}
+
+	public removeProduct(productId: string): void {
+		this.layout.removeProduct(productId)
+	}
+
+	public setProductLayout(productId: string, layoutId: string): void {
+		this.layout.setProductLayout(productId, layoutId)
+	}
+
+	public setLayoutConfigurationHeader(layoutId: string, header: string): void {
+		this.layout.setConfigurationHeader(layoutId, header)
+	}
+
+	public setLayoutSlot(layoutId: string, slotId: string): void {
+		this.layout.setLayoutSlot(layoutId, slotId)
+	}
+
+	public addDefaultProductInstance(productId: string, instanceId: string): void {
+		const product = this.layout.requireProduct(productId)
+		const layout = this.layout.requireLayout(product.layoutId)
+		const slot = this.layout.requireSlot(layout.slotId)
+		const graphId = slot.graphs[0]
+		if (!graphId) {
+			throw new Error(
+				`Cannot add an item to product "${productId}" because slot `
+				+ `"${slot.id}" allows no root graphs.`
+			)
+		}
+		this.layout.addInstance(productId, {
+			id: instanceId,
+			graphId,
+			inputValues: this.getInitialLayoutInputValues(graphId),
+		})
+	}
+
+	public removeProductInstance(productId: string, instanceId: string): void {
+		this.layout.removeInstance(productId, instanceId)
+	}
+
+	public setProductInstanceGraph(productId: string, instanceId: string, graphId: string): void {
+		const product = this.layout.requireProduct(productId)
+		const layout = this.layout.requireLayout(product.layoutId)
+		const slot = this.layout.requireSlot(layout.slotId)
+		if (!slot.graphs.includes(graphId)) {
+			throw new Error(
+				`Cannot put graph "${graphId}" in item "${instanceId}" of product "${productId}": `
+				+ `slot definition "${slot.id}" allows ${JSON.stringify(slot.graphs)}.`
+			)
+		}
+		this.requireRootGraph(graphId)
+		this.layout.setInstanceGraph(
+			productId,
+			instanceId,
+			graphId,
+			this.getInitialLayoutInputValues(graphId)
+		)
+	}
+
+	public setProductInstanceInputValue(
+		productId: string,
+		instanceId: string,
+		inputId: string,
+		value: GraphInputValue
+	): void {
+		const instance = this.requireProductInstance(productId, instanceId)
+		const input = this.requireGraph(instance.graphId).inputs.find(
+			(candidate) => candidate.id === inputId
+		)
+		if (!input || !this.isInputValueCompatible(input, value)) {
+			throw new Error(
+				`Cannot set product item input "${inputId}" on item "${instanceId}" in product `
+				+ `"${productId}" to ${JSON.stringify(value)}: graph "${instance.graphId}" has no `
+				+ 'compatible public input with that ID.'
+			)
+		}
+		this.assertConfigurationValue(instance.graphId, inputId, value, instanceId)
+		this.layout.setInstanceInputValue(productId, instanceId, inputId, value)
+	}
+
+	public setLayoutSlotGraphs(slotId: string, graphIds: string[]): void {
+		if (new Set(graphIds).size !== graphIds.length) {
+			throw new Error(
+				`Cannot update slot definition "${slotId}" with duplicate graph IDs `
+				+ `${JSON.stringify(graphIds)}.`
+			)
+		}
+		for (const graphId of graphIds) this.requireRootGraph(graphId)
+		this.layout.setSlotGraphs(slotId, graphIds)
+	}
+
+	public setLayoutSlotLabel(slotId: string, label: string): void {
+		this.layout.setSlotLabel(slotId, label)
+	}
+
+	public removeLayoutSlot(slotId: string): void {
+		const layouts = this.layout.toDocument().layouts
+			.filter((layout) => layout.slotId === slotId)
+			.map((layout) => layout.id)
+		if (layouts.length > 0) {
+			throw new Error(
+				`Cannot remove slot definition "${slotId}" because layouts reference it: ${JSON.stringify(layouts)}.`
+			)
+		}
+		this.layout.removeSlot(slotId)
+	}
+
+	public addLayoutSlot(slot: LayoutSlotDocument): void {
+		this.layout.addSlot(slot)
+	}
+
+	public setLayoutSlotsCount(layoutId: string, slotsCount: LayoutRangeDocument): void {
+		this.layout.setLayoutSlotsCount(layoutId, slotsCount)
+	}
+
+	public setLayoutSlotInstanceBounds(
+		slotId: string,
+		instanceBounds: LayoutInstanceBoundsDocument
+	): void {
+		this.layout.setSlotInstanceBounds(slotId, instanceBounds)
+	}
+
+	public setProductInstanceLayoutAxisBinding(
+		productId: string,
+		instanceId: string,
+		role: LayoutAxisRole,
+		path: string | null
+	): void {
+		const instance = this.requireProductInstance(productId, instanceId)
+		const graph = this.requireGraph(instance.graphId)
+		const axisBinding = { ...instance.layoutMetadata?.axisBinding }
+		if (path) axisBinding[role] = path
+		else delete axisBinding[role]
+		const metadata = Object.keys(axisBinding).length > 0 ? { axisBinding } : undefined
+		assertLayoutInstanceMetadata(graph, metadata)
+		this.layout.setInstanceLayoutMetadata(productId, instanceId, metadata)
+	}
+
+	public setRootGraphLayoutAxisBinding(
+		graphId: string,
+		role: LayoutAxisRole,
+		binding: RootGraphAxisBinding | null
+	): void {
+		const root = this.requireRootGraph(graphId)
+		const axisBinding = { ...root.getLayoutMetadata()?.axisBinding }
+		if (binding) axisBinding[role] = { ...binding }
+		else delete axisBinding[role]
+		const metadata = Object.keys(axisBinding).length > 0 ? { axisBinding } : undefined
+		assertRootGraphLayoutMetadata(this.requireGraph(graphId), metadata)
+		root.setLayoutMetadata(metadata)
 	}
 
 	public getClient(): Client {
@@ -168,6 +369,10 @@ export class GraphDocumentModel implements GraphDocumentReader {
 
 	public getRootGraphs(): RootGraph[] {
 		return [...this.rootGraphs.values()]
+	}
+
+	public getRootGraphLayoutMetadata(graphId: string): RootGraphLayoutMetadata | undefined {
+		return this.requireRootGraph(graphId).getLayoutMetadata()
 	}
 
 	public getRootGraph(graphId: string): RootGraph | undefined {
@@ -282,7 +487,9 @@ export class GraphDocumentModel implements GraphDocumentReader {
 			if (current !== undefined && !this.isInputValueCompatible(input, current)) {
 				root.setInputValue(inputId, input.defaultValue ?? 0)
 			}
+			this.reconcileConfigurationTemplates(root)
 		}
+		this.reconcileLayoutInstances(graphId)
 		if (previousEnumId && previousEnumId !== enumId) this.removeEnumIfUnused(previousEnumId)
 		return previousEnumId
 	}
@@ -320,7 +527,7 @@ export class GraphDocumentModel implements GraphDocumentReader {
 	public addRootGraph(graphId: string): void {
 		if (!this.graphs.has(graphId)) throw new Error(`Cannot add unknown graph "${graphId}" as a root`)
 		if (this.rootGraphs.has(graphId)) throw new Error(`Graph "${graphId}" is already a root`)
-		const root = new RootGraph(graphId, {}, [])
+		const root = new RootGraph(graphId, {}, [], [])
 		this.rootGraphs.set(graphId, root)
 		this.validateReferences(root)
 	}
@@ -328,6 +535,7 @@ export class GraphDocumentModel implements GraphDocumentReader {
 	public removeRootGraph(graphId: string): boolean {
 		if (!this.rootGraphs.has(graphId) || this.rootGraphs.size === 1) return false
 		this.rootGraphs.delete(graphId)
+		this.layout.removeGraph(graphId)
 		return true
 	}
 
@@ -346,6 +554,7 @@ export class GraphDocumentModel implements GraphDocumentReader {
 		)) ?? []
 		this.rootGraphs.delete(graphId)
 		this.graphs.delete(graphId)
+		this.layout.removeGraph(graphId)
 		for (const enumId of enumIds) this.removeEnumIfUnused(enumId)
 		return true
 	}
@@ -382,7 +591,9 @@ export class GraphDocumentModel implements GraphDocumentReader {
 			}
 			this.validateReferences(root)
 			this.validateConfigurationValues(root)
+			this.reconcileConfigurationTemplates(root)
 		}
+		this.reconcileLayoutInstances(graphId)
 		return true
 	}
 
@@ -392,13 +603,17 @@ export class GraphDocumentModel implements GraphDocumentReader {
 		const index = graph.inputs.findIndex((input) => input.id === inputId)
 		if (index < 0) return false
 		const [removedInput] = graph.inputs.splice(index, 1)
+		this.reconcileLayoutInstanceMetadata(graphId, inputId)
 		const root = this.rootGraphs.get(graphId)
 		if (root) {
 			root.removeInputValue(inputId)
 			root.setConfigurationControls(root.getConfigurationControls().filter(
 				(control) => control.inputId !== inputId
 			))
+			this.reconcileConfigurationTemplates(root)
+			this.reconcileRootGraphLayoutMetadata(graphId, inputId)
 		}
+		this.reconcileLayoutInstances(graphId)
 		if (removedInput?.enumId) this.removeEnumIfUnused(removedInput.enumId)
 		return true
 	}
@@ -435,6 +650,10 @@ export class GraphDocumentModel implements GraphDocumentReader {
 
 	public getConfigurationControls(graphId: string): ConfigurationPanelControl[] {
 		return this.requireRootGraph(graphId).getConfigurationControls()
+	}
+
+	public getConfigurationTemplates(graphId: string): ConfigurationTemplate[] {
+		return this.requireRootGraph(graphId).getConfigurationTemplates()
 	}
 
 	public setConfigurationControls(
@@ -482,6 +701,77 @@ export class GraphDocumentModel implements GraphDocumentReader {
 			}
 		}
 		this.validateReferences(root)
+		this.reconcileConfigurationTemplates(root)
+		this.reconcileLayoutInstances(graphId)
+	}
+
+	public createConfigurationTemplate(graphId: string, label: string): string {
+		const root = this.requireRootGraph(graphId)
+		const templates = root.getConfigurationTemplates()
+		const normalizedLabel = this.requireAvailableConfigurationTemplateLabel(root, label)
+		const templateId = this.createConfigurationTemplateId(templates)
+		root.setConfigurationTemplates([
+			...templates,
+			{
+				id: templateId,
+				label: normalizedLabel,
+				values: this.getConfigurationTemplateValues(root),
+			},
+		])
+		return templateId
+	}
+
+	public removeConfigurationTemplate(graphId: string, templateId: string): void {
+		const root = this.requireRootGraph(graphId)
+		root.setConfigurationTemplates(root.getConfigurationTemplates().filter(
+			(template) => template.id !== templateId
+		))
+	}
+
+	public updateConfigurationTemplate(graphId: string, templateId: string): void {
+		const root = this.requireRootGraph(graphId)
+		const templates = root.getConfigurationTemplates()
+		if (!templates.some((template) => template.id === templateId)) {
+			throw new Error(
+				`Cannot update configuration template "${templateId}" on root graph "${graphId}": `
+				+ 'the template does not exist.'
+			)
+		}
+		root.setConfigurationTemplates(templates.map((template) => (
+			template.id === templateId
+				? { ...template, values: this.getConfigurationTemplateValues(root) }
+				: template
+		)))
+	}
+
+	public renameConfigurationTemplate(graphId: string, templateId: string, label: string): void {
+		const root = this.requireRootGraph(graphId)
+		const templates = root.getConfigurationTemplates()
+		if (!templates.some((template) => template.id === templateId)) {
+			throw new Error(
+				`Cannot rename configuration template "${templateId}" on root graph "${graphId}": `
+				+ 'the template does not exist.'
+			)
+		}
+		const normalizedLabel = this.requireAvailableConfigurationTemplateLabel(root, label, templateId)
+		root.setConfigurationTemplates(templates.map((template) => (
+			template.id === templateId ? { ...template, label: normalizedLabel } : template
+		)))
+	}
+
+	public applyConfigurationTemplate(graphId: string, templateId: string): boolean {
+		const root = this.requireRootGraph(graphId)
+		const template = root.getConfigurationTemplates().find((candidate) => candidate.id === templateId)
+		if (!template) return false
+		for (const [inputId, value] of Object.entries(template.values)) {
+			if (!this.setRootInputValue(graphId, inputId, value)) {
+				throw new Error(
+					`Cannot apply configuration template "${templateId}" on root graph "${graphId}": `
+					+ `value for input "${inputId}" is incompatible after template reconciliation.`
+				)
+			}
+		}
+		return true
 	}
 
 	public isInputValueCompatible(
@@ -551,6 +841,92 @@ export class GraphDocumentModel implements GraphDocumentReader {
 		}
 	}
 
+	private reconcileConfigurationTemplates(root: RootGraph): void {
+		const controls = root.getConfigurationControls()
+		const inputs = new Map(this.requireGraph(root.getGraphId()).inputs.map((input) => [input.id, input]))
+		root.setConfigurationTemplates(root.getConfigurationTemplates().map((template) => ({
+			...template,
+			values: Object.fromEntries(controls.map((control) => {
+				const input = inputs.get(control.inputId)
+				if (!input || input.defaultValue === undefined) {
+					throw new Error(
+						`Cannot reconcile configuration template "${template.id}" on root graph "${root.getGraphId()}": `
+						+ `control "${control.id}" has no defaultable input.`
+					)
+				}
+				const value = template.values[input.id]
+				return [input.id, this.isTemplateValueCompatible(input, control, value)
+					? value
+					: this.getDefaultConfigurationValue(input, control)]
+			})),
+		})))
+	}
+
+	private getConfigurationTemplateValues(root: RootGraph): Record<string, GraphInputValue> {
+		return Object.fromEntries(root.getConfigurationControls().flatMap((control) => {
+			const value = this.getRootInputValue(root.getGraphId(), control.inputId)
+			return value === undefined ? [] : [[control.inputId, value]]
+		}))
+	}
+
+	private isTemplateValueCompatible(
+		input: GraphInputDefinition,
+		control: ConfigurationPanelControl,
+		value: GraphInputValue | undefined
+	): boolean {
+		if (value === undefined || !this.isInputValueCompatible(input, value)) return false
+		return control.type !== 'numberArray'
+			|| (Array.isArray(value)
+				&& value.length === control.labels.length
+				&& value.reduce((total, item) => total + item, 0) <= control.total)
+	}
+
+	private getDefaultConfigurationValue(
+		input: GraphInputDefinition,
+		control: ConfigurationPanelControl
+	): GraphInputValue {
+		if (input.defaultValue === undefined) {
+			throw new Error(`Configuration input "${input.id}" has no default value.`)
+		}
+		if (control.type !== 'numberArray') return copyInputValue(input.defaultValue)
+		return reconcileNumberArray(
+			Array.isArray(input.defaultValue) ? input.defaultValue : [],
+			control.labels,
+			control.total
+		)
+	}
+
+	private createConfigurationTemplateId(templates: ConfigurationTemplate[]): string {
+		let number = templates.length + 1
+		while (templates.some((template) => template.id === `configuration-${number}`)) number += 1
+		return `configuration-${number}`
+	}
+
+	private requireAvailableConfigurationTemplateLabel(
+		root: RootGraph,
+		label: string,
+		excludedTemplateId?: string
+	): string {
+		const normalizedLabel = label.trim()
+		if (!normalizedLabel) {
+			throw new Error(
+				`Cannot save configuration template on root graph "${root.getGraphId()}": `
+				+ 'the template name is empty.'
+			)
+		}
+		const duplicate = root.getConfigurationTemplates().find((template) => (
+			template.id !== excludedTemplateId
+			&& template.label.localeCompare(normalizedLabel, undefined, { sensitivity: 'accent' }) === 0
+		))
+		if (duplicate) {
+			throw new Error(
+				`Cannot save configuration template "${normalizedLabel}" on root graph `
+				+ `"${root.getGraphId()}": template "${duplicate.id}" already uses that name.`
+			)
+		}
+		return normalizedLabel
+	}
+
 	private requireEnumEntity(enumId: string): EnumDefinition {
 		const definition = this.enumDefinitions.get(enumId)
 		if (!definition) throw new Error(`Unknown choice set "${enumId}"`)
@@ -578,7 +954,173 @@ export class GraphDocumentModel implements GraphDocumentReader {
 				} else if (current !== undefined && !this.isInputValueCompatible(input, current)) {
 					root.setInputValue(input.id, input.defaultValue)
 				}
+				root.setConfigurationTemplates(root.getConfigurationTemplates().map((template) => ({
+					...template,
+					values: typeof template.values[input.id] === 'number'
+						? { ...template.values, [input.id]: remapIndex(template.values[input.id] as number) }
+						: template.values,
+				})))
+				this.remapLayoutInstanceInputValues(graph.id, input.id, remapIndex)
+				this.reconcileConfigurationTemplates(root)
 			}
+		}
+	}
+
+	private reconcileLayoutInstances(graphId: string): void {
+		const document = this.layout.toDocument()
+		const graph = this.requireGraph(graphId)
+		const controls = new Map(
+			(this.rootGraphs.get(graphId)?.getConfigurationControls() ?? []).map(
+				(control) => [control.inputId, control]
+			)
+		)
+		for (const product of document.products) {
+			for (const instance of product.instances) {
+				if (instance.graphId !== graphId) continue
+				for (const [inputId, value] of Object.entries(instance.inputValues)) {
+					const input = graph.inputs.find((candidate) => candidate.id === inputId)
+					if (!input || !this.isInputValueCompatible(input, value)) {
+						delete instance.inputValues[inputId]
+						continue
+					}
+					const control = controls.get(inputId)
+					if (
+						control?.type === 'numberArray'
+						&& (
+							!Array.isArray(value)
+							|| value.length !== control.labels.length
+							|| value.reduce((total, item) => total + item, 0) > control.total
+						)
+					) {
+						instance.inputValues[inputId] = this.getDefaultConfigurationValue(input, control)
+					}
+				}
+			}
+		}
+		this.layout = this.createLayoutModel(document)
+	}
+
+	private reconcileLayoutInstanceMetadata(graphId: string, inputId: string): void {
+		const document = this.layout.toDocument()
+		for (const product of document.products) {
+			for (const instance of product.instances) {
+				if (instance.graphId !== graphId || !instance.layoutMetadata) continue
+				for (const role of Object.keys(instance.layoutMetadata.axisBinding) as LayoutAxisRole[]) {
+					const path = instance.layoutMetadata.axisBinding[role]
+					if (path === inputId || path?.startsWith(`${inputId}.`)) {
+						delete instance.layoutMetadata.axisBinding[role]
+					}
+				}
+				if (Object.keys(instance.layoutMetadata.axisBinding).length === 0) {
+					instance.layoutMetadata = undefined
+				}
+			}
+		}
+		this.layout = this.createLayoutModel(document)
+	}
+
+	private reconcileRootGraphLayoutMetadata(graphId: string, inputId: string): void {
+		const root = this.rootGraphs.get(graphId)
+		const metadata = root?.getLayoutMetadata()
+		if (!root || !metadata) return
+		for (const role of Object.keys(metadata.axisBinding) as LayoutAxisRole[]) {
+			if (metadata.axisBinding[role]?.inputId === inputId) delete metadata.axisBinding[role]
+		}
+		root.setLayoutMetadata(Object.keys(metadata.axisBinding).length > 0 ? metadata : undefined)
+	}
+
+	private remapLayoutInstanceInputValues(
+		graphId: string,
+		inputId: string,
+		remap: (value: number) => number
+	): void {
+		const document = this.layout.toDocument()
+		for (const product of document.products) {
+			for (const instance of product.instances) {
+				if (instance.graphId !== graphId || typeof instance.inputValues[inputId] !== 'number') continue
+				instance.inputValues[inputId] = remap(instance.inputValues[inputId] as number)
+			}
+		}
+		this.layout = this.createLayoutModel(document)
+	}
+
+	private createLayoutModel(document: LayoutDataDocument): LayoutModel {
+		const model = new LayoutModel(document)
+		const snapshot = model.toDocument()
+		for (const slot of snapshot.slots) {
+			for (const graphId of slot.graphs) {
+				if (!this.rootGraphs.has(graphId)) {
+					throw new Error(
+						`Layout slot definition "${slot.id}" allows graph "${graphId}", but that graph `
+						+ `is not a root graph. Available root graphs: `
+						+ `${JSON.stringify([...this.rootGraphs.keys()])}.`
+					)
+				}
+			}
+		}
+		for (const product of snapshot.products) {
+			for (const instance of product.instances) this.validateLayoutInstance(product.id, instance)
+		}
+		return model
+	}
+
+	private validateLayoutInstance(
+		productId: string,
+		instance: LayoutGraphInstanceDocument
+	): void {
+		const graph = this.requireGraph(instance.graphId)
+		for (const [inputId, value] of Object.entries(instance.inputValues)) {
+			const input = graph.inputs.find((candidate) => candidate.id === inputId)
+			if (!input || !this.isInputValueCompatible(input, value)) {
+				throw new Error(
+					`Product item "${instance.id}" in product "${productId}" has invalid value `
+					+ `${JSON.stringify(value)} for input "${inputId}" on graph "${graph.id}".`
+				)
+			}
+			this.assertConfigurationValue(graph.id, inputId, value, instance.id)
+		}
+	}
+
+	private requireProductInstance(
+		productId: string,
+		instanceId: string
+	): LayoutGraphInstanceDocument {
+		const instance = this.layout.requireProduct(productId).instances.find(
+			(candidate) => candidate.id === instanceId
+		)
+		if (!instance) {
+			throw new Error(`Product "${productId}" does not contain item "${instanceId}".`)
+		}
+		return instance
+	}
+
+	private getInitialLayoutInputValues(graphId: string): Record<string, GraphInputValue> {
+		const template = this.getConfigurationTemplates(graphId)[0]
+		return template ? template.values : {}
+	}
+
+	private assertConfigurationValue(
+		graphId: string,
+		inputId: string,
+		value: GraphInputValue,
+		instanceId: string
+	): void {
+		const control = this.getConfigurationControls(graphId).find(
+			(candidate) => candidate.inputId === inputId
+		)
+		if (
+			control?.type === 'numberArray'
+			&& (
+				!Array.isArray(value)
+				|| value.length !== control.labels.length
+				|| value.reduce((total, item) => total + item, 0) > control.total
+			)
+		) {
+			throw new Error(
+				`Layout graph instance "${instanceId}" input "${inputId}" must contain `
+				+ `${control.labels.length} non-negative values totaling at most ${control.total}. `
+				+ `Received ${JSON.stringify(value)}.`
+			)
 		}
 	}
 

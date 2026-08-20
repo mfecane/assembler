@@ -1,5 +1,32 @@
 {
-  "client": "maxshelf",
+	"layout": {
+		"activeProductId": "product-row",
+		"layouts": [
+			{
+				"id": "layout-row", "label": "Product row", "configurationHeader": "Configure your shelf", "type": "row", "axis": "x",
+				"slotId": "product-slot", "slotsCount": { "min": 1, "max": 20 }
+			},
+			{
+				"id": "layout-single", "label": "Single product", "configurationHeader": "Configure your shelf", "type": "single",
+				"slotId": "product-slot", "slotsCount": { "min": 1, "max": 1 }
+			}
+		],
+		"products": [
+			{ "id": "product-row", "label": "Shelf row", "layoutId": "layout-row", "instances": [] },
+			{ "id": "product-single", "label": "Shelf", "layoutId": "layout-single", "instances": [] }
+		],
+		"slots": [
+			{
+				"id": "product-slot", "label": "Product type", "graphs": ["main", "graph-5", "graph-2"],
+				"instanceBounds": {
+					"width": { "min": 0.6, "max": 2 },
+					"depth": { "min": 0.6, "max": 2 },
+					"height": { "min": 0.6, "max": 2 }
+				}
+			}
+		]
+	},
+	"client": "maxshelf",
   "rootGraphs": [
     {
       "graphId": "main",
@@ -78,7 +105,8 @@
             "label": "Wing section width",
             "inputId": "wing-section-width-input"
           }
-        ]
+        ],
+        "templates": []
       }
     },
     {
@@ -104,14 +132,16 @@
             "label": "Wing section width",
             "inputId": "wing-section-width-input"
           }
-        ]
+        ],
+        "templates": []
       }
     },
     {
       "graphId": "graph-2",
       "inputValues": {},
       "configurationPanel": {
-        "controls": []
+        "controls": [],
+        "templates": []
       }
     }
   ],

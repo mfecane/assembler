@@ -12,6 +12,13 @@
 				"root-door-style": 3,
 				"root-tabletop-style": 2
 			},
+			"layoutMetadata": {
+				"axisBinding": {
+					"primary": {
+						"inputId": "root-width"
+					}
+				}
+			},
 			"configurationPanel": {
 				"controls": [
 					{
@@ -62,7 +69,8 @@
 						"label": "Faucet type",
 						"inputId": "input-2"
 					}
-				]
+				],
+				"templates": []
 			}
 		}
 	],
@@ -1654,8 +1662,8 @@
 					"id": "tabletop-output",
 					"name": "Tabletop Output",
 					"position": {
-						"x": 911.616920334238,
-						"y": 120
+						"x": 904.4104992348482,
+						"y": -39.5707529150578
 					},
 					"type": "graphOutput",
 					"data": {}
@@ -1772,8 +1780,8 @@
 					"id": "tabletop-3-group",
 					"name": "Tabletop 3 with faucet",
 					"position": {
-						"x": -387.8358143386407,
-						"y": 692.2863882635514
+						"x": -407.8358143386407,
+						"y": 732.2863882635514
 					},
 					"type": "group",
 					"data": {}
@@ -3117,5 +3125,99 @@
 				}
 			]
 		}
-	]
+	],
+	"layout": {
+		"activeProductId": "product-single",
+		"layouts": [
+			{
+				"id": "layout-row",
+				"label": "Product row",
+				"configurationHeader": "Configure your kitchen",
+				"type": "row",
+				"slotId": "product-slot",
+				"slotsCount": {
+					"max": 20,
+					"min": 1
+				},
+				"axis": "x"
+			},
+			{
+				"id": "layout-single",
+				"label": "Single product",
+				"configurationHeader": "Configure your kitchen",
+				"type": "single",
+				"slotId": "product-slot",
+				"slotsCount": {
+					"max": 1,
+					"min": 1
+				}
+			}
+		],
+		"products": [
+			{
+				"id": "product-single",
+				"label": "Kitchen",
+				"layoutId": "layout-row",
+				"instances": [
+					{
+						"id": "layout-instance-05f613db-b983-4560-8655-ebbc877f5350",
+						"graphId": "graph-1",
+						"inputValues": {
+							"input-1": 0.3,
+							"root-depth": 1,
+							"root-width": 60
+						}
+					},
+					{
+						"id": "layout-instance-69822b8c-d710-4137-b09e-2b0c055cfe58",
+						"graphId": "graph-1",
+						"inputValues": {
+							"root-depth": 1,
+							"root-tabletop-style": 1
+						}
+					},
+					{
+						"id": "layout-instance-a39a335a-4f5c-4633-9c2b-4d8e1d751621",
+						"graphId": "graph-1",
+						"inputValues": {
+							"root-depth": 1,
+							"root-width": 60
+						}
+					},
+					{
+						"id": "layout-instance-6e6d155b-0b43-49b5-ae9a-7e312fd8b760",
+						"graphId": "graph-1",
+						"inputValues": {
+							"root-depth": 1,
+							"input-1": 0.3,
+							"root-width": 83,
+							"root-tabletop-style": 1,
+							"root-door-style": 2
+						}
+					}
+				]
+			}
+		],
+		"slots": [
+			{
+				"id": "product-slot",
+				"label": "Cabinet",
+				"graphs": ["graph-1"],
+				"instanceBounds": {
+					"width": {
+						"max": 0.8,
+						"min": 0.5
+					},
+					"depth": {
+						"max": 0.8,
+						"min": 0.5
+					},
+					"height": {
+						"max": 2,
+						"min": 0.5
+					}
+				}
+			}
+		]
+	}
 }

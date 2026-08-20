@@ -42,9 +42,10 @@ and sum nodes provide supporting configurable values.
 ### Geometry value
 
 A geometry value is a plain-data scene metadata object containing asset instances. Each instance
-identifies a primitive or registered catalog asset and carries its size, numeric transformation
-matrix, optional material, unique scene identity, and originating node-instance reference. Graph
-evaluation does not destructively merge geometry or create Three.js scene objects.
+identifies a primitive or registered catalog asset and carries its size, local bounds center,
+numeric transformation matrix, optional material, unique scene identity, and originating
+node-instance reference. Graph evaluation does not destructively merge geometry or create Three.js
+scene objects.
 
 ### Output
 
@@ -105,10 +106,12 @@ requires both its geometry and material connections.
 
 ## Persistence
 
-The graph document contains one or more root records with saved input values and UI configuration,
-plus every document-local graph definition. Each definition owns its interface, nodes, and edges.
-Runtime-only values such as scene metadata and evaluated asset instances,
-subscriptions, controller revisions, selection, and graph-tree state are not persisted.
+The project document contains product layouts above one or more root records with saved input values
+and UI configuration, plus every document-local graph definition. Layouts retain their selected
+definition, reusable slot rules, graph instances, and per-instance input values. Each graph
+definition owns its interface, nodes, and edges. Layout-item data owns optional dimension bindings. Runtime-only values such as scene metadata and
+evaluated asset instances, subscriptions, controller revisions, selection, graph-tree state, and
+camera-projected slot coordinates are not persisted.
 
 Graph instances reference definitions only by IDs resolved inside the current document.
 

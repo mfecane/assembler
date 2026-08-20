@@ -1,3 +1,4 @@
+import { CameraUpdateController } from '@/parametric/three/CameraUpdateController'
 import {
 	AmbientLight,
 	AxesHelper,
@@ -8,14 +9,13 @@ import {
 	DirectionalLight,
 	GridHelper,
 	HemisphereLight,
-	PerspectiveCamera,
 	PCFSoftShadowMap,
+	PerspectiveCamera,
 	Scene,
-	WebGLRenderer,
 	Vector3,
+	WebGLRenderer,
 } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { CameraUpdateController } from '@/parametric/three/CameraUpdateController'
 
 export interface SceneSetupResult {
 	scene: Scene
@@ -31,8 +31,12 @@ export interface SceneSetupResult {
 }
 
 type SceneRenderListener = (deltaSeconds: number) => void
+export type ScenePresentation = 'technical' | 'studio'
 
-export function createSceneSetup(canvas: HTMLCanvasElement): SceneSetupResult {
+export function createSceneSetup(
+	canvas: HTMLCanvasElement,
+	presentation: ScenePresentation = 'technical'
+): SceneSetupResult {
 	const scene = new Scene()
 	scene.background = new Color(0x1b1d21)
 
@@ -52,11 +56,11 @@ export function createSceneSetup(canvas: HTMLCanvasElement): SceneSetupResult {
 	const ambientLight = new AmbientLight(0xffffff, 0.4)
 	scene.add(ambientLight)
 
-	const hemisphereLight = new HemisphereLight(0xffffff, 0x444444, 0.6)
+	const hemisphereLight = new HemisphereLight(0xffffff, 0x444444, 0.4)
 	hemisphereLight.position.set(0, 10, 0)
 	scene.add(hemisphereLight)
 
-	const directionalLight = new DirectionalLight(0xffffff, 1)
+	const directionalLight = new DirectionalLight(0xffffff, 1.0)
 	directionalLight.position.set(5, 8, 5)
 	directionalLight.castShadow = true
 	directionalLight.shadow.mapSize.set(2048, 2048)
@@ -86,11 +90,13 @@ export function createSceneSetup(canvas: HTMLCanvasElement): SceneSetupResult {
 		shadowCamera.updateProjectionMatrix()
 	}
 
-	const gridHelper = new GridHelper(10, 10)
-	scene.add(gridHelper)
+	if (presentation === 'technical') {
+		const gridHelper = new GridHelper(10, 10)
+		scene.add(gridHelper)
 
-	const axesHelper = new AxesHelper(2)
-	scene.add(axesHelper)
+		const axesHelper = new AxesHelper(2)
+		scene.add(axesHelper)
+	}
 
 	const clock = new Clock()
 	let renderScene: Scene = scene

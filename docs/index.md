@@ -39,6 +39,8 @@ behavior; only files under **Planned work** are pending.
   transforms, materials, provenance, and scene construction.
 - [Editor UI](./implementation/editor-ui.md) — graph toolbar and configuration-panel behavior.
 - [Project saving](./implementation/project-saving.md) — autosave, Save as, rename, and dirty state.
+- [Product layouts](./implementation/product-layouts.md) — row/single product composition, reusable
+  slot rules, graph instances, per-instance controls, and 3D slot actions.
 - [Model editor](./implementation/model-editor.md) — client-scoped model navigation, standalone 3D
   preview, editable stretch regions and gizmos, temporary deformation tests, and metadata saving.
 - [Mesh asset helper](./implementation/asset-helper.md) — asset browsing, previews, and insertion.

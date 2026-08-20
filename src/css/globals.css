@@ -140,6 +140,10 @@ body {
 	--xy-edge-stroke-selected: var(--primary);
 }
 
+.react-flow__panel {
+	margin: 8px !important;
+}
+
 .react-flow .react-flow__node.selectable.selected {
 	border-radius: var(--radius-md);
 	outline: 2px solid var(--primary);

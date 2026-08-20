@@ -1,9 +1,18 @@
+import { ARRAY_DISTANCE_SNAP, type TransformNodeValues } from '@/parametric/editor/EditorController'
+import type { SceneMetadata } from '@/parametric/evaluation/SceneMetadata'
+import type { ArrayGraphNode, Axis, TransformOrigin, TransformableGraphNode } from '@/parametric/model/GraphNode'
+import { CanvasEventHandler } from '@/parametric/three/editor/InteractionSystem'
+import type { AlignmentMethod, ViewportBoundsSnapshot } from '@/parametric/three/editor/ViewportAlignment'
+import type { ViewportEditorController } from '@/parametric/three/editor/ViewportEditorController'
+import { createSceneSetup } from '@/parametric/three/SceneSetup'
+import { syncSceneMetadata } from '@/parametric/three/syncMeshes'
 import {
 	Box3,
 	BoxHelper,
+	EquirectangularReflectionMapping,
 	Euler,
-	Matrix4,
 	MathUtils,
+	Matrix4,
 	Mesh,
 	MeshBasicMaterial,
 	Object3D,
@@ -12,30 +21,13 @@ import {
 	Vector3,
 	type PerspectiveCamera,
 	type Scene,
+	type Texture,
 	type WebGLRenderer,
 } from 'three'
-import {
-	TransformControls,
-	type TransformControlsMode,
-} from 'three/examples/jsm/controls/TransformControls.js'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import type { SceneMetadata } from '@/parametric/evaluation/SceneMetadata'
-import type {
-	ArrayGraphNode,
-	Axis,
-	TransformOrigin,
-	TransformableGraphNode,
-} from '@/parametric/model/GraphNode'
-import { createSceneSetup } from '@/parametric/three/SceneSetup'
-import { syncSceneMetadata } from '@/parametric/three/syncMeshes'
-import type { ViewportEditorController } from '@/parametric/three/editor/ViewportEditorController'
-import { CanvasEventHandler } from '@/parametric/three/editor/InteractionSystem'
-import {
-	ARRAY_DISTANCE_SNAP,
-	type TransformNodeValues,
-} from '@/parametric/editor/EditorController'
-import type { ViewportBoundsSnapshot } from '@/parametric/three/editor/ViewportAlignment'
-import type { AlignmentMethod } from '@/parametric/three/editor/ViewportAlignment'
+import { TransformControls, type TransformControlsMode } from 'three/examples/jsm/controls/TransformControls.js'
+import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js'
+import studioEnvironmentUrl from '../../../../assets/environment/blocky_photo_studio_512.ktx2?url'
 
 export class ViewportScene {
 	private readonly scene: Scene
@@ -50,7 +42,10 @@ export class ViewportScene {
 	private readonly transformTarget = new Object3D()
 	private readonly canvasEvents: CanvasEventHandler
 	private readonly cameraUpdateSubscription: AbortController
+	private readonly environmentLoader: KTX2Loader
 	private readonly cameraWidgetRadii = new Map<Mesh, number>()
+	private environment: Texture | null = null
+	private disposed = false
 	private selectionHelper: BoxHelper | null = null
 	private attachedTransformNodeId: string | null = null
 	private attachedArrayDistanceNodeId: string | null = null
@@ -83,6 +78,27 @@ export class ViewportScene {
 		this.orbitControls = setup.controls
 		this.disposeSceneSetup = setup.dispose
 		this.fitShadowsToBounds = setup.fitShadowsToBounds
+		this.environmentLoader = new KTX2Loader().detectSupport(this.renderer)
+		this.environmentLoader.load(
+			studioEnvironmentUrl,
+			(texture) => {
+				if (this.disposed) {
+					texture.dispose()
+					return
+				}
+				texture.mapping = EquirectangularReflectionMapping
+				this.environment = texture
+				this.scene.environment = texture
+				this.scene.environmentIntensity = 0.4
+			},
+			undefined,
+			(cause) =>
+				console.error(
+					`Failed to load the invisible Graph Editor environment from "${studioEnvironmentUrl}". ` +
+						'The graph viewport will retain direct lighting without image-based lighting.',
+					{ cause, environmentUrl: studioEnvironmentUrl }
+				)
+		)
 
 		this.scene.add(this.transformTarget)
 		this.transformControls = new TransformControls(this.camera, canvas)
@@ -101,9 +117,10 @@ export class ViewportScene {
 		this.canvasEvents = new CanvasEventHandler(
 			canvas,
 			this.camera,
-			() => this.alignmentGizmoHitTargets.length > 0
-				? this.alignmentGizmoHitTargets
-				: [...this.meshesById.values()],
+			() =>
+				this.alignmentGizmoHitTargets.length > 0
+					? this.alignmentGizmoHitTargets
+					: [...this.meshesById.values()],
 			controller.interactions,
 			() => this.transformControls.dragging,
 			this.onAlignmentPointHover
@@ -154,16 +171,19 @@ export class ViewportScene {
 		syncSceneMetadata(this.scene, this.ghostMeshesById, ghostMetadata, { ghost: true })
 		if (this.meshesById.size > 0) {
 			const bounds = this.getContentBounds()
-			this.fitShadowsToBounds(new Box3(
-				new Vector3(bounds.min.x, bounds.min.y, bounds.min.z),
-				new Vector3(bounds.max.x, bounds.max.y, bounds.max.z)
-			))
+			this.fitShadowsToBounds(
+				new Box3(
+					new Vector3(bounds.min.x, bounds.min.y, bounds.min.z),
+					new Vector3(bounds.max.x, bounds.max.y, bounds.max.z)
+				)
+			)
 		}
 		this.syncSelection(selectedMeshInstanceId)
 		this.syncGizmo(transformNode, arrayDistanceNode, transformMode)
 	}
 
 	public dispose(): void {
+		this.disposed = true
 		this.canvasEvents.dispose()
 		this.cameraUpdateSubscription.abort()
 		this.transformControls.removeEventListener('mouseDown', this.onTransformStart)
@@ -189,6 +209,9 @@ export class ViewportScene {
 			for (const material of materials) material.dispose()
 		}
 		this.ghostMeshesById.clear()
+		this.scene.environment = null
+		this.environment?.dispose()
+		this.environmentLoader.dispose()
 		this.disposeSceneSetup()
 	}
 
@@ -323,8 +346,8 @@ export class ViewportScene {
 		for (const [widget, radius] of this.cameraWidgetRadii) {
 			const pixelRadius = this.alignmentGizmoMarkers.includes(widget) ? 10 : 28
 			const distance = this.camera.position.distanceTo(widget.getWorldPosition(new Vector3()))
-			const worldRadius = 2 * distance * Math.tan(MathUtils.degToRad(this.camera.fov / 2))
-				* pixelRadius / viewportHeight
+			const worldRadius =
+				(2 * distance * Math.tan(MathUtils.degToRad(this.camera.fov / 2)) * pixelRadius) / viewportHeight
 			widget.scale.setScalar(worldRadius / radius)
 		}
 	}
@@ -401,9 +424,7 @@ export class ViewportScene {
 		}
 	}
 
-	private getArrayGizmoPlacement(
-		node: ArrayGraphNode
-	): { anchor: Vector3; target: Vector3; steps: number } | null {
+	private getArrayGizmoPlacement(node: ArrayGraphNode): { anchor: Vector3; target: Vector3; steps: number } | null {
 		const boundsByIndex = new Map<number, Box3>()
 		const prefix = `${node.id}/`
 		for (const [instanceId, mesh] of this.meshesById) {
@@ -449,9 +470,7 @@ export class ViewportScene {
 	private readonly onTransformStart = () => {
 		this.transformStart = this.attachedTransformNodeId ? this.readTargetValues() : null
 		this.visualTransformStart = this.transformStart
-		this.arrayDistanceStart = this.attachedArrayDistanceNodeId
-			? this.readArrayDistance()
-			: null
+		this.arrayDistanceStart = this.attachedArrayDistanceNodeId ? this.readArrayDistance() : null
 		this.visualArrayDistanceStart = this.arrayDistanceStart
 		this.dragMeshMatrices = new Map(
 			[...this.meshesById].map(([instanceId, mesh]) => [instanceId, mesh.matrix.clone()])
@@ -540,11 +559,7 @@ export class ViewportScene {
 
 	private writeTargetValues(values: TransformNodeValues): void {
 		this.syncingGizmo = true
-		this.transformTarget.position.set(
-			values.translation.x,
-			values.translation.y,
-			values.translation.z
-		)
+		this.transformTarget.position.set(values.translation.x, values.translation.y, values.translation.z)
 		this.transformTarget.rotation.set(
 			MathUtils.degToRad(values.rotation.x),
 			MathUtils.degToRad(values.rotation.y),
@@ -559,8 +574,7 @@ export class ViewportScene {
 	private readArrayDistance(): number {
 		if (!this.arrayDistanceAnchor || !this.attachedArrayDistanceNodeId) return 0
 		const axis = this.getVisibleArrayAxis()
-		return (this.transformTarget.position[axis] - this.arrayDistanceAnchor[axis])
-			/ this.arrayDistanceSteps
+		return (this.transformTarget.position[axis] - this.arrayDistanceAnchor[axis]) / this.arrayDistanceSteps
 	}
 
 	private writeArrayDistance(value: number): void {
@@ -590,20 +604,12 @@ export class ViewportScene {
 	private previewTransformDrag(after: TransformNodeValues): void {
 		if (!this.visualTransformStart || !this.transformOrigin) return
 		for (const [instanceId, baseline] of this.dragMeshMatrices) {
-			if (
-				this.attachedTransformNodeId
-				&& instanceId.startsWith(`${this.attachedTransformNodeId}/original/`)
-			) continue
+			if (this.attachedTransformNodeId && instanceId.startsWith(`${this.attachedTransformNodeId}/original/`))
+				continue
 			const mesh = this.meshesById.get(instanceId)
-			const size = mesh?.userData.sceneInstance?.size as
-				| { x: number; y: number; z: number }
-				| undefined
+			const size = mesh?.userData.sceneInstance?.size as { x: number; y: number; z: number } | undefined
 			if (!mesh || !size) continue
-			const beforeMatrix = createTransformMatrix(
-				this.visualTransformStart,
-				this.transformOrigin,
-				size
-			)
+			const beforeMatrix = createTransformMatrix(this.visualTransformStart, this.transformOrigin, size)
 			const afterMatrix = createTransformMatrix(after, this.transformOrigin, size)
 			mesh.matrix.copy(afterMatrix.multiply(beforeMatrix.invert()).multiply(baseline))
 			mesh.updateMatrixWorld(true)
@@ -621,11 +627,9 @@ export class ViewportScene {
 			if (!mesh || !Number.isInteger(index)) continue
 			const translation = new Vector3()
 			translation[axis] = (after - this.visualArrayDistanceStart) * index
-			mesh.matrix.copy(new Matrix4().makeTranslation(
-				translation.x,
-				translation.y,
-				translation.z
-			).multiply(baseline))
+			mesh.matrix.copy(
+				new Matrix4().makeTranslation(translation.x, translation.y, translation.z).multiply(baseline)
+			)
 			mesh.updateMatrixWorld(true)
 		}
 	}
@@ -649,12 +653,14 @@ function createTransformMatrix(
 	)
 	const transform = new Matrix4().compose(
 		new Vector3(),
-		new Quaternion().setFromEuler(new Euler(
-			MathUtils.degToRad(values.rotation.x),
-			MathUtils.degToRad(values.rotation.y),
-			MathUtils.degToRad(values.rotation.z),
-			'XYZ'
-		)),
+		new Quaternion().setFromEuler(
+			new Euler(
+				MathUtils.degToRad(values.rotation.x),
+				MathUtils.degToRad(values.rotation.y),
+				MathUtils.degToRad(values.rotation.z),
+				'XYZ'
+			)
+		),
 		new Vector3(values.scale.x, values.scale.y, values.scale.z)
 	)
 	return new Matrix4()
@@ -670,10 +676,7 @@ function originOffset(origin: 'min' | 'middle' | 'max', size: number): number {
 	return 0
 }
 
-function alignmentCoordinates(
-	min: number,
-	max: number
-): Array<{ value: number; method: AlignmentMethod }> {
+function alignmentCoordinates(min: number, max: number): Array<{ value: number; method: AlignmentMethod }> {
 	return [
 		{ value: min, method: 'min' },
 		{ value: (min + max) / 2, method: 'middle' },
@@ -681,9 +684,7 @@ function alignmentCoordinates(
 	]
 }
 
-function getAlignmentPointColor(
-	methods: Record<'x' | 'y' | 'z', AlignmentMethod>
-): number {
+function getAlignmentPointColor(methods: Record<'x' | 'y' | 'z', AlignmentMethod>): number {
 	const middleCount = Object.values(methods).filter((method) => method === 'middle').length
 	if (middleCount === 0) return 0xef4444
 	if (middleCount === 1) return 0xf59e0b

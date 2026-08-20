@@ -2,11 +2,7 @@ import { useRef, useState } from 'react'
 import { ChevronDown, Download, FileJson, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from '@/components/ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
 	Tooltip,
 	TooltipContent,
@@ -14,23 +10,22 @@ import {
 } from '@/components/ui/tooltip'
 import type { EditorController } from '@/parametric/editor/EditorController'
 
-export function GraphJsonControls({ controller }: { controller: EditorController }) {
+export function ProjectJsonControls({
+	projectName,
+	controller,
+}: {
+	projectName: string
+	controller: EditorController
+}) {
 	const fileInputRef = useRef<HTMLInputElement>(null)
 	const [menuOpen, setMenuOpen] = useState(false)
 
 	const handleExport = () => {
-		downloadJson(JSON.stringify(controller.exportGraph(), null, 2), 'assembly.json')
+		downloadJson(
+			JSON.stringify(controller.exportGraph(), null, 2),
+			`${safeFileName(projectName)}.json`
+		)
 		setMenuOpen(false)
-	}
-
-	const downloadJson = (json: string, fileName: string) => {
-		const blob = new Blob([json], { type: 'application/json' })
-		const url = URL.createObjectURL(blob)
-		const link = document.createElement('a')
-		link.href = url
-		link.download = fileName
-		link.click()
-		URL.revokeObjectURL(url)
 	}
 
 	const handleImport = async (file: File | undefined) => {
@@ -42,12 +37,13 @@ export function GraphJsonControls({ controller }: { controller: EditorController
 				? `${cause.name}: ${cause.message}${cause.stack ? `\n${cause.stack}` : ''}`
 				: String(cause)
 			const error = [
-				`Could not import assembly JSON from "${file.name}"`,
-				`(${file.size} bytes, type: ${file.type || 'unknown'}).`,
+				`Could not import project JSON from "${file.name}"`,
+				`(${file.size} bytes, type: ${file.type || 'unknown'}, target project: "${projectName}").`,
 				reason,
 			].join(' ')
 			console.error(error, {
 				cause,
+				projectName,
 				fileName: file.name,
 				fileSize: file.size,
 				fileType: file.type,
@@ -62,12 +58,12 @@ export function GraphJsonControls({ controller }: { controller: EditorController
 				<TooltipTrigger asChild>
 					<PopoverTrigger asChild>
 						<Button
-							data-id="graph-file-menu-button"
+							data-id="project-file-menu-button"
 							type="button"
 							variant="ghost"
 							size="icon"
-							className="nodrag nopan relative h-8 w-8 text-muted-foreground"
-							aria-label="Open import and export menu"
+							className="relative h-8 w-8 text-muted-foreground"
+							aria-label="Open project import and export menu"
 						>
 							<FileJson />
 							<ChevronDown
@@ -77,14 +73,10 @@ export function GraphJsonControls({ controller }: { controller: EditorController
 						</Button>
 					</PopoverTrigger>
 				</TooltipTrigger>
-				<PopoverContent
-					data-id="graph-file-menu"
-					align="end"
-					className="nodrag nopan w-64 p-1"
-				>
-					<div className="flex flex-col" role="menu" aria-label="Assembly file actions">
+				<PopoverContent data-id="project-file-menu" align="end" className="w-64 p-1">
+					<div className="flex flex-col" role="menu" aria-label="Project file actions">
 						<Button
-							data-id="import-graph-json-button"
+							data-id="import-project-json-button"
 							type="button"
 							variant="ghost"
 							className="h-9 justify-start px-2 font-normal"
@@ -95,10 +87,10 @@ export function GraphJsonControls({ controller }: { controller: EditorController
 							}}
 						>
 							<Upload />
-							Import assembly JSON
+							Import project JSON
 						</Button>
 						<Button
-							data-id="export-graph-json-button"
+							data-id="export-project-json-button"
 							type="button"
 							variant="ghost"
 							className="h-9 justify-start px-2 font-normal"
@@ -106,13 +98,13 @@ export function GraphJsonControls({ controller }: { controller: EditorController
 							onClick={handleExport}
 						>
 							<Download />
-							Export assembly JSON
+							Export project JSON
 						</Button>
 					</div>
 				</PopoverContent>
 				<Input
 					ref={fileInputRef}
-					data-id="import-graph-json-input"
+					data-id="import-project-json-input"
 					type="file"
 					accept="application/json,.json"
 					className="hidden"
@@ -122,7 +114,21 @@ export function GraphJsonControls({ controller }: { controller: EditorController
 					}}
 				/>
 			</Popover>
-			<TooltipContent side="top">Import or export files</TooltipContent>
+			<TooltipContent side="top">Import or export project</TooltipContent>
 		</Tooltip>
 	)
+}
+
+function downloadJson(json: string, fileName: string): void {
+	const blob = new Blob([json], { type: 'application/json' })
+	const url = URL.createObjectURL(blob)
+	const link = document.createElement('a')
+	link.href = url
+	link.download = fileName
+	link.click()
+	URL.revokeObjectURL(url)
+}
+
+function safeFileName(value: string): string {
+	return value.trim().replace(/[^a-z0-9-_]+/gi, '-').replace(/^-+|-+$/g, '') || 'project'
 }

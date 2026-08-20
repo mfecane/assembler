@@ -7,7 +7,6 @@ import {
 	useReactBridgeSnapshot,
 	useEditor,
 } from '@/parametric/editor/react/EditorContext'
-import { ConfiguratorPanel } from '@/parametric/components/ConfiguratorPanel'
 import { cn } from '@/lib/utils'
 import { ViewportAlignmentDialog } from '@/parametric/three/ViewportAlignmentDialog'
 
@@ -153,9 +152,7 @@ export function ThreeViewport() {
 					<ArrowLeft />
 					Back to assembly output
 				</Button>
-			) : (
-				<ConfiguratorPanel />
-			)}
+			) : null}
 			{snapshot.contextMenu && (
 				<div
 					data-id="three-editor-selection-menu"

@@ -96,7 +96,43 @@ The current `graph_document` constraint accepts only the root-graph document sha
 Do not run [`scripts/seed-local-supabase.mjs`](../../scripts/seed-local-supabase.mjs) against the
 hosted project. It creates a fixed local developer account and seeded project.
 
-## 6. Verify
+## 6. Copy local metadata and projects to hosted Supabase
+
+This is a one-way export from the currently running local Docker database. It preserves each graph
+document and metadata record, but assigns every imported project to one existing hosted Auth user.
+
+1. Sign in to the hosted site as the intended project owner. In the hosted SQL Editor, find that
+   user's `id` and email:
+
+   ```sql
+   select id, email from auth.users order by created_at desc;
+   ```
+
+2. Add the chosen values to `.env.local`:
+
+   ```text
+   HOSTED_USER_ID=<hosted-auth-user-uuid>
+   HOSTED_EMAIL=<hosted-auth-user-email>
+   ```
+
+3. With the local Docker stack still running, run:
+
+   ```bash
+   ./scripts/dump-local-supabase.sh
+   ```
+
+   The command prints the full path to a generated SQL file under `/tmp`. It contains upserts for
+   `public.model_metadata` and `public.projects`, wrapped in one transaction. The output location
+   can be changed by supplying a file path as the first argument.
+
+4. Open the SQL Editor for the intended hosted project, paste the generated file's complete
+   contents, and run it.
+
+The script deliberately does not copy `auth.users`. Hosted identities are managed by Supabase Auth,
+and the configured hosted user must exist before the generated project statements can satisfy the
+`projects.user_id` foreign key.
+
+## 7. Verify
 
 1. In the Table Editor, confirm that `public.model_metadata` and `public.projects` are empty and RLS is
    enabled on both tables.

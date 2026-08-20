@@ -21,12 +21,12 @@ export function loadSeedData() {
 		projects: [
 			{
 				id: '20000000-0000-4000-8000-000000000001',
-				name: 'Seeded MaxShelf project',
+				name: 'MaxShelf project',
 				graphDocument: maxshelfDefaultGraph,
 			},
 			{
 				id: '20000000-0000-4000-8000-000000000002',
-				name: 'Seeded Kitchen project',
+				name: 'Kitchen project',
 				graphDocument: kitchenDefaultGraph,
 			},
 		],
@@ -54,26 +54,30 @@ function readAssetMetadataSeed(client, document) {
 	}
 	if (!document || typeof document !== 'object' || Array.isArray(document)) {
 		throw new Error(
-			`The ${client} asset metadata seed must be a JSON object. `
-			+ `Received ${JSON.stringify(document)}.`
+			`The ${client} asset metadata seed must be a JSON object. ` + `Received ${JSON.stringify(document)}.`
 		)
 	}
 	const assets = document.assets ?? []
 	if (!Array.isArray(assets)) {
 		throw new Error(
-			`The ${client} asset metadata seed assets field must be an array when provided. `
-			+ `Received ${JSON.stringify(document.assets)}.`
+			`The ${client} asset metadata seed assets field must be an array when provided. ` +
+				`Received ${JSON.stringify(document.assets)}.`
 		)
 	}
-	const invalidAssets = assets.filter((asset) => (
-		!asset || typeof asset !== 'object' || Array.isArray(asset)
-		|| typeof asset.id !== 'string' || asset.id.length === 0
-		|| typeof asset.label !== 'string' || asset.label.length === 0
-	))
+	const invalidAssets = assets.filter(
+		(asset) =>
+			!asset ||
+			typeof asset !== 'object' ||
+			Array.isArray(asset) ||
+			typeof asset.id !== 'string' ||
+			asset.id.length === 0 ||
+			typeof asset.label !== 'string' ||
+			asset.label.length === 0
+	)
 	if (invalidAssets.length > 0) {
 		throw new Error(
-			`The ${client} asset metadata seed contains assets without non-empty string id and label fields. `
-			+ `Invalid assets: ${JSON.stringify(invalidAssets)}.`
+			`The ${client} asset metadata seed contains assets without non-empty string id and label fields. ` +
+				`Invalid assets: ${JSON.stringify(invalidAssets)}.`
 		)
 	}
 	for (const asset of assets) assertStretchMetadata(client, asset)
@@ -89,26 +93,37 @@ function assertStretchMetadata(client, asset) {
 	if (asset.stretchAxes === undefined) return
 	if (!Array.isArray(asset.stretchAxes)) {
 		throw new Error(
-			`The ${client} metadata seed for asset "${asset.id}" must contain a stretchAxes array. `
-			+ `Received ${JSON.stringify(asset.stretchAxes)}.`
+			`The ${client} metadata seed for asset "${asset.id}" must contain a stretchAxes array. ` +
+				`Received ${JSON.stringify(asset.stretchAxes)}.`
 		)
 	}
 	for (const [axisIndex, stretchAxis] of asset.stretchAxes.entries()) {
-		if (!stretchAxis || typeof stretchAxis !== 'object' || Array.isArray(stretchAxis)
-			|| !['x', 'y', 'z'].includes(stretchAxis.axis)
-			|| !Array.isArray(stretchAxis.boxes) || stretchAxis.boxes.length === 0) {
+		if (
+			!stretchAxis ||
+			typeof stretchAxis !== 'object' ||
+			Array.isArray(stretchAxis) ||
+			!['x', 'y', 'z'].includes(stretchAxis.axis) ||
+			!Array.isArray(stretchAxis.boxes) ||
+			stretchAxis.boxes.length === 0
+		) {
 			throw new Error(
-				`The ${client} metadata seed for asset "${asset.id}" has invalid stretch axis ${axisIndex}. `
-				+ 'Expected x/y/z axis and a non-empty boxes array. '
-				+ `Received ${JSON.stringify(stretchAxis)}.`
+				`The ${client} metadata seed for asset "${asset.id}" has invalid stretch axis ${axisIndex}. ` +
+					'Expected x/y/z axis and a non-empty boxes array. ' +
+					`Received ${JSON.stringify(stretchAxis)}.`
 			)
 		}
 		for (const [boxIndex, box] of stretchAxis.boxes.entries()) {
-			if (!box || typeof box !== 'object' || Array.isArray(box)
-				|| !Number.isFinite(box.min) || !Number.isFinite(box.max) || box.min >= box.max) {
+			if (
+				!box ||
+				typeof box !== 'object' ||
+				Array.isArray(box) ||
+				!Number.isFinite(box.min) ||
+				!Number.isFinite(box.max) ||
+				box.min >= box.max
+			) {
 				throw new Error(
-					`The ${client} metadata seed for asset "${asset.id}" has invalid stretch box `
-					+ `${boxIndex} on axis ${stretchAxis.axis}. Boxes: ${JSON.stringify(stretchAxis.boxes)}.`
+					`The ${client} metadata seed for asset "${asset.id}" has invalid stretch box ` +
+						`${boxIndex} on axis ${stretchAxis.axis}. Boxes: ${JSON.stringify(stretchAxis.boxes)}.`
 				)
 			}
 		}
@@ -116,9 +131,9 @@ function assertStretchMetadata(client, asset) {
 		for (let boxIndex = 1; boxIndex < boxes.length; boxIndex += 1) {
 			if (boxes[boxIndex - 1].max <= boxes[boxIndex].min) continue
 			throw new Error(
-				`The ${client} metadata seed for asset "${asset.id}" has intersecting stretch boxes `
-				+ `${boxIndex - 1} and ${boxIndex} on axis ${stretchAxis.axis}. `
-				+ `Boxes: ${JSON.stringify(stretchAxis.boxes)}.`
+				`The ${client} metadata seed for asset "${asset.id}" has intersecting stretch boxes ` +
+					`${boxIndex - 1} and ${boxIndex} on axis ${stretchAxis.axis}. ` +
+					`Boxes: ${JSON.stringify(stretchAxis.boxes)}.`
 			)
 		}
 	}
@@ -128,34 +143,78 @@ function assertDefaultGraphTemplate(document) {
 	const graph = document?.graphs?.[0]
 	const nodeTypes = graph?.nodes?.map((node) => node.type)
 	if (
-		!document || typeof document !== 'object' || Array.isArray(document)
-		|| document.client !== undefined
-		|| document.rootGraphs?.length !== 1
-		|| document.enums?.length !== 0
-		|| document.graphs?.length !== 1
-		|| graph.id !== 'main'
-		|| nodeTypes?.filter((type) => type === 'primitive').length !== 1
-		|| nodeTypes?.filter((type) => type === 'graphOutput').length !== 1
-		|| graph.edges?.length !== 1
+		!document ||
+		typeof document !== 'object' ||
+		Array.isArray(document) ||
+		document.client !== undefined ||
+		document.rootGraphs?.length !== 1 ||
+		!document.rootGraphs.every(hasConfigurationTemplates) ||
+		document.enums?.length !== 0 ||
+		document.graphs?.length !== 1 ||
+		!hasProductLayouts(document.layout) ||
+		graph.id !== 'main' ||
+		nodeTypes?.filter((type) => type === 'primitive').length !== 1 ||
+		nodeTypes?.filter((type) => type === 'graphOutput').length !== 1 ||
+		graph.edges?.length !== 1
 	) {
 		throw new Error(
-			'The default graph template must contain no client, one root, no enums, one graph, one primitive, '
-			+ `one graph output, and one edge. Received ${JSON.stringify(document)}.`
+			'The default graph template must contain no client, row/single product layouts, one root, no ' +
+				'enums, one graph, one primitive, one graph output, and one edge. ' +
+				`Received ${JSON.stringify(document)}.`
 		)
 	}
 }
 
 function assertClientDefaultGraph(client, document) {
 	if (
-		!document || typeof document !== 'object' || Array.isArray(document)
-		|| document.client !== client
-		|| !Array.isArray(document.rootGraphs) || document.rootGraphs.length === 0
-		|| !Array.isArray(document.enums)
-		|| !Array.isArray(document.graphs) || document.graphs.length === 0
+		!document ||
+		typeof document !== 'object' ||
+		Array.isArray(document) ||
+		document.client !== client ||
+		!Array.isArray(document.rootGraphs) ||
+		document.rootGraphs.length === 0 ||
+		!document.rootGraphs.every(hasConfigurationTemplates) ||
+		!hasProductLayouts(document.layout) ||
+		!Array.isArray(document.enums) ||
+		!Array.isArray(document.graphs) ||
+		document.graphs.length === 0
 	) {
 		throw new Error(
-			`The ${client} default graph must declare client "${client}" and contain rootGraphs, enums, and graphs. `
-			+ `Received ${JSON.stringify(document)}.`
+			`The ${client} default graph must declare client "${client}" and contain product layouts, ` +
+				`rootGraphs, enums, and graphs. ` +
+				`Received ${JSON.stringify(document)}.`
 		)
 	}
+}
+
+function hasConfigurationTemplates(rootGraph) {
+	return (
+		Array.isArray(rootGraph?.configurationPanel?.controls) &&
+		Array.isArray(rootGraph.configurationPanel.templates)
+	)
+}
+
+function hasProductLayouts(layout) {
+	return typeof layout?.activeProductId === 'string'
+		&& Array.isArray(layout.layouts)
+		&& layout.layouts.some((item) => item?.type === 'row' && item.axis === 'x')
+		&& layout.layouts.some((item) => item?.type === 'single')
+		&& layout.layouts.every((item) => (
+			typeof item?.slotId === 'string'
+			&& typeof item?.configurationHeader === 'string'
+			&& item.configurationHeader.length > 0
+			&& Number.isInteger(item?.slotsCount?.max)
+		))
+		&& Array.isArray(layout.products)
+		&& layout.products.length > 0
+		&& layout.products.every((product) => (
+			typeof product?.id === 'string'
+			&& typeof product?.label === 'string'
+			&& typeof product?.layoutId === 'string'
+			&& Array.isArray(product?.instances)
+		))
+		&& Array.isArray(layout.slots)
+		&& layout.slots.length === 1
+		&& Array.isArray(layout.slots[0]?.graphs)
+		&& Number.isFinite(layout.slots[0]?.instanceBounds?.width?.max)
 }
