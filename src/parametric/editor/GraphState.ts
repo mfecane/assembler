@@ -1,5 +1,8 @@
-import type { GraphDocumentModel } from '@/parametric/model/GraphDocumentModel'
-import type { GraphModel } from '@/parametric/model/GraphModel'
+import type {
+	GraphDocumentModel,
+	GraphDocumentReader,
+} from '@/parametric/model/GraphDocumentModel'
+import type { GraphModel, GraphModelReader } from '@/parametric/model/GraphModel'
 import {
 	deserializeGraph,
 	serializeGraph,
@@ -8,13 +11,13 @@ import {
 import type { NodeRegistry } from '@/parametric/model/NodeDefinition'
 
 export interface GraphStateSnapshot {
-	revision: number
-	evaluationRevision: number
-	documentVersion: number
-	document: GraphDocumentModel
-	activeGraphId: string
-	activeRootGraphId: string
-	model: GraphModel
+	readonly revision: number
+	readonly evaluationRevision: number
+	readonly documentVersion: number
+	readonly document: GraphDocumentReader
+	readonly activeGraphId: string
+	readonly activeRootGraphId: string
+	readonly model: GraphModelReader
 }
 
 export interface GraphStateCheckpoint {
@@ -133,14 +136,16 @@ export class GraphState {
 	}
 
 	private createSnapshot(): GraphStateSnapshot {
+		// Published readers must never reference the authoritative mutable document.
+		const document = deserializeGraph(this.serialize(), this.nodeRegistry)
 		return {
 			revision: this.revision,
 			evaluationRevision: this.evaluationRevision,
 			documentVersion: this.documentVersion,
-			document: this.document,
+			document,
 			activeGraphId: this.activeGraphId,
 			activeRootGraphId: this.activeRootGraphId,
-			model: this.getActiveModel(),
+			model: document.requireGraph(this.activeGraphId).model,
 		}
 	}
 }

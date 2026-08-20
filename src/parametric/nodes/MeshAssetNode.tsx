@@ -24,6 +24,13 @@ export function MeshAssetNode({ id }: NodeProps<ParametricFlowNode>) {
 				data-id={`mesh-asset-node-${id}`}
 				className="min-w-52 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
 			>
+				<TypedHandle
+					id="material"
+					type="target"
+					position={Position.Left}
+					valueType="materialInstance"
+					style={{ top: '50%' }}
+				/>
 				<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} />} />
 				<MeshAssetPickerTrigger
 					dataId={`mesh-asset-picker-trigger-${id}`}

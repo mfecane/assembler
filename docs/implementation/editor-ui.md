@@ -4,6 +4,9 @@
 
 - Actions use compact icon buttons with accessible labels and tooltips.
 - The delete-edge action appears only when one or more edges are selected.
+- Delete and Backspace remove the selected connections and removable nodes from the graph canvas.
+  Removing a node also removes its connected edges; the required Output node remains protected. The
+  entire selection is recorded as one graph command, so one Undo restores the complete deletion.
 - Configuration-panel editing, node creation, asset browsing, and JSON import/export are launched
   from the canvas toolbar. Node creation opens a searchable dialog from either the toolbar button or
   the Space shortcut. Its filter receives focus immediately, matches names, descriptions, and
@@ -32,12 +35,13 @@
 
 ## Configuration-panel editor
 
-Public inputs are created and edited as Graph Input nodes on the canvas. The configuration-panel
+Values are created and edited as Input nodes on the canvas. Enabling Export exposes a value as a
+public graph input; disabling it keeps the value local. The configuration-panel
 dialog does not create inputs; it maps compatible inputs from the open root graph to that root's
 configurator controls.
 
 The dialog shows the configured UI items rather than an inventory of every graph input. **Add item**
-offers predefined number-field, slider, number-array, select, color-picker, and switch items. Adding an item binds
+offers predefined number-field, slider, number-array, select, material-select, and switch items. Adding an item binds
 it to the first unused compatible root input; its Graph input selector can then link it to another
 unused compatible input. Each root input can back at most one UI item in that root's panel.
 
@@ -47,8 +51,8 @@ Items expose their label, widget type, graph-input binding, and type-specific se
 - Number-array inputs support a multi-value number editor with author-defined labels, item count,
   step, and shared total maximum.
 - Choice inputs support selects.
-- Color inputs support color controls. Each control edits the non-empty RGB choice list shown in
-  the runtime configurator; graph and graph-instance nodes remain unrestricted RGB pickers.
+- Material inputs support material controls. The runtime configurator, graph inputs, and graph
+  instances all select from the registered PBR material catalog.
 - Boolean inputs support switches.
 - Geometry inputs cannot be exposed in the panel.
 
@@ -59,8 +63,11 @@ separate layout field. Removing an item affects only its UI mapping; the graph i
 value remain intact.
 
 The editor is available while any root graph is open and edits only that root's UI configuration.
-Runtime controls follow the active root context and use an even label/control grid. The runtime
-panel can be collapsed, but collapsed state is view-only and is not persisted in the graph document.
+Runtime controls use an even label/control grid. A root graph renders its configured controls; a
+subgraph bypasses that mapping and renders controls for every non-geometry exported input from the
+definition itself. Editing a subgraph control changes that input's declaration default, which is
+also used by the subgraph preview. The runtime panel can be collapsed, but collapsed state is
+view-only and is not persisted in the graph document.
 
 ## Node headers
 
@@ -86,10 +93,14 @@ ignored. Transform position and scale plus Array and Multi Array offsets use `0.
 rotation uses `1`, and integer count inputs retain step `1`.
 
 All numeric editing surfaces use the same `NumericInput`. It owns focused draft text, parsing,
-minimum constraints, rounded commits, and dragging. Its internal field is a decimal-keyboard text
+minimum constraints, commits rounded to at least three decimal places, and dragging. Integer count
+fields remain explicitly rounded to whole values. Its internal field is a decimal-keyboard text
 input, so browser number steppers are not rendered; border, background, radius, focus, and disabled
-visuals belong only to the shared wrapper.
-Holding Shift while dragging uses one tenth of the configured rounded step for precision adjustment.
+visuals belong only to the shared wrapper. Disabled inputs reject typed and pointer-drag mutations,
+including a drag that was already captured when the input became disabled.
+Focused draft text remains authoritative while typing, so graph updates from an intermediate valid
+number cannot replace subsequent rapid keystrokes. Blur commits the field's latest text directly.
+Holding Ctrl or Command while dragging uses one tenth of the configured drag step for precision adjustment.
 
 ## Verification
 

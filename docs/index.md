@@ -13,6 +13,8 @@ behavior; only files under **Planned work** are pending.
 - [Graph document specification](./reference/graph-persistence.md) — persisted shape, invariants,
   validation, and import/export behavior.
 - [Graph JSON Schema](./reference/graph.schema.json) — machine-readable document schema.
+- [Database schema](./reference/database-schema.md) — runtime model registrar, per-model metadata,
+  project storage, and access rules.
 - [Node reference](./reference/nodes.md) — ports, persisted data, defaults, and evaluation behavior.
 - [MaxShelf configurator logic](./reference/maxshelf-configurator.md) — reverse-engineered product
   rules from the retained HTML prototype.
@@ -25,8 +27,8 @@ behavior; only files under **Planned work** are pending.
   navigation, independent values, and per-root configuration panels.
 - [Shared document enums](./implementation/shared-enums.md) — reusable enum definitions, graph-input
   references, dialog editing, and dependent-value reconciliation.
-- [Configuration color options](./implementation/configuration-color-options.md) — unrestricted RGB
-  graph values and customer-facing palettes owned by configuration controls.
+- [Material system](./implementation/material-system.md) — registered textured PBR materials,
+  material-instance graph values, and scene application.
 - [Viewport editor](./implementation/viewport-editor.md) — viewport ownership, node previews,
   transform tools, and asset selection.
 - [Mesh mapping and viewport alignment](./implementation/mesh-mapping-and-alignment.md) — separate
@@ -37,6 +39,8 @@ behavior; only files under **Planned work** are pending.
   transforms, materials, provenance, and scene construction.
 - [Editor UI](./implementation/editor-ui.md) — graph toolbar and configuration-panel behavior.
 - [Project saving](./implementation/project-saving.md) — autosave, Save as, rename, and dirty state.
+- [Model editor](./implementation/model-editor.md) — client-scoped model navigation, standalone 3D
+  preview, editable stretch regions and gizmos, temporary deformation tests, and metadata saving.
 - [Mesh asset helper](./implementation/asset-helper.md) — asset browsing, previews, and insertion.
 - [Application shell](./implementation/application-shell.md) — routing, authenticated user menu,
   and shared component conventions.
@@ -44,6 +48,8 @@ behavior; only files under **Planned work** are pending.
   fields, embedded transforms, multi-connect inputs, and node bypass behavior.
 - [Shelf array configuration](./implementation/shelf-arrays.md) — number-array inputs and widgets,
   ordered mesh bundles, Multi Array placement, and the MaxShelf wiring.
+- [Kitchen cabinet assembly](./implementation/kitchen-cabinet.md) — reusable frame, facade, and
+  tabletop graphs with explicit visibility mappings and root assembly wiring.
 
 ## Reviews
 

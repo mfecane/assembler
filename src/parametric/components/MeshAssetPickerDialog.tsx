@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, PackageSearch, Search } from 'lucide-react'
+import { Check, Maximize2, PackageSearch, Search } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import {
 	AmbientLight,
 	Color,
@@ -23,7 +24,12 @@ import {
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { useEditorController } from '@/parametric/editor/react/EditorContext'
-import type { MeshDescriptor } from '@/parametric/model/MeshCatalog'
+import type { SelectableMeshDescriptor } from '@/parametric/editor/EditorController'
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 type PreviewResult =
 	| { status: 'ready'; source: string }
@@ -36,6 +42,9 @@ export interface MeshAssetPickerDialogProps {
 	selectedMeshId?: string
 	title?: string
 	description?: string
+	stretchableOnly?: boolean
+	showInstanceActions?: boolean
+	onAddStretchableInstance?: (meshId: string) => void
 }
 
 export function MeshAssetPickerDialog({
@@ -45,15 +54,22 @@ export function MeshAssetPickerDialog({
 	selectedMeshId,
 	title = 'Mesh assets',
 	description,
+	stretchableOnly = false,
+	showInstanceActions = false,
+	onAddStretchableInstance,
 }: MeshAssetPickerDialogProps) {
 	const controller = useEditorController()
 	const assets = useMemo(() => controller.getSelectableMeshes(), [controller])
 	const [nameFilter, setNameFilter] = useState('')
+	const eligibleAssets = useMemo(
+		() => stretchableOnly ? assets.filter((asset) => asset.stretchable) : assets,
+		[assets, stretchableOnly]
+	)
 	const filteredAssets = useMemo(() => {
 		const normalizedFilter = nameFilter.trim().toLocaleLowerCase()
-		if (!normalizedFilter) return assets
-		return assets.filter((asset) => asset.label.toLocaleLowerCase().includes(normalizedFilter))
-	}, [assets, nameFilter])
+		if (!normalizedFilter) return eligibleAssets
+		return eligibleAssets.filter((asset) => asset.label.toLocaleLowerCase().includes(normalizedFilter))
+	}, [eligibleAssets, nameFilter])
 	const previews = useAssetPreviews(open, assets)
 
 	const handleOpenChange = (nextOpen: boolean) => {
@@ -63,6 +79,11 @@ export function MeshAssetPickerDialog({
 
 	const selectAsset = (meshId: string) => {
 		onSelect(meshId)
+		handleOpenChange(false)
+	}
+
+	const addStretchableInstance = (meshId: string) => {
+		onAddStretchableInstance?.(meshId)
 		handleOpenChange(false)
 	}
 
@@ -110,6 +131,10 @@ export function MeshAssetPickerDialog({
 									preview={previews.get(asset.id)}
 									selected={asset.id === selectedMeshId}
 									onSelect={() => selectAsset(asset.id)}
+									showInstanceActions={showInstanceActions}
+									onAddStretchableInstance={onAddStretchableInstance && asset.stretchable
+										? () => addStretchableInstance(asset.id)
+										: undefined}
 								/>
 							))}
 						</div>
@@ -166,12 +191,57 @@ function AssetCard({
 	preview,
 	selected,
 	onSelect,
+	showInstanceActions,
+	onAddStretchableInstance,
 }: {
-	asset: MeshDescriptor
+	asset: SelectableMeshDescriptor
 	preview: PreviewResult | undefined
 	selected: boolean
 	onSelect: () => void
+	showInstanceActions: boolean
+	onAddStretchableInstance?: () => void
 }) {
+	const content = (
+		<>
+			<AssetPreview asset={asset} preview={preview} />
+			<AssetDetails asset={asset} selected={selected} />
+		</>
+	)
+
+	if (showInstanceActions) {
+		return (
+			<div
+				data-id={`mesh-asset-picker-item-${asset.id}`}
+				data-asset-id={asset.id}
+				className="overflow-hidden rounded-md border border-border"
+			>
+				{content}
+				<div className="flex gap-2 border-t border-border p-2">
+					<Button
+						data-id={`add-mesh-asset-instance-${asset.id}`}
+						type="button"
+						variant="secondary"
+						className="flex-1"
+						onClick={onSelect}
+					>
+						Add instance
+					</Button>
+					{onAddStretchableInstance && (
+						<Button
+							data-id={`add-stretchable-asset-instance-${asset.id}`}
+							type="button"
+							variant="secondary"
+							className="flex-1"
+							onClick={onAddStretchableInstance}
+						>
+							Add stretchable instance
+						</Button>
+					)}
+				</div>
+			</div>
+		)
+	}
+
 	return (
 		<Button
 			data-id={`mesh-asset-picker-item-${asset.id}`}
@@ -185,7 +255,20 @@ function AssetCard({
 			)}
 			onClick={onSelect}
 		>
-			<div className="flex aspect-[16/9] w-full items-center justify-center overflow-hidden bg-background">
+			{content}
+		</Button>
+	)
+}
+
+function AssetPreview({
+	asset,
+	preview,
+}: {
+	asset: SelectableMeshDescriptor
+	preview: PreviewResult | undefined
+}) {
+	return (
+		<div className="flex aspect-[16/9] w-full items-center justify-center overflow-hidden bg-background">
 				{preview?.status === 'ready' ? (
 					<img
 						data-id={`mesh-asset-picker-preview-${asset.id}`}
@@ -212,25 +295,42 @@ function AssetCard({
 						Rendering preview…
 					</div>
 				)}
-			</div>
-			<div className="w-full border-t border-border px-3 py-2">
-				<div className="flex items-center gap-2">
-					<div className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground">
-						{asset.label}
-					</div>
-					{selected && <Check className="shrink-0 text-primary" aria-label="Selected asset" />}
+		</div>
+	)
+}
+
+function AssetDetails({ asset, selected }: { asset: SelectableMeshDescriptor; selected: boolean }) {
+	return (
+		<div className="w-full border-t border-border px-3 py-2">
+			<div className="flex items-center gap-2">
+				<div className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground">
+					{asset.label}
 				</div>
-				<div className="mt-0.5 truncate text-[10px] font-normal text-muted-foreground">
-					{asset.id}
-				</div>
+				{asset.stretchable && (
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<span tabIndex={0}>
+								<Badge variant="secondary" className="gap-1 px-1.5 py-0.5">
+									<Maximize2 className="size-3" aria-hidden="true" />
+									<span className="sr-only">Stretchable asset</span>
+								</Badge>
+							</span>
+						</TooltipTrigger>
+						<TooltipContent>Supports stretchable instances</TooltipContent>
+					</Tooltip>
+				)}
+				{selected && <Check className="shrink-0 text-primary" aria-label="Selected asset" />}
 			</div>
-		</Button>
+			<div className="mt-0.5 truncate text-[10px] font-normal text-muted-foreground">
+				{asset.id}
+			</div>
+		</div>
 	)
 }
 
 function useAssetPreviews(
 	enabled: boolean,
-	assets: readonly MeshDescriptor[]
+	assets: readonly SelectableMeshDescriptor[]
 ): ReadonlyMap<string, PreviewResult> {
 	const controller = useEditorController()
 	const [previews, setPreviews] = useState<ReadonlyMap<string, PreviewResult>>(new Map())

@@ -1,10 +1,13 @@
 import { Vector3Value, type Vector3Snapshot } from '@/parametric/model/Vector3Value'
 import { BooleanField } from '@/parametric/model/fields/BooleanField'
-import { ColorField } from '@/parametric/model/fields/ColorField'
 import { EnumField } from '@/parametric/model/fields/EnumField'
 import { NumberField } from '@/parametric/model/fields/NumberField'
 import { TransformField } from '@/parametric/model/fields/TransformField'
-import type { GraphInputValue } from '@/parametric/model/GraphDocumentModel'
+import type {
+	GraphInputValue,
+	GraphInputValueType,
+} from '@/parametric/model/GraphDocumentModel'
+import { validateMathExpression } from '@/parametric/model/MathExpression'
 
 export interface GraphPoint {
 	x: number
@@ -22,6 +25,7 @@ export type GraphValueType =
 	| 'numberArray'
 	| 'vector3'
 	| 'enum'
+	| 'materialInstance'
 	| 'color'
 	| 'boolean'
 
@@ -44,6 +48,11 @@ export interface GraphInputDefault {
 export interface ChoiceScalarMapping {
 	enumIndex: number
 	value: number
+}
+
+export interface ChoiceBooleanMapping {
+	enumIndex: number
+	value: boolean
 }
 
 export interface ChoiceVector3Mapping {
@@ -131,68 +140,109 @@ export class PrimitiveGraphNode extends GraphNode {
 
 }
 
-export class NumberInputGraphNode extends GraphNode {
-	public readonly type = 'numberInput'
-	private readonly valueField: NumberField
+export class InputGraphNode extends GraphNode {
+	public readonly type = 'input'
 
 	public constructor(
 		id: string,
 		position: GraphPoint,
-		value: number
+		private readonly valueType: GraphInputValueType,
+		private value: GraphInputValue | undefined,
+		private exported: boolean,
+		private enumId?: string
 	) {
 		super(id, position)
-		this.valueField = new NumberField(value)
+		this.setValue(value)
 	}
 
-	public getValue(): number {
-		return this.valueField.get()
+	public getValueType(): GraphInputValueType { return this.valueType }
+	public getValue(): GraphInputValue | undefined {
+		if (Array.isArray(this.value)) return [...this.value]
+		return Vector3Value.isSnapshot(this.value) ? { ...this.value } : this.value
 	}
-
-	public setValue(value: number): void {
-		this.valueField.set(value)
+	public setValue(value: GraphInputValue | undefined): void {
+		const valid = this.valueType === 'geometry'
+			? value === undefined
+			: this.valueType === 'number'
+				? typeof value === 'number' && Number.isFinite(value)
+				: this.valueType === 'numberArray'
+					? Array.isArray(value) && value.every((item) => Number.isFinite(item) && item >= 0)
+					: this.valueType === 'vector3'
+						? Vector3Value.isSnapshot(value)
+					: this.valueType === 'enum'
+						? Number.isInteger(value) && (value as number) >= 0 && Boolean(this.enumId)
+						: this.valueType === 'materialInstance'
+							? typeof value === 'string' && value.trim().length > 0
+							: this.valueType === 'color'
+								? typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value)
+								: typeof value === 'boolean'
+		if (!valid) {
+			throw new Error(
+				`Input node "${this.id}" requires a valid ${this.valueType} local value. `
+				+ `Received ${JSON.stringify(value)} with enum ID ${JSON.stringify(this.enumId)}.`
+			)
+		}
+		this.value = Array.isArray(value)
+			? [...value]
+			: Vector3Value.isSnapshot(value)
+				? { ...value }
+				: value
 	}
-
+	public isExported(): boolean { return this.exported }
+	public setExported(exported: boolean): void { this.exported = exported }
+	public getEnumId(): string | undefined { return this.enumId }
+	public setEnumId(enumId: string): void { this.enumId = enumId }
 }
 
-function normalizeChoiceOptions(options: readonly string[]): string[] {
-	return EnumField.normalizeOptions(options)
-}
-
-function isChoiceIndex(value: number, options: readonly string[]): boolean {
-	return Number.isInteger(value) && value >= 0 && value < options.length
-}
-
-export class SelectorGraphNode extends GraphNode {
-	public readonly type = 'selector'
-	private options: string[]
-	private value: number
+export class InputReferenceGraphNode extends GraphNode {
+	public readonly type = 'inputReference'
 
 	public constructor(
 		id: string,
 		position: GraphPoint,
-		options: string[],
-		value: number
+		private inputId: string
 	) {
 		super(id, position)
-		this.options = normalizeChoiceOptions(options)
-		this.value = isChoiceIndex(value, this.options) ? value : 0
 	}
 
-	public getOptions(): string[] {
-		return [...this.options]
+	public getInputId(): string {
+		return this.inputId
 	}
 
-	public setOptions(options: string[]): void {
-		this.options = normalizeChoiceOptions(options)
-		if (!isChoiceIndex(this.value, this.options)) this.value = 0
+	public setInputId(inputId: string): void {
+		this.inputId = inputId
+	}
+}
+
+export class Vector3GraphNode extends GraphNode {
+	public readonly type = 'vector3'
+
+	public constructor(id: string, position: GraphPoint) {
+		super(id, position)
+	}
+}
+
+export class Vector3ComponentsGraphNode extends GraphNode {
+	public readonly type = 'vector3Components'
+
+	public constructor(id: string, position: GraphPoint) {
+		super(id, position)
+	}
+}
+
+export class PinGraphNode extends GraphNode {
+	public readonly type = 'pin'
+
+	public constructor(
+		id: string,
+		position: GraphPoint,
+		private readonly valueType: GraphValueType
+	) {
+		super(id, position)
 	}
 
-	public getValue(): number {
-		return this.value
-	}
-
-	public setValue(value: number): void {
-		if (isChoiceIndex(value, this.options)) this.value = value
+	public getValueType(): GraphValueType {
+		return this.valueType
 	}
 }
 
@@ -234,6 +284,51 @@ export class ChoiceToScalarMapGraphNode extends GraphNode {
 		if (new Set(mappings.map((mapping) => mapping.enumIndex)).size !== mappings.length) {
 			throw new Error(
 				`Choice to Scalar node "${nodeId}" requires unique enumIndex values. `
+				+ `Received ${JSON.stringify(mappings)}`
+			)
+		}
+		return mappings.map((mapping) => ({ ...mapping }))
+	}
+}
+
+export class ChoiceToBooleanMapGraphNode extends GraphNode {
+	public readonly type = 'choiceToBooleanMap'
+
+	public constructor(
+		id: string,
+		position: GraphPoint,
+		private mappings: ChoiceBooleanMapping[]
+	) {
+		super(id, position)
+		this.mappings = ChoiceToBooleanMapGraphNode.validateMappings(id, mappings)
+	}
+
+	public getMappings(): ChoiceBooleanMapping[] {
+		return this.mappings.map((mapping) => ({ ...mapping }))
+	}
+
+	public setMappings(mappings: ChoiceBooleanMapping[]): void {
+		this.mappings = ChoiceToBooleanMapGraphNode.validateMappings(this.id, mappings)
+	}
+
+	public getBoolean(enumIndex: number): boolean | undefined {
+		return this.mappings.find((mapping) => mapping.enumIndex === enumIndex)?.value
+	}
+
+	private static validateMappings(nodeId: string, mappings: ChoiceBooleanMapping[]): ChoiceBooleanMapping[] {
+		if (!Array.isArray(mappings) || mappings.some((mapping) => (
+			!Number.isInteger(mapping?.enumIndex)
+			|| mapping.enumIndex < 0
+			|| typeof mapping.value !== 'boolean'
+		))) {
+			throw new Error(
+				`Choice to Boolean node "${nodeId}" requires mappings with non-negative integer `
+				+ `enumIndex values and booleans. Received ${JSON.stringify(mappings)}`
+			)
+		}
+		if (new Set(mappings.map((mapping) => mapping.enumIndex)).size !== mappings.length) {
+			throw new Error(
+				`Choice to Boolean node "${nodeId}" requires unique enumIndex values. `
 				+ `Received ${JSON.stringify(mappings)}`
 			)
 		}
@@ -365,28 +460,6 @@ export class GeometryToggleGraphNode extends GraphNode {
 	}
 }
 
-export class ColorGraphNode extends GraphNode {
-	public readonly type = 'color'
-	private readonly colorField: ColorField
-
-	public constructor(
-		id: string,
-		position: GraphPoint,
-		color: string
-	) {
-		super(id, position)
-		this.colorField = new ColorField(color)
-	}
-
-	public getColor(): string {
-		return this.colorField.get()
-	}
-
-	public setColor(color: string): void {
-		this.colorField.set(color)
-	}
-}
-
 export class MeshAssetGraphNode extends GraphNode {
 	public readonly type = 'meshAsset'
 	private readonly meshIdField: EnumField
@@ -412,6 +485,41 @@ export class MeshAssetGraphNode extends GraphNode {
 		this.meshIdField.set(meshId)
 	}
 
+	public getTransform(): TransformField { return this.transform }
+}
+
+export class StretchableAssetGraphNode extends GraphNode {
+	public readonly type = 'stretchableAsset'
+	private readonly meshIdField: EnumField
+	private targetSize: Vector3Value
+	private readonly transform: TransformField
+
+	public constructor(
+		id: string,
+		position: GraphPoint,
+		meshId: string,
+		targetSize: Vector3Value,
+		transform = new TransformField()
+	) {
+		super(id, position)
+		this.meshIdField = new EnumField(meshId, [meshId], '')
+		this.targetSize = targetSize
+		this.transform = transform
+	}
+
+	public getMeshId(): string { return this.meshIdField.get() }
+	public setMeshId(meshId: string): void {
+		this.meshIdField.setOptions([...this.meshIdField.getOptions(), meshId])
+		this.meshIdField.set(meshId)
+	}
+
+	public setMesh(meshId: string, naturalSize: Vector3Value): void {
+		this.setMeshId(meshId)
+		this.targetSize = naturalSize
+	}
+
+	public getTargetSize(): Vector3Value { return this.targetSize }
+	public setTargetSize(targetSize: Vector3Value): void { this.targetSize = targetSize }
 	public getTransform(): TransformField { return this.transform }
 }
 
@@ -503,70 +611,66 @@ export class TransformGraphNode extends GraphNode {
 
 }
 
-export class MaterialGraphNode extends GraphNode {
-	public readonly type = 'material'
-	private readonly colorField: ColorField
+export class ApplyMaterialGraphNode extends GraphNode {
+	public readonly type = 'applyMaterial'
 
-	public constructor(
-		id: string,
-		position: GraphPoint,
-		color: string
-	) {
+	public constructor(id: string, position: GraphPoint) {
 		super(id, position)
-		this.colorField = new ColorField(color)
-	}
-
-	public getColor(): string {
-		return this.colorField.get()
-	}
-
-	public setColor(color: string): void {
-		this.colorField.set(color)
 	}
 }
 
 export class ArrayGraphNode extends GraphNode {
 	public readonly type = 'array'
-	private readonly countField: NumberField
-	private readonly axisField: EnumField<Axis>
-	private readonly offsetField: NumberField
+	private readonly countXField: NumberField
+	private readonly countYField: NumberField
+	private readonly countZField: NumberField
+	private readonly offsetXField: NumberField
+	private readonly offsetYField: NumberField
+	private readonly offsetZField: NumberField
 
 	public constructor(
 		id: string,
 		position: GraphPoint,
-		count: number,
-		axis: Axis,
-		offset: number
+		countX: number,
+		countY: number,
+		countZ: number,
+		offsetX: number,
+		offsetY: number,
+		offsetZ: number
 	) {
 		super(id, position)
-		this.countField = new NumberField(count, (value) =>
-			Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 1)
-		this.axisField = new EnumField(axis, ['x', 'y', 'z'])
-		this.offsetField = new NumberField(offset)
+		const normalizeCount = (value: number) =>
+			Number.isFinite(value) ? Math.max(1, Math.floor(value)) : 1
+		this.countXField = new NumberField(countX, normalizeCount)
+		this.countYField = new NumberField(countY, normalizeCount)
+		this.countZField = new NumberField(countZ, normalizeCount)
+		this.offsetXField = new NumberField(offsetX)
+		this.offsetYField = new NumberField(offsetY)
+		this.offsetZField = new NumberField(offsetZ)
 	}
 
-	public getCount(): number {
-		return this.countField.get()
+	public getCount(axis: Axis): number {
+		if (axis === 'x') return this.countXField.get()
+		if (axis === 'y') return this.countYField.get()
+		return this.countZField.get()
 	}
 
-	public setCount(count: number): void {
-		this.countField.set(count)
+	public setCount(axis: Axis, count: number): void {
+		if (axis === 'x') this.countXField.set(count)
+		else if (axis === 'y') this.countYField.set(count)
+		else this.countZField.set(count)
 	}
 
-	public getAxis(): Axis {
-		return this.axisField.get()
+	public getOffset(axis: Axis): number {
+		if (axis === 'x') return this.offsetXField.get()
+		if (axis === 'y') return this.offsetYField.get()
+		return this.offsetZField.get()
 	}
 
-	public setAxis(axis: Axis): void {
-		this.axisField.set(axis)
-	}
-
-	public getOffset(): number {
-		return this.offsetField.get()
-	}
-
-	public setOffset(offset: number): void {
-		this.offsetField.set(offset)
+	public setOffset(axis: Axis, offset: number): void {
+		if (axis === 'x') this.offsetXField.set(offset)
+		else if (axis === 'y') this.offsetYField.set(offset)
+		else this.offsetZField.set(offset)
 	}
 
 }
@@ -610,22 +714,6 @@ export class OutputGraphNode extends GraphNode {
 
 }
 
-export class GraphInputGraphNode extends GraphNode {
-	public readonly type = 'graphInput'
-
-	public constructor(
-		id: string,
-		position: GraphPoint,
-		private readonly inputId: string
-	) {
-		super(id, position)
-	}
-
-	public getInputId(): string {
-		return this.inputId
-	}
-}
-
 export class GraphInstanceGraphNode extends GraphNode {
 	public readonly type = 'graphInstance'
 	private readonly transform: TransformField
@@ -651,7 +739,7 @@ export class GraphInstanceGraphNode extends GraphNode {
 
 	public getInputValue(inputId: string): GraphInputValue | undefined {
 		const value = this.inputValues[inputId]
-		return Array.isArray(value) ? [...value] : value
+		return copyGraphInputValue(value)
 	}
 
 	public getInputValues(): Record<string, GraphInputValue> {
@@ -659,7 +747,7 @@ export class GraphInstanceGraphNode extends GraphNode {
 	}
 
 	public setInputValue(inputId: string, value: GraphInputValue): void {
-		this.inputValues[inputId] = Array.isArray(value) ? [...value] : value
+		this.inputValues[inputId] = copyGraphInputValue(value)
 	}
 
 	public removeInputValue(inputId: string): void {
@@ -672,8 +760,13 @@ function copyGraphInputValues(
 ): Record<string, GraphInputValue> {
 	return Object.fromEntries(Object.entries(values).map(([inputId, value]) => [
 		inputId,
-		Array.isArray(value) ? [...value] : value,
+		copyGraphInputValue(value),
 	]))
+}
+
+function copyGraphInputValue(value: GraphInputValue): GraphInputValue {
+	if (Array.isArray(value)) return [...value]
+	return Vector3Value.isSnapshot(value) ? { ...value } : value
 }
 
 export class GroupGraphNode extends GraphNode {
@@ -711,5 +804,24 @@ export class SumGraphNode extends GraphNode {
 
 	public setEnabled(enabled: boolean): void {
 		this.enabledField.set(enabled)
+	}
+}
+
+export class MathExpressionGraphNode extends GraphNode {
+	public readonly type = 'mathExpression'
+	private expression!: string
+
+	public constructor(id: string, position: GraphPoint, expression: string) {
+		super(id, position)
+		this.setExpression(expression)
+	}
+
+	public getExpression(): string {
+		return this.expression
+	}
+
+	public setExpression(expression: string): void {
+		validateMathExpression(expression)
+		this.expression = expression
 	}
 }

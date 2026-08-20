@@ -6,16 +6,18 @@ export type NodeColorCategory =
 	| 'output'
 
 const nodeColorCategoryByType: Readonly<Record<string, NodeColorCategory>> = {
-	numberInput: 'input',
-	selector: 'input',
-	color: 'input',
-	graphInput: 'input',
+	input: 'input',
+	inputReference: 'input',
 	primitive: 'geometry',
 	meshAsset: 'geometry',
+	stretchableAsset: 'geometry',
 	graphInstance: 'geometry',
-	material: 'appearance',
+	applyMaterial: 'appearance',
 	choiceToScalarMap: 'operation',
+	choiceToBooleanMap: 'operation',
 	choiceToVector3Map: 'operation',
+	vector3: 'operation',
+	vector3Components: 'operation',
 	choiceToMeshMap: 'operation',
 	geometryToggle: 'operation',
 	transform: 'operation',
@@ -24,6 +26,7 @@ const nodeColorCategoryByType: Readonly<Record<string, NodeColorCategory>> = {
 	multiArray: 'operation',
 	group: 'operation',
 	sum: 'operation',
+	mathExpression: 'operation',
 	graphOutput: 'output',
 }
 

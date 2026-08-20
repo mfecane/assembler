@@ -1,5 +1,18 @@
 import type { Vector3Snapshot } from '@/parametric/model/Vector3Value'
 
+export interface SceneStretchAxisMetadata {
+	axis: 'x' | 'y' | 'z'
+	boxes: Array<{ min: number; max: number }>
+	textureAxis: 'u' | 'v' | null
+}
+
+export interface SceneStretchDeformationMetadata {
+	kind: 'stretch'
+	sourceSize: Vector3Snapshot
+	pivot: Vector3Snapshot
+	axes: SceneStretchAxisMetadata[]
+}
+
 export type Matrix4Snapshot = readonly [
 	number, number, number, number,
 	number, number, number, number,
@@ -14,8 +27,8 @@ export interface SceneNodeInstanceReference {
 }
 
 export interface SceneMaterialMetadata {
-	type: 'standard'
-	color: string
+	materialId: string
+	color?: string
 }
 
 export interface SceneAssetInstanceMetadata {
@@ -26,6 +39,7 @@ export interface SceneAssetInstanceMetadata {
 	transform: Matrix4Snapshot
 	originNode: SceneNodeInstanceReference
 	material?: SceneMaterialMetadata
+	deformation?: SceneStretchDeformationMetadata
 }
 
 export interface SceneMetadata {

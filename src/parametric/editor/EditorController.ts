@@ -1,4 +1,8 @@
-import { GraphEdge } from '@/parametric/model/GraphEdge'
+import {
+	GraphEdge,
+	supportsVectorComponentInterop,
+	type VectorComponent,
+} from '@/parametric/model/GraphEdge'
 import { GraphState, type GraphStateSnapshot } from '@/parametric/editor/GraphState'
 import { ReactBridge } from '@/parametric/editor/ReactBridge'
 import { CommandFactory } from '@/parametric/editor/commands/CommandFactory'
@@ -14,6 +18,8 @@ import {
 import { GraphModel } from '@/parametric/model/GraphModel'
 import {
 	ArrayGraphNode,
+	ChoiceToBooleanMapGraphNode,
+	type ChoiceBooleanMapping,
 	ChoiceToScalarMapGraphNode,
 	type ChoiceScalarMapping,
 	ChoiceToVector3MapGraphNode,
@@ -21,24 +27,27 @@ import {
 	type ChoiceMeshMapping,
 	ChoiceToMeshMapGraphNode,
 	GraphInstanceGraphNode,
-	GraphInputGraphNode,
+	InputGraphNode,
+	InputReferenceGraphNode,
 	MeshAssetGraphNode,
+	StretchableAssetGraphNode,
 	OutputGraphNode,
-	SelectorGraphNode,
+	PinGraphNode,
 	TransformGraphNode,
+	type Axis,
 	type GraphNode,
 	type GraphPoint,
 	isTransformableGraphNode,
 } from '@/parametric/model/GraphNode'
 import { Vector3Value, type Vector3Snapshot } from '@/parametric/model/Vector3Value'
-import { createAssetMetadataDocument, type AssetMetadataDocument } from '@/parametric/model/AssetMetadataDocument'
 import {
 	deserializeGraph,
 	type GraphDocument,
 } from '@/parametric/model/GraphSerialization'
 import type { MeshCatalog, MeshDescriptor } from '@/parametric/model/MeshCatalog'
+import type { MaterialCatalog } from '@/parametric/model/MaterialCatalog'
 import type { CreatableNodeDefinition, NodeRegistry } from '@/parametric/model/NodeDefinition'
-import { defaultMaterialColor } from '@/parametric/model/ColorPalette'
+import { StretchableAssetMetadata } from '@/parametric/model/StretchableAssetMetadata'
 
 export type EditorControllerSnapshot = GraphStateSnapshot
 
@@ -55,6 +64,10 @@ export interface NodePositionUpdate {
 	position: GraphPoint
 }
 
+export interface SelectableMeshDescriptor extends MeshDescriptor {
+	stretchable: boolean
+}
+
 export class EditorController {
 	public readonly history = new HistoryController()
 	private readonly state: GraphState
@@ -65,6 +78,7 @@ export class EditorController {
 		document: GraphDocumentModel,
 		private readonly nodeRegistry: NodeRegistry,
 		private readonly meshCatalog: MeshCatalog,
+		private readonly materialCatalog: MaterialCatalog,
 		private readonly bridge: ReactBridge
 	) {
 		this.state = new GraphState(document, nodeRegistry)
@@ -110,7 +124,13 @@ export class EditorController {
 		if (!normalizedName) return
 		this.execute(
 			`Rename node "${nodeId}" to "${normalizedName}"`,
-			() => this.activeModel.getNode(nodeId)?.setName(normalizedName)
+			() => {
+				const node = this.activeModel.getNode(nodeId)
+				node?.setName(normalizedName)
+				if (node instanceof InputGraphNode && node.isExported()) {
+					this.document.updateInput(this.activeGraphId, node.id, { label: normalizedName })
+				}
+			}
 		)
 	}
 
@@ -119,6 +139,7 @@ export class EditorController {
 			const id = this.createNodeId(type)
 			const node = this.nodeRegistry.create(type, id, position, {
 				meshCatalog: this.meshCatalog,
+				materialCatalog: this.materialCatalog,
 			})
 			if (!node) return
 			if (selectedEdgeId && this.insertNodeOnEdge(node, selectedEdgeId)) return
@@ -144,6 +165,40 @@ export class EditorController {
 		})
 	}
 
+	public addStretchableAsset(meshId: string, position: GraphPoint): void {
+		const metadata = this.requireStretchableAssetMetadata(
+			meshId,
+			`add Stretchable Asset node to graph "${this.activeGraphId}"`
+		)
+		this.execute(`Add stretchable asset "${meshId}"`, () => {
+			const id = this.createNodeId('stretchableAsset')
+			const node = new StretchableAssetGraphNode(id, position, meshId, metadata.naturalSize)
+			node.setName('Stretchable Asset')
+			this.activeModel.addNode(node)
+		})
+	}
+
+	public setStretchableAssetMesh(nodeId: string, meshId: string): void {
+		const node = this.activeModel.getNode(nodeId)
+		if (!(node instanceof StretchableAssetGraphNode)) return
+		const metadata = this.requireStretchableAssetMetadata(
+			meshId,
+			`select mesh for Stretchable Asset node "${nodeId}" in graph "${this.activeGraphId}"`
+		)
+		this.execute(`Set mesh on Stretchable Asset node "${nodeId}" to "${meshId}"`, () => {
+			node.setMesh(meshId, metadata.naturalSize)
+			const allowedPorts = new Set(metadata.stretchAxes.map((stretchAxis) => (
+				`stretch${stretchAxis.axis.toUpperCase()}`
+			)))
+			for (const edge of this.activeModel.getEdges()) {
+				if (edge.targetNodeId === nodeId && edge.targetPort?.startsWith('stretch')
+					&& !allowedPorts.has(edge.targetPort)) {
+					this.activeModel.removeEdge(edge.id)
+				}
+			}
+		})
+	}
+
 	public addGraphInstance(
 		graphId: string,
 		position: GraphPoint,
@@ -160,12 +215,12 @@ export class EditorController {
 		})
 	}
 
-	public addGraph(): void {
-		this.addGraphDefinition(false)
+	public addGraph(label: string): void {
+		this.addGraphDefinition(false, label)
 	}
 
-	public addRootGraph(): void {
-		this.addGraphDefinition(true)
+	public addRootGraph(label: string): void {
+		this.addGraphDefinition(true, label)
 	}
 
 	public copyGraph(graphId: string): void {
@@ -251,8 +306,12 @@ export class EditorController {
 		})
 	}
 
-	private addGraphDefinition(root: boolean): void {
-		this.execute(root ? 'Add root assembly' : 'Add assembly', () => {
+	private addGraphDefinition(root: boolean, label: string): void {
+		const normalizedLabel = label.trim()
+		if (!normalizedLabel) {
+			throw new Error(`Cannot add ${root ? 'a root' : 'an'} assembly without a name.`)
+		}
+		this.execute(`Add ${root ? 'root' : 'reusable'} assembly "${normalizedLabel}"`, () => {
 			const id = this.createGraphId()
 			const outputNode = new OutputGraphNode(`${id}-output`, { x: 500, y: 120 })
 			outputNode.setName('Assembly Output')
@@ -262,9 +321,7 @@ export class EditorController {
 			)
 			this.document.addGraph({
 				id,
-				label: root
-					? `Root ${this.document.getRootGraphs().length + 1}`
-					: `Assembly ${this.document.getGraphs().length + 1}`,
+				label: normalizedLabel,
 				inputs: [],
 				output: { id: 'geometry', label: 'Geometry', valueType: 'geometry' },
 				model,
@@ -342,17 +399,57 @@ export class EditorController {
 			? 'choice'
 			: valueType === 'numberArray'
 				? 'number array'
-				: valueType
-		this.execute(`Add ${displayedType} graph input`, () => {
-			const graph = this.document.requireGraph(this.activeGraphId)
-			const inputId = this.createInputId(valueType)
+				: valueType === 'vector3'
+					? 'vector 3'
+					: valueType
+		this.execute(`Add ${displayedType} input`, () => {
+			const inputId = this.createNodeId('input')
 			const enumId = valueType === 'enum' ? this.createEnumDefinition() : undefined
 			const input = createInputDefinition(inputId, valueType, enumId)
-			if (!this.document.addInput(graph.id, input)) return
-			const boundaryId = this.createNodeId('graphInput')
-			const node = new GraphInputGraphNode(boundaryId, position, inputId)
+			const node = new InputGraphNode(
+				inputId,
+				position,
+				valueType,
+				input.defaultValue,
+				false,
+				enumId
+			)
 			node.setName(input.label)
-			graph.model.addNode(node)
+			this.activeModel.addNode(node)
+		})
+	}
+
+	public addInputReference(inputId: string, position: GraphPoint): void {
+		const input = this.document.getGraph(this.activeGraphId)?.inputs.find(
+			(candidate) => candidate.id === inputId
+		)
+		if (!input) {
+			throw new Error(
+				`Cannot add Input Reference node in graph "${this.activeGraphId}": graph input "${inputId}" `
+				+ `does not exist. Available input IDs: ${JSON.stringify(
+					this.document.requireGraph(this.activeGraphId).inputs.map((candidate) => candidate.id)
+				)}.`
+			)
+		}
+		this.execute(`Add input reference "${inputId}"`, () => {
+			const node = new InputReferenceGraphNode(this.createNodeId('inputReference'), position, inputId)
+			node.setName(input.label)
+			this.activeModel.addNode(node)
+		})
+	}
+
+	public setInputReferenceInput(nodeId: string, inputId: string): void {
+		const node = this.activeModel.getNode(nodeId)
+		if (!(node instanceof InputReferenceGraphNode) || node.getInputId() === inputId) return
+		const input = this.document.getGraph(this.activeGraphId)?.inputs.find(
+			(candidate) => candidate.id === inputId
+		)
+		if (!input) return
+		this.execute(`Set input reference "${nodeId}" to "${inputId}"`, () => {
+			node.setInputId(inputId)
+			for (const edge of this.activeModel.getEdges()) {
+				if (edge.sourceNodeId === node.id) this.activeModel.removeEdge(edge.id)
+			}
 		})
 	}
 
@@ -360,34 +457,74 @@ export class EditorController {
 		inputId: string,
 		update: Partial<Omit<GraphInputDefinition, 'id' | 'valueType'>>
 	): void {
+		const node = this.activeModel.getNode(inputId)
+		if (!(node instanceof InputGraphNode)) return
 		this.execute(
-			`Update graph input "${inputId}"`,
+			`Update input "${inputId}"`,
 			() => {
-				if (!this.document.updateInput(this.activeGraphId, inputId, update)) return
-				this.reconcileGraphInstanceInputValues(this.activeGraphId, inputId)
+				if (update.defaultValue !== undefined) node.setValue(update.defaultValue)
+				if (update.label !== undefined) node.setName(update.label)
+				if (node.isExported()) {
+					this.document.updateInput(this.activeGraphId, inputId, update)
+					this.reconcileGraphInstanceInputValues(this.activeGraphId, inputId)
+				}
 			},
 			`graph-input:${this.activeGraphId}:${inputId}`
 		)
 	}
 
 	public setGraphInputEnum(inputId: string, enumId: string): void {
-		const input = this.getGraphInput(inputId)
-		if (input?.valueType !== 'enum' || input.enumId === enumId) return
+		const node = this.activeModel.getNode(inputId)
+		if (!(node instanceof InputGraphNode) || node.getValueType() !== 'enum' || node.getEnumId() === enumId) return
 		this.execute(`Use choice set "${enumId}" for graph input "${inputId}"`, () => {
-			this.document.setInputEnum(this.activeGraphId, inputId, enumId)
-			this.reconcileGraphInstanceInputValues(this.activeGraphId, inputId)
+			const previousEnumId = node.getEnumId()
+			node.setEnumId(enumId)
+			const value = node.getValue()
+			if (typeof value !== 'number' || value >= this.document.getEnumOptions(enumId).length) {
+				node.setValue(0)
+			}
+			if (node.isExported()) {
+				this.document.setInputEnum(this.activeGraphId, inputId, enumId)
+				this.reconcileGraphInstanceInputValues(this.activeGraphId, inputId)
+			}
 			this.reconcileEnumMappingsForInput(this.activeGraphId, inputId)
+			if (previousEnumId) this.document.removeEnumIfUnused(previousEnumId)
 		})
 	}
 
 	public createEnumForGraphInput(inputId: string): void {
-		const input = this.getGraphInput(inputId)
-		if (input?.valueType !== 'enum') return
+		const node = this.activeModel.getNode(inputId)
+		if (!(node instanceof InputGraphNode) || node.getValueType() !== 'enum') return
 		this.execute(`Create choice set for graph input "${inputId}"`, () => {
+			const previousEnumId = node.getEnumId()
 			const enumId = this.createEnumDefinition()
-			this.document.setInputEnum(this.activeGraphId, inputId, enumId)
-			this.reconcileGraphInstanceInputValues(this.activeGraphId, inputId)
+			node.setEnumId(enumId)
+			node.setValue(0)
+			if (node.isExported()) {
+				this.document.setInputEnum(this.activeGraphId, inputId, enumId)
+				this.reconcileGraphInstanceInputValues(this.activeGraphId, inputId)
+			}
 			this.reconcileEnumMappingsForInput(this.activeGraphId, inputId)
+			if (previousEnumId) this.document.removeEnumIfUnused(previousEnumId)
+		})
+	}
+
+	public setInputExported(nodeId: string, exported: boolean): void {
+		const node = this.activeModel.getNode(nodeId)
+		if (!(node instanceof InputGraphNode) || node.isExported() === exported) return
+		this.execute(`${exported ? 'Export' : 'Localize'} input "${nodeId}"`, () => {
+			if (exported) {
+				const definition = createInputDefinition(node.id, node.getValueType(), node.getEnumId())
+				definition.label = node.getName()
+				definition.defaultValue = node.getValue()
+				if (!this.document.addInput(this.activeGraphId, definition)) {
+					throw new Error(`Cannot export input node "${nodeId}": graph input ID already exists.`)
+				}
+				node.setExported(true)
+				return
+			}
+			this.removeGraphInputFromGraph(this.activeGraphId, nodeId)
+			node.setExported(false)
 		})
 	}
 
@@ -445,19 +582,17 @@ export class EditorController {
 	}
 
 	public removeGraphInput(inputId: string): void {
-		this.execute(
-			`Remove graph input "${inputId}"`,
-			() => this.removeGraphInputFromGraph(this.activeGraphId, inputId)
-		)
+		this.setInputExported(inputId, false)
 	}
 
 	private removeGraphInputFromGraph(graphId: string, inputId: string): boolean {
 		const graph = this.document.requireGraph(graphId)
-		const boundary = graph.model.getNodes().find(
-			(node) => node instanceof GraphInputGraphNode && node.getInputId() === inputId
-		)
+		for (const node of graph.model.getNodes()) {
+			if (node instanceof InputReferenceGraphNode && node.getInputId() === inputId) {
+				graph.model.removeNode(node.id)
+			}
+		}
 		if (!this.document.removeInput(graph.id, inputId)) return false
-		if (boundary) graph.model.removeNode(boundary.id)
 		this.reconcileGraphInstanceInputValues(graph.id, inputId)
 		for (const containingGraph of this.document.getGraphs()) {
 			const instanceIds = new Set(
@@ -480,11 +615,21 @@ export class EditorController {
 		return this.nodeRegistry.getCreatableDefinitions()
 	}
 
-	public getSelectableMeshes(): MeshDescriptor[] {
+	public getSelectableMeshes(): SelectableMeshDescriptor[] {
 		return this.meshCatalog
 			.getMeshes()
 			.filter((mesh) => mesh.selectable)
-			.map((mesh) => ({ ...mesh }))
+			.map((mesh) => ({ ...mesh, stretchable: this.isMeshStretchable(mesh.id) }))
+	}
+
+	public getStretchableAssetAxes(meshId: string): Axis[] {
+		const bounds = this.meshCatalog.getBounds(meshId)
+		if (!bounds) return []
+		return new StretchableAssetMetadata(
+			meshId,
+			bounds,
+			this.meshCatalog.getMetadata(meshId) ?? {}
+		).stretchAxes.map((stretchAxis) => stretchAxis.axis)
 	}
 
 	public createMeshPreviewGeometry(meshId: string) {
@@ -492,21 +637,39 @@ export class EditorController {
 	}
 
 	public removeNode(nodeId: string): void {
-		this.execute(`Remove node "${nodeId}"`, () => {
-			const node = this.activeModel.getNode(nodeId)
-			if (node instanceof GraphInputGraphNode) {
-				this.removeGraphInputFromGraph(this.activeGraphId, node.getInputId())
-				return
+		this.execute(
+			`Remove node "${nodeId}"`,
+			() => this.removeNodeFromActiveGraph(nodeId)
+		)
+	}
+
+	public removeGraphElements(
+		nodeIds: readonly string[],
+		edgeIds: readonly string[]
+	): void {
+		const removableNodeIds = [...new Set(nodeIds)].filter(
+			(nodeId) => this.activeModel.isNodeRemovable(nodeId)
+		)
+		const existingEdgeIds = [...new Set(edgeIds)].filter(
+			(edgeId) => this.activeModel.getEdges().some((edge) => edge.id === edgeId)
+		)
+		if (removableNodeIds.length === 0 && existingEdgeIds.length === 0) return
+
+		const elementCount = removableNodeIds.length + existingEdgeIds.length
+		this.execute(
+			`Remove ${elementCount} selected graph element${elementCount === 1 ? '' : 's'}`,
+			() => {
+				for (const edgeId of existingEdgeIds) this.activeModel.removeEdge(edgeId)
+				for (const nodeId of removableNodeIds) this.removeNodeFromActiveGraph(nodeId)
 			}
-			this.activeModel.removeNode(nodeId)
-		})
+		)
 	}
 
 	public canCopyNode(nodeId: string): boolean {
 		const node = this.activeModel.getNode(nodeId)
 		return Boolean(
 			node
-			&& !(node instanceof GraphInputGraphNode)
+			&& !(node instanceof InputGraphNode)
 			&& !this.nodeRegistry.isOutput(node)
 		)
 	}
@@ -549,10 +712,14 @@ export class EditorController {
 	public clearGraph(): void {
 		this.execute(`Clear graph "${this.activeGraphId}"`, () => {
 			const graph = this.document.requireGraph(this.activeGraphId)
+			const enumIds = graph.model.getNodes().flatMap((node) => (
+				node instanceof InputGraphNode && node.getEnumId() ? [node.getEnumId() as string] : []
+			))
 			for (const input of [...graph.inputs]) {
 				this.removeGraphInputFromGraph(graph.id, input.id)
 			}
 			this.activeModel.clearExceptOutput()
+			for (const enumId of enumIds) this.document.removeEnumIfUnused(enumId)
 		})
 	}
 
@@ -560,12 +727,13 @@ export class EditorController {
 		sourceNodeId: string,
 		targetNodeId: string,
 		sourcePort: string | null,
-		targetPort: string | null
+		targetPort: string | null,
+		component?: VectorComponent
 	): void {
 		this.execute(`Connect "${sourceNodeId}" to "${targetNodeId}"`, () => {
 			const id = this.createEdgeId(sourceNodeId, targetNodeId, sourcePort, targetPort)
 			this.activeModel.connect(
-				new GraphEdge(id, sourceNodeId, targetNodeId, sourcePort, targetPort)
+				new GraphEdge(id, sourceNodeId, targetNodeId, sourcePort, targetPort, component)
 			)
 			if (targetPort === 'enum') {
 				const target = this.activeModel.getNode(targetNodeId)
@@ -580,6 +748,48 @@ export class EditorController {
 		})
 	}
 
+	public addConnectionPin(
+		sourceNodeId: string,
+		sourcePortId: string,
+		position: GraphPoint
+	): void {
+		this.execute(`Add pin from "${sourceNodeId}.${sourcePortId}"`, () => {
+			const sourceNode = this.activeModel.getNode(sourceNodeId)
+			const sourcePort = sourceNode
+				? this.nodeRegistry.getOutputPorts(
+					sourceNode,
+					this.createPortContext(this.activeGraphId)
+				).find((port) => port.id === sourcePortId)
+				: undefined
+			if (!sourceNode || !sourcePort) {
+				throw new Error(
+					`Cannot add a connection pin in graph "${this.activeGraphId}" from `
+					+ `"${sourceNodeId}.${sourcePortId}": the source node or output port does not exist. `
+					+ `Available output ports: ${JSON.stringify(
+						sourceNode
+							? this.nodeRegistry.getOutputPorts(
+								sourceNode,
+								this.createPortContext(this.activeGraphId)
+							).map((port) => port.id)
+							: []
+					)}.`
+				)
+			}
+
+			const pinId = this.createNodeId('pin')
+			const pin = new PinGraphNode(pinId, position, sourcePort.valueType)
+			pin.setName('Pin')
+			this.activeModel.addNode(pin)
+			this.activeModel.connect(new GraphEdge(
+				this.createEdgeId(sourceNodeId, pinId, sourcePortId, 'value'),
+				sourceNodeId,
+				pinId,
+				sourcePortId,
+				'value'
+			))
+		})
+	}
+
 	public canConnect(
 		sourceNodeId: string,
 		targetNodeId: string,
@@ -588,19 +798,42 @@ export class EditorController {
 	): boolean {
 		return this.activeModel.canConnect(
 			new GraphEdge('', sourceNodeId, targetNodeId, sourcePort, targetPort)
-		)
+		) || this.requiresVectorComponent(sourceNodeId, targetNodeId, sourcePort, targetPort)
+	}
+
+	public requiresVectorComponent(
+		sourceNodeId: string,
+		targetNodeId: string,
+		sourcePort: string | null,
+		targetPort: string | null
+	): boolean {
+		const sourceNode = this.activeModel.getNode(sourceNodeId)
+		const targetNode = this.activeModel.getNode(targetNodeId)
+		if (!sourceNode || !targetNode || !sourcePort || !targetPort) return false
+		const context = this.createPortContext(this.activeGraphId)
+		const sourceType = this.nodeRegistry.getOutputPorts(sourceNode, context)
+			.find((port) => port.id === sourcePort)?.valueType
+		const targetType = this.nodeRegistry.getInputPorts(targetNode, context)
+			.find((port) => port.id === targetPort)?.valueType
+		return Boolean(sourceType && targetType && supportsVectorComponentInterop(sourceType, targetType))
 	}
 
 	public removeEdge(edgeId: string): void {
 		this.execute(`Remove connection "${edgeId}"`, () => this.activeModel.removeEdge(edgeId))
 	}
 
-	public exportGraph(): GraphDocument {
-		return this.state.serialize()
+	private removeNodeFromActiveGraph(nodeId: string): void {
+		const node = this.activeModel.getNode(nodeId)
+		const enumId = node instanceof InputGraphNode ? node.getEnumId() : undefined
+		if (node instanceof InputGraphNode && node.isExported()) {
+			this.removeGraphInputFromGraph(this.activeGraphId, node.id)
+		}
+		this.activeModel.removeNode(nodeId)
+		if (enumId) this.document.removeEnumIfUnused(enumId)
 	}
 
-	public exportAssetMetadata(): AssetMetadataDocument {
-		return createAssetMetadataDocument(this.meshCatalog)
+	public exportGraph(): GraphDocument {
+		return this.state.serialize()
 	}
 
 	public importGraph(value: unknown): void {
@@ -631,33 +864,20 @@ export class EditorController {
 		)
 	}
 
-	public setSelectorOptions(nodeId: string, options: string[]): void {
-		const node = this.activeModel.getNode(nodeId)
-		if (!(node instanceof SelectorGraphNode)) return
-		this.execute(`Set options on selector node "${nodeId}"`, () => {
-			node.setOptions(options)
-			for (const edge of this.activeModel.getEdges()) {
-				if (
-					edge.sourceNodeId !== nodeId
-					|| edge.sourcePort !== 'enum'
-					|| edge.targetPort !== 'enum'
-				) continue
-				const target = this.activeModel.getNode(edge.targetNodeId)
-				if (!(target instanceof ChoiceToMeshMapGraphNode)) continue
-				this.reconcileChoiceMeshMappings(
-					this.activeModel,
-					target,
-					node.getOptions().length
-				)
-			}
-		})
-	}
-
 	public setChoiceScalarMappings(nodeId: string, mappings: ChoiceScalarMapping[]): void {
 		this.updateNode<ChoiceToScalarMapGraphNode>(
 			nodeId,
 			'choiceToScalarMap',
 			`Set scalar mappings on node "${nodeId}"`,
+			(node) => node.setMappings(mappings)
+		)
+	}
+
+	public setChoiceBooleanMappings(nodeId: string, mappings: ChoiceBooleanMapping[]): void {
+		this.updateNode<ChoiceToBooleanMapGraphNode>(
+			nodeId,
+			'choiceToBooleanMap',
+			`Set boolean mappings on node "${nodeId}"`,
 			(node) => node.setMappings(mappings)
 		)
 	}
@@ -729,7 +949,7 @@ export class EditorController {
 		)
 		this.execute(
 			`Set duplication distance on array node "${nodeId}" in 3D editor`,
-			() => node.setOffset(snappedValue),
+			() => node.setOffset('x', snappedValue),
 			`viewport-array-distance:${graphId}:${nodeId}:${historyGroup}`
 		)
 	}
@@ -807,13 +1027,56 @@ export class EditorController {
 	}
 
 	private get activeModel(): GraphModel {
-		return this.state.getActiveModel()
+		const model = this.state.getActiveModel()
+		model.setPortContext(this.createPortContext(this.activeGraphId))
+		return model
 	}
 
-	private getGraphInput(inputId: string): GraphInputDefinition | undefined {
-		return this.document.requireGraph(this.activeGraphId).inputs.find(
-			(input) => input.id === inputId
+	private isMeshStretchable(meshId: string): boolean {
+		const bounds = this.meshCatalog.getBounds(meshId)
+		if (!bounds) return false
+		return new StretchableAssetMetadata(
+			meshId,
+			bounds,
+			this.meshCatalog.getMetadata(meshId) ?? {}
+		).isStretchable()
+	}
+
+	private requireStretchableAssetMetadata(
+		meshId: string,
+		action: string
+	): StretchableAssetMetadata {
+		const mesh = this.meshCatalog.getMeshes().find(
+			(candidate) => candidate.id === meshId && candidate.selectable
 		)
+		const bounds = this.meshCatalog.getBounds(meshId)
+		if (!mesh || !bounds) {
+			throw new Error(
+				`Cannot ${action}: mesh "${meshId}" is not selectable or has no computed bounds.`
+			)
+		}
+		const metadata = new StretchableAssetMetadata(
+			meshId,
+			bounds,
+			this.meshCatalog.getMetadata(meshId) ?? {}
+		)
+		if (!metadata.isStretchable()) {
+			throw new Error(
+				`Cannot ${action}: mesh "${meshId}" has no enabled stretch axes in its model metadata.`
+			)
+		}
+		return metadata
+	}
+
+	private createPortContext(graphId: string) {
+		return {
+			containingGraphId: graphId,
+			getGraphInterface: (referencedGraphId: string) => (
+				this.document.getGraphInterface(referencedGraphId)
+			),
+			getEnumOptions: (enumId: string) => this.document.getEnumOptions(enumId),
+			getStretchableAxes: (meshId: string) => this.getStretchableAssetAxes(meshId),
+		}
 	}
 
 	private reconcileGraphInstanceInputValues(graphId: string, inputId: string): void {
@@ -836,8 +1099,17 @@ export class EditorController {
 		remapIndex?: (value: number) => number | undefined
 	): void {
 		for (const graph of this.document.getGraphs()) {
-			for (const input of graph.inputs) {
-				if (input.valueType !== 'enum' || input.enumId !== enumId) continue
+			for (const inputNode of graph.model.getNodes()) {
+				if (
+					!(inputNode instanceof InputGraphNode)
+					|| inputNode.getValueType() !== 'enum'
+					|| inputNode.getEnumId() !== enumId
+				) continue
+				const input = graph.inputs.find((candidate) => candidate.id === inputNode.id)
+				if (!input) {
+					this.reconcileEnumMappingsForInput(graph.id, inputNode.id, remapIndex)
+					continue
+				}
 				for (const containingGraph of this.document.getGraphs()) {
 					for (const node of containingGraph.model.getNodes()) {
 						if (!(node instanceof GraphInstanceGraphNode) || node.getGraphId() !== graph.id) {
@@ -867,17 +1139,24 @@ export class EditorController {
 		remapIndex?: (value: number) => number | undefined
 	): void {
 		const graph = this.document.requireGraph(graphId)
-		const input = graph.inputs.find((candidate) => candidate.id === inputId)
-		if (input?.valueType !== 'enum') return
-		const optionCount = this.document.getInputOptions(input).length
-		const boundary = graph.model.getNodes().find(
-			(node) => node instanceof GraphInputGraphNode && node.getInputId() === inputId
-		)
-		if (!boundary) return
+		const boundary = graph.model.getNode(inputId)
+		if (
+			!(boundary instanceof InputGraphNode)
+			|| boundary.getValueType() !== 'enum'
+			|| !boundary.getEnumId()
+		) return
+		const optionCount = this.document.getEnumOptions(boundary.getEnumId() as string).length
 		for (const edge of graph.model.getEdges()) {
-			if (edge.sourceNodeId !== boundary.id || edge.sourcePort !== inputId) continue
+			if (edge.sourceNodeId !== boundary.id || edge.sourcePort !== 'value') continue
 			const target = graph.model.getNode(edge.targetNodeId)
 			if (target instanceof ChoiceToScalarMapGraphNode) {
+				target.setMappings(target.getMappings().flatMap((mapping) => {
+					const enumIndex = remapIndex ? remapIndex(mapping.enumIndex) : mapping.enumIndex
+					if (enumIndex === undefined) return []
+					return enumIndex >= 0 && enumIndex < optionCount ? [{ ...mapping, enumIndex }] : []
+				}))
+			}
+			if (target instanceof ChoiceToBooleanMapGraphNode) {
 				target.setMappings(target.getMappings().flatMap((mapping) => {
 					const enumIndex = remapIndex ? remapIndex(mapping.enumIndex) : mapping.enumIndex
 					if (enumIndex === undefined) return []
@@ -1085,13 +1364,6 @@ export class EditorController {
 		return `${baseLabel} ${sequence}`
 	}
 
-	private createInputId(valueType: string): string {
-		const graph = this.document.requireGraph(this.activeGraphId)
-		let sequence = 1
-		while (graph.inputs.some((input) => input.id === `${valueType}-${sequence}`)) sequence += 1
-		return `${valueType}-${sequence}`
-	}
-
 	private createEnumDefinition(): string {
 		let sequence = 1
 		while (this.document.getEnumDefinition(`enum-${sequence}`)) sequence += 1
@@ -1131,6 +1403,9 @@ function createInputDefinition(
 	if (valueType === 'numberArray') {
 		return { id, label: 'Number array', valueType, defaultValue: [1, 1] }
 	}
+	if (valueType === 'vector3') {
+		return { id, label: 'Vector 3', valueType, defaultValue: { x: 0, y: 0, z: 0 } }
+	}
 	if (valueType === 'enum') {
 		if (!enumId) throw new Error(`Cannot create choice graph input "${id}" without a choice-set ID.`)
 		return {
@@ -1141,13 +1416,11 @@ function createInputDefinition(
 			defaultValue: 0,
 		}
 	}
+	if (valueType === 'materialInstance') {
+		return { id, label: 'Material', valueType, defaultValue: 'wood' }
+	}
 	if (valueType === 'color') {
-		return {
-			id,
-			label: 'Color',
-			valueType,
-			defaultValue: defaultMaterialColor,
-		}
+		return { id, label: 'Color', valueType, defaultValue: '#ffffff' }
 	}
 	if (valueType === 'boolean') {
 		return { id, label: 'Boolean', valueType, defaultValue: false }

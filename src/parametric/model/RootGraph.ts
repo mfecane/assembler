@@ -2,6 +2,7 @@ import type {
 	ConfigurationPanelControl,
 	GraphInputValue,
 } from '@/parametric/model/GraphDocumentModel'
+import { Vector3Value } from '@/parametric/model/Vector3Value'
 
 export class RootGraph {
 	private readonly inputValues = new Map<string, GraphInputValue>()
@@ -54,11 +55,11 @@ export class RootGraph {
 function copyConfigurationControl(
 	control: ConfigurationPanelControl
 ): ConfigurationPanelControl {
-	if (control.type === 'color') return { ...control, options: [...control.options] }
 	if (control.type === 'numberArray') return { ...control, labels: [...control.labels] }
 	return { ...control }
 }
 
 function copyInputValue(value: GraphInputValue): GraphInputValue {
-	return Array.isArray(value) ? [...value] : value
+	if (Array.isArray(value)) return [...value]
+	return Vector3Value.isSnapshot(value) ? { ...value } : value
 }

@@ -1,4 +1,5 @@
 import type { User } from '@supabase/supabase-js'
+import type { Client } from '@/cosntants'
 import { getSupabaseClient } from '@/lib/supabase'
 import type { GraphDocument } from '@/parametric/model/GraphSerialization'
 import type { Project, ProjectSummary } from '@/projects/projectTypes'
@@ -20,10 +21,11 @@ export class ProjectRepository {
 
 	public constructor(private readonly user: User) {}
 
-	public async list(): Promise<ProjectSummary[]> {
+	public async list(client: Client): Promise<ProjectSummary[]> {
 		const { data, error } = await this.supabase
 			.from('projects')
 			.select('id, name, user_email, created_at, updated_at')
+			.eq('graph_document->>client', client)
 			.order('updated_at', { ascending: false })
 		if (error) throw error
 		return (data as SummaryRow[]).map(toSummary)

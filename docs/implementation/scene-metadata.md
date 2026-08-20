@@ -17,7 +17,7 @@ instance records:
 - the catalog or primitive asset ID and asset kind;
 - the requested asset size;
 - a plain 16-number transformation matrix;
-- the final optional standard material description;
+- the final optional registered material ID;
 - the graph ID, node ID, and scoped node-instance ID of the node that introduced the asset.
 
 The scoped origin ID distinguishes occurrences of the same asset node reached through different
@@ -26,14 +26,14 @@ node definition.
 
 ## Evaluation
 
-Geometry ports carry `SceneMetadata`. Asset and Primitive nodes create instances, while Material,
+Geometry ports carry `SceneMetadata`. Asset and Primitive nodes create instances, while Apply Material,
 Transform, Array, Group, and Graph Instance nodes return new metadata with the relevant fields or
 identities updated. Nested graph evaluation scopes scene-instance IDs and origin-node instance IDs
 without losing the defining graph and node references.
 
 The public graph-output and geometry-preview evaluator methods always return `SceneMetadata`,
 using an empty instance list when no valid geometry output exists. Scalar node-output evaluation
-continues to return number, enum, and color graph values.
+continues to return number, enum, and material-instance graph values.
 
 ## Scene construction
 

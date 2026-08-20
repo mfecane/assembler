@@ -4,18 +4,30 @@ import {
 	type Connection,
 	type Edge,
 	type EdgeChange,
+	type EdgeMouseHandler,
+	type OnConnectEnd,
+	type OnConnectStart,
 	type Node,
 	type NodeChange,
+	type OnDelete,
+	type ReactFlowInstance,
 } from '@xyflow/react'
 import type { NodePositionUpdate } from '@/parametric/editor/EditorController'
+import { AXIS_COLORS } from '@/parametric/components/AxisLabel'
 import {
 	useEditor,
 	useEditorController,
 	useReactBridgeSnapshot,
 } from '@/parametric/editor/react/EditorContext'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
+import type { VectorComponent } from '@/parametric/model/GraphEdge'
+import { PinGraphNode, type GraphValueType } from '@/parametric/model/GraphNode'
 
-interface FlowNodeData extends Record<string, unknown> {}
+const CONNECTION_PINS_ENABLED = import.meta.env.VITE_ENABLE_GRAPH_CONNECTION_PINS === 'true'
+
+interface FlowNodeData extends Record<string, unknown> {
+	valueType?: GraphValueType
+}
 
 type ParametricFlowNodeType = string
 
@@ -27,8 +39,42 @@ export interface FlowGraphBinding {
 	selectedEdges: Edge[]
 	onNodesChange: (changes: NodeChange<ParametricFlowNode>[]) => void
 	onEdgesChange: (changes: EdgeChange[]) => void
+	onDelete: OnDelete<ParametricFlowNode, Edge>
 	onConnect: (connection: Connection) => void
+	onConnectStart: OnConnectStart
+	onConnectEnd: OnConnectEnd
+	onInit: (instance: ReactFlowInstance<ParametricFlowNode, Edge>) => void
 	isValidConnection: (connection: Connection | Edge) => boolean
+	componentSelector: VectorComponentSelectorBinding | null
+	connectionTooltip: ConnectionTooltipBinding | null
+	onEdgeMouseEnter: EdgeMouseHandler
+	onEdgeMouseLeave: EdgeMouseHandler
+}
+
+export interface ConnectionTooltipBinding {
+	edgeId: string
+	position: { x: number; y: number }
+	source: string
+	sourcePort: string
+	sourceValueType: GraphValueType
+	target: string
+	targetPort: string
+	targetValueType: GraphValueType
+	component?: VectorComponent
+}
+
+export interface VectorComponentSelectorBinding {
+	position: { x: number; y: number }
+	select: (component: VectorComponent) => void
+	cancel: () => void
+}
+
+interface PendingVectorComponentConnection {
+	sourceNodeId: string
+	targetNodeId: string
+	sourcePort: string
+	targetPort: string
+	position: { x: number; y: number }
 }
 
 export function useFlowGraph(): FlowGraphBinding {
@@ -39,14 +85,30 @@ export function useFlowGraph(): FlowGraphBinding {
 	const [selectedNodeIds, setSelectedNodeIds] = useState<ReadonlySet<string>>(() => new Set())
 	const [selectedEdgeIds, setSelectedEdgeIds] = useState<ReadonlySet<string>>(() => new Set())
 	const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null)
+	const [pendingComponent, setPendingComponent] = useState<PendingVectorComponentConnection | null>(null)
+	const [connectionTooltip, setConnectionTooltip] = useState<ConnectionTooltipBinding | null>(null)
+	const [connectionDragging, setConnectionDragging] = useState(false)
 	const selectedNodeIdsRef = useRef<ReadonlySet<string>>(new Set())
+	const flowInstanceRef = useRef<ReactFlowInstance<ParametricFlowNode, Edge> | null>(null)
+	const pointerPositionRef = useRef({ x: 0, y: 0 })
 
 	useEffect(() => {
 		selectedNodeIdsRef.current = new Set()
 		setSelectedNodeIds(selectedNodeIdsRef.current)
 		setSelectedEdgeIds(new Set())
 		setFocusedNodeId(null)
+		setPendingComponent(null)
+		setConnectionTooltip(null)
+		setConnectionDragging(false)
 	}, [activeGraphId])
+
+	useEffect(() => {
+		const updatePointerPosition = (event: PointerEvent) => {
+			pointerPositionRef.current = { x: event.clientX, y: event.clientY }
+		}
+		window.addEventListener('pointermove', updatePointerPosition)
+		return () => window.removeEventListener('pointermove', updatePointerPosition)
+	}, [])
 
 	useEffect(() => {
 		const request = viewportSnapshot.graphNodeFocusRequest
@@ -79,9 +141,12 @@ export function useFlowGraph(): FlowGraphBinding {
 						? 'parametricGroup'
 						: node.type === 'graphOutput'
 							? 'parametricOutput'
-							: node.type,
+							: node.type === 'input'
+								? 'parametricInput'
+								: node.type,
 				position: node.getPosition(),
-				data: {},
+				data: node instanceof PinGraphNode ? { valueType: node.getValueType() } : {},
+				origin: node instanceof PinGraphNode ? [0.5, 0.5] : undefined,
 				selected: selectedNodeIds.has(node.id),
 				className: focusedNodeId === node.id ? 'graph-node-focus-pulse' : undefined,
 				deletable: model.isNodeRemovable(node.id),
@@ -101,6 +166,15 @@ export function useFlowGraph(): FlowGraphBinding {
 				sourceHandle: edge.sourcePort,
 				targetHandle: edge.targetPort,
 				selected: selectedEdgeIds.has(edge.id),
+				label: edge.component,
+				labelStyle: {
+					fill: edge.component ? AXIS_COLORS[edge.component] : undefined,
+					fontSize: 10,
+					fontWeight: 600,
+				},
+				labelBgStyle: { fill: 'var(--background)' },
+				labelBgPadding: [4, 2],
+				labelBgBorderRadius: 4,
 			})),
 		[model, revision, selectedEdgeIds]
 	)
@@ -109,6 +183,53 @@ export function useFlowGraph(): FlowGraphBinding {
 		() => edges.filter((edge) => selectedEdgeIds.has(edge.id)),
 		[edges, selectedEdgeIds]
 	)
+
+	const onEdgeMouseEnter = useCallback<EdgeMouseHandler>((event, flowEdge) => {
+		if (connectionDragging) return
+		const edge = model.getEdges().find((candidate) => candidate.id === flowEdge.id)
+		const sourceNode = edge ? model.getNode(edge.sourceNodeId) : undefined
+		const targetNode = edge ? model.getNode(edge.targetNodeId) : undefined
+		const sourcePort = edge?.sourcePort ?? undefined
+		const targetPort = edge?.targetPort ?? undefined
+		const sourceValueType = sourceNode && sourcePort
+			? model.getOutputPortValueType(sourceNode.id, sourcePort)
+			: undefined
+		const targetValueType = targetNode && targetPort
+			? model.getInputPortValueType(targetNode.id, targetPort)
+			: undefined
+		if (
+			!edge
+			|| !sourceNode
+			|| !targetNode
+			|| !sourcePort
+			|| !targetPort
+			|| !sourceValueType
+			|| !targetValueType
+		) {
+			throw new Error(
+				`Cannot show connection tooltip for edge "${flowEdge.id}" in graph "${activeGraphId}": `
+				+ `edge=${JSON.stringify(edge)}, sourceNode=${JSON.stringify(sourceNode?.id)}, `
+				+ `targetNode=${JSON.stringify(targetNode?.id)}, sourcePort=${JSON.stringify(sourcePort)}, `
+				+ `targetPort=${JSON.stringify(targetPort)}, sourceValueType=${JSON.stringify(sourceValueType)}, `
+				+ `targetValueType=${JSON.stringify(targetValueType)}.`
+			)
+		}
+		setConnectionTooltip({
+			edgeId: edge.id,
+			position: { x: event.clientX, y: event.clientY },
+			source: `${sourceNode.getName()} (${model.getNodeTypeLabel(sourceNode.id)}, ${sourceNode.id})`,
+			sourcePort,
+			sourceValueType,
+			target: `${targetNode.getName()} (${model.getNodeTypeLabel(targetNode.id)}, ${targetNode.id})`,
+			targetPort,
+			targetValueType,
+			component: edge.component,
+		})
+	}, [activeGraphId, connectionDragging, model])
+
+	const onEdgeMouseLeave = useCallback<EdgeMouseHandler>(() => {
+		setConnectionTooltip(null)
+	}, [])
 
 	const onNodesChange = useCallback((changes: NodeChange<ParametricFlowNode>[]) => {
 		setNodes((current) => applyNodeChanges(changes, current))
@@ -120,8 +241,6 @@ export function useFlowGraph(): FlowGraphBinding {
 				if (change.dragging !== true) {
 					finalPositions.set(change.id, { nodeId: change.id, position: change.position })
 				}
-			} else if (change.type === 'remove') {
-				controller.removeNode(change.id)
 			} else if (change.type === 'select') {
 				if (change.selected && !nextSelectedNodeIds.has(change.id)) {
 					nextSelectedNodeIds.add(change.id)
@@ -139,9 +258,7 @@ export function useFlowGraph(): FlowGraphBinding {
 
 	const onEdgesChange = useCallback((changes: EdgeChange[]) => {
 		for (const change of changes) {
-			if (change.type === 'remove') {
-				controller.removeEdge(change.id)
-			} else if (change.type === 'select') {
+			if (change.type === 'select') {
 				setSelectedEdgeIds((current) => {
 					const next = new Set(current)
 					if (change.selected) next.add(change.id)
@@ -150,14 +267,105 @@ export function useFlowGraph(): FlowGraphBinding {
 				})
 			}
 		}
-	}, [controller])
+	}, [])
+
+	const onDelete = useCallback<OnDelete<ParametricFlowNode, Edge>>(
+		({ nodes: deletedNodes, edges: deletedEdges }) => {
+			controller.removeGraphElements(
+				deletedNodes.map((node) => node.id),
+				deletedEdges.map((edge) => edge.id)
+			)
+		},
+		[controller]
+	)
 
 	const onConnect = useCallback((connection: Connection) => {
+		if (
+			connection.sourceHandle
+			&& connection.targetHandle
+			&& controller.requiresVectorComponent(
+				connection.source,
+				connection.target,
+				connection.sourceHandle,
+				connection.targetHandle
+			)
+		) {
+			setPendingComponent({
+				sourceNodeId: connection.source,
+				targetNodeId: connection.target,
+				sourcePort: connection.sourceHandle,
+				targetPort: connection.targetHandle,
+				position: pointerPositionRef.current,
+			})
+			return
+		}
 		controller.connect(
 			connection.source,
 			connection.target,
 			connection.sourceHandle,
 			connection.targetHandle
+		)
+	}, [controller])
+
+	const componentSelector = useMemo<VectorComponentSelectorBinding | null>(() => {
+		if (!pendingComponent) return null
+		return {
+			position: pendingComponent.position,
+			select: (component) => {
+				controller.connect(
+					pendingComponent.sourceNodeId,
+					pendingComponent.targetNodeId,
+					pendingComponent.sourcePort,
+					pendingComponent.targetPort,
+					component
+				)
+				setPendingComponent(null)
+			},
+			cancel: () => setPendingComponent(null),
+		}
+	}, [controller, pendingComponent])
+
+	const onInit = useCallback((instance: ReactFlowInstance<ParametricFlowNode, Edge>) => {
+		flowInstanceRef.current = instance
+	}, [])
+
+	const onConnectStart = useCallback<OnConnectStart>(() => {
+		setConnectionDragging(true)
+		setConnectionTooltip(null)
+	}, [])
+
+	const onConnectEnd = useCallback<OnConnectEnd>((event, connectionState) => {
+		setConnectionDragging(false)
+		if (!CONNECTION_PINS_ENABLED) return
+		if (
+			!connectionState.fromNode
+			|| connectionState.toNode
+			|| connectionState.fromHandle.type !== 'source'
+			|| !connectionState.fromHandle.id
+		) return
+		const flowInstance = flowInstanceRef.current
+		if (!flowInstance) {
+			throw new Error(
+				`Cannot add a connection pin from "${connectionState.fromNode.id}.`
+				+ `${connectionState.fromHandle.id}": the React Flow viewport is not initialized.`
+			)
+		}
+		const clientPosition = 'changedTouches' in event
+			? event.changedTouches.item(0)
+			: event
+		if (!clientPosition) {
+			throw new Error(
+				`Cannot add a connection pin from "${connectionState.fromNode.id}.`
+				+ `${connectionState.fromHandle.id}": the connection ended with no pointer coordinates.`
+			)
+		}
+		controller.addConnectionPin(
+			connectionState.fromNode.id,
+			connectionState.fromHandle.id,
+			flowInstance.screenToFlowPosition({
+				x: clientPosition.clientX,
+				y: clientPosition.clientY,
+			})
 		)
 	}, [controller])
 
@@ -174,5 +382,21 @@ export function useFlowGraph(): FlowGraphBinding {
 		[controller]
 	)
 
-	return { nodes, edges, selectedEdges, onNodesChange, onEdgesChange, onConnect, isValidConnection }
+	return {
+		nodes,
+		edges,
+		selectedEdges,
+		onNodesChange,
+		onEdgesChange,
+		onDelete,
+		onConnect,
+		onConnectStart,
+		onConnectEnd,
+		onInit,
+		isValidConnection,
+		componentSelector,
+		connectionTooltip,
+		onEdgeMouseEnter,
+		onEdgeMouseLeave,
+	}
 }

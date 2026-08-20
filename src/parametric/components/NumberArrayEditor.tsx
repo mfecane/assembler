@@ -23,6 +23,7 @@ export function NumberArrayEditor({
 						value={value}
 						min={0}
 						step={1}
+						roundStep={1}
 						disabled={disabled}
 						onValueChange={(next) => onChange(values.map((item, candidateIndex) =>
 							candidateIndex === index ? Math.max(0, next) : item

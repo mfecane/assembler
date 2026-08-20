@@ -10,6 +10,8 @@ import {
 import { AuthProvider, useAuth } from '@/auth/AuthProvider'
 import { SignInScreen } from '@/auth/SignInScreen'
 import { supabaseConfigurationError } from '@/lib/supabase'
+import { ModelEditor } from '@/models/ModelEditor'
+import { ModelMetadataRepository } from '@/models/ModelMetadataRepository'
 import { ProjectDashboard } from '@/projects/ProjectDashboard'
 import { ProjectEditor } from '@/projects/ProjectEditor'
 import { ProjectRepository } from '@/projects/ProjectRepository'
@@ -43,8 +45,12 @@ function App() {
 function AuthenticatedApplication() {
 	const { user, isLoading, signOut } = useAuth()
 	const [authError, setAuthError] = useState<string | null>(null)
-	const repository = useMemo(
+	const projectRepository = useMemo(
 		() => user ? new ProjectRepository(user) : null,
+		[user?.id]
+	)
+	const modelMetadataRepository = useMemo(
+		() => user ? new ModelMetadataRepository() : null,
 		[user?.id]
 	)
 
@@ -67,7 +73,7 @@ function AuthenticatedApplication() {
 			</div>
 		)
 	}
-	if (!user || !repository) return <SignInScreen />
+	if (!user || !projectRepository || !modelMetadataRepository) return <SignInScreen />
 
 	return (
 		<>
@@ -87,7 +93,7 @@ function AuthenticatedApplication() {
 					element={
 						<ProjectDashboardRoute
 							user={user}
-							repository={repository}
+							repository={projectRepository}
 							onSignOut={() => void handleSignOut()}
 						/>
 					}
@@ -97,7 +103,28 @@ function AuthenticatedApplication() {
 					element={
 						<ProjectEditorRoute
 							user={user}
-							repository={repository}
+							repository={projectRepository}
+							modelMetadataRepository={modelMetadataRepository}
+							onSignOut={() => void handleSignOut()}
+						/>
+					}
+				/>
+				<Route
+					path="/models"
+					element={
+						<ModelEditorRoute
+							user={user}
+							metadataRepository={modelMetadataRepository}
+							onSignOut={() => void handleSignOut()}
+						/>
+					}
+				/>
+				<Route
+					path="/models/:modelId"
+					element={
+						<ModelEditorRoute
+							user={user}
+							metadataRepository={modelMetadataRepository}
 							onSignOut={() => void handleSignOut()}
 						/>
 					}
@@ -120,6 +147,29 @@ function ProjectDashboardRoute({
 			user={user}
 			repository={repository}
 			onOpen={(projectId) => navigate(`/projects/${encodeURIComponent(projectId)}`)}
+			onOpenModels={() => navigate('/models')}
+			onSignOut={onSignOut}
+		/>
+	)
+}
+
+function ModelEditorRoute({
+	user,
+	metadataRepository,
+	onSignOut,
+}: Pick<ComponentProps<typeof ModelEditor>, 'user' | 'metadataRepository' | 'onSignOut'>) {
+	const navigate = useNavigate()
+	const { modelId } = useParams<{ modelId: string }>()
+
+	return (
+		<ModelEditor
+			modelId={modelId}
+			user={user}
+			metadataRepository={metadataRepository}
+			onBack={() => navigate('/projects')}
+			onSelectModel={(nextModelId, replace = false) => {
+				navigate(`/models/${encodeURIComponent(nextModelId)}`, { replace })
+			}}
 			onSignOut={onSignOut}
 		/>
 	)
@@ -128,8 +178,12 @@ function ProjectDashboardRoute({
 function ProjectEditorRoute({
 	user,
 	repository,
+	modelMetadataRepository,
 	onSignOut,
-}: Pick<ComponentProps<typeof ProjectEditor>, 'user' | 'repository' | 'onSignOut'>) {
+}: Pick<
+	ComponentProps<typeof ProjectEditor>,
+	'user' | 'repository' | 'modelMetadataRepository' | 'onSignOut'
+>) {
 	const navigate = useNavigate()
 	const { projectId } = useParams<{ projectId: string }>()
 
@@ -140,6 +194,7 @@ function ProjectEditorRoute({
 			projectId={projectId}
 			user={user}
 			repository={repository}
+			modelMetadataRepository={modelMetadataRepository}
 			onBack={() => navigate('/projects')}
 			onOpenProject={(nextProjectId) => (
 				navigate(`/projects/${encodeURIComponent(nextProjectId)}`)

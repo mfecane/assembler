@@ -53,7 +53,7 @@ Add `NumberField`, `BooleanField`, `ColorField`, `EnumField` alongside it (one s
 same directory). `ColorField` owns the `normalizeRgbColor` normalization that today is
 duplicated in `ColorGraphNode.setColor` and `MaterialGraphNode.setColor`. `EnumField` owns the
 "clamp current value to the option list" logic duplicated across `SelectorGraphNode` and the
-`graphInput` enum handling. `Vector3Value` already satisfies this shape structurally (`get`/`set`
+`input` enum handling. `Vector3Value` already satisfies this shape structurally (`get`/`set`
 equivalent via its own methods, `toSnapshot()` as `serialize()`) — no change needed there beyond
 optionally implementing the interface explicitly.
 

@@ -11,7 +11,13 @@ export interface AssetRegistration {
 }
 
 export interface AssetRegistrationTarget {
-	add(id: string, label: string, geometry: BufferGeometry, client: Client, selectable?: boolean): void
+	add(
+		id: string,
+		label: string,
+		geometry: BufferGeometry,
+		client: Client,
+		selectable?: boolean
+	): void
 }
 
 export class AssetRegistrar {
@@ -38,7 +44,8 @@ export class AssetRegistrar {
 					)
 				}
 				try {
-					return { asset, geometry: await loadAssetGeometry(asset, scale) }
+					const geometry = await loadAssetGeometry(asset, scale)
+					return { asset, geometry }
 				} catch (cause) {
 					throw new Error(
 						`Failed to load mesh asset "${asset.id}" (${asset.label}) for client `
@@ -66,7 +73,10 @@ function describeError(cause: unknown): string {
 	}
 }
 
-async function loadAssetGeometry(asset: AssetRegistration, scale: number): Promise<BufferGeometry> {
+async function loadAssetGeometry(
+	asset: AssetRegistration,
+	scale: number
+): Promise<BufferGeometry> {
 	const { scene } = await new GLTFLoader().loadAsync(asset.url)
 	scene.updateMatrixWorld(true)
 

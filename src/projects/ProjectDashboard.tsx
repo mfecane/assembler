@@ -1,36 +1,32 @@
-import { useCallback, useEffect, useState } from 'react'
-import type { User } from '@supabase/supabase-js'
-import { FolderOpen, Plus, Trash2, UserRound } from 'lucide-react'
 import { UserMenu } from '@/auth/UserMenu'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ConfirmationDialog } from '@/parametric/components/ConfirmationDialog'
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from '@/components/ui/select'
-import { Client } from '@/cosntants'
 import { createDefaultEditor } from '@/parametric/editor/createEditor'
+import { ClientSelector } from '@/projects/ClientSelector'
 import type { ProjectRepository } from '@/projects/ProjectRepository'
 import type { ProjectSummary } from '@/projects/projectTypes'
+import { useSelectedClient } from '@/projects/useSelectedClient'
+import type { User } from '@supabase/supabase-js'
+import { Box, FolderOpen, Plus, Trash2, UserRound } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
 
 export function ProjectDashboard({
 	user,
 	repository,
 	onOpen,
+	onOpenModels,
 	onSignOut,
 }: {
 	user: User
 	repository: ProjectRepository
 	onOpen: (projectId: string) => void
+	onOpenModels: () => void
 	onSignOut: () => void
 }) {
 	const [projects, setProjects] = useState<ProjectSummary[]>([])
 	const [name, setName] = useState('')
-	const [client, setClient] = useState(Client.MAXSHELF)
+	const [client, setClient] = useSelectedClient()
 	const [isLoading, setIsLoading] = useState(true)
 	const [isCreating, setIsCreating] = useState(false)
 	const [deleteTarget, setDeleteTarget] = useState<ProjectSummary | null>(null)
@@ -40,13 +36,13 @@ export function ProjectDashboard({
 		setIsLoading(true)
 		setError(null)
 		try {
-			setProjects(await repository.list())
+			setProjects(await repository.list(client))
 		} catch (cause) {
 			setError(errorMessage(cause, 'Projects could not be loaded.'))
 		} finally {
 			setIsLoading(false)
 		}
-	}, [repository])
+	}, [client, repository])
 
 	useEffect(() => {
 		void loadProjects()
@@ -84,22 +80,29 @@ export function ProjectDashboard({
 
 	return (
 		<main data-id="project-dashboard" className="min-h-full">
-			<header className="border-b border-border bg-surface">
+			<header data-id="project-dashboard-header" className="border-b border-border bg-surface">
 				<div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-4">
 					<div>
-						<p className="m-0 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-							Assembler
-						</p>
+						<p className="m-0 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Assembler</p>
 						<h1 className="mb-0 mt-1 text-xl font-semibold">Projects</h1>
 					</div>
-					<UserMenu user={user} onSignOut={onSignOut} />
+					<div className="flex items-center gap-4">
+						<ClientSelector value={client} onValueChange={setClient} />
+						<UserMenu user={user} onSignOut={onSignOut} />
+					</div>
 				</div>
 			</header>
 
-			<div className="mx-auto max-w-5xl p-6">
+			<div className="mx-auto max-w-5xl p-6 space-y-4">
+				<div>
+					<Button data-id="open-model-editor" type="button" onClick={onOpenModels}>
+						<Box />
+						Edit models
+					</Button>
+				</div>
 				<form
 					data-id="create-project-form"
-					className="mb-8 flex max-w-2xl gap-2"
+					className=" flex max-w-2xl gap-2"
 					onSubmit={(event) => {
 						event.preventDefault()
 						void createProject()
@@ -113,15 +116,6 @@ export function ProjectDashboard({
 						aria-label="New project name"
 						onChange={(event) => setName(event.target.value)}
 					/>
-					<Select value={client} onValueChange={(value) => setClient(value as Client)}>
-						<SelectTrigger data-id="new-project-client" className="w-40" aria-label="Client">
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value={Client.MAXSHELF}>MaxShelf</SelectItem>
-							<SelectItem value={Client.KITCHEN}>Kitchen</SelectItem>
-						</SelectContent>
-					</Select>
 					<Button type="submit" disabled={!name.trim() || isCreating}>
 						<Plus />
 						{isCreating ? 'Creating…' : 'Create'}
@@ -145,7 +139,7 @@ export function ProjectDashboard({
 					<p className="text-sm text-muted-foreground">Loading projects…</p>
 				) : projects.length === 0 ? (
 					<section className="rounded-xl border border-dashed border-border p-10 text-center">
-						<h2 className="m-0 text-lg font-semibold">No projects yet</h2>
+						<h2 className="m-0 text-lg font-semibold">No projects for this client yet</h2>
 						<p className="mb-0 mt-2 text-sm text-muted-foreground">
 							Name your first project above to start with the default assembly.
 						</p>
@@ -194,9 +188,7 @@ export function ProjectDashboard({
 				open={deleteTarget !== null}
 				title="Delete project?"
 				message={
-					deleteTarget
-						? `"${deleteTarget.name}" will be permanently deleted. This cannot be undone.`
-						: ''
+					deleteTarget ? `"${deleteTarget.name}" will be permanently deleted. This cannot be undone.` : ''
 				}
 				onCancel={() => setDeleteTarget(null)}
 				onConfirm={() => void deleteProject()}

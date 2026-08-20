@@ -10,6 +10,7 @@ export class MeshRepository implements MeshCatalog {
 	private readonly geometries = new Map<string, BufferGeometry>()
 	private readonly descriptors = new Map<string, MeshDescriptor>()
 	private readonly bounds = new Map<string, MeshBounds>()
+	private readonly metadata = new Map<string, Record<string, unknown>>()
 
 	public add(
 		id: string,
@@ -42,6 +43,8 @@ export class MeshRepository implements MeshCatalog {
 
 		this.geometries.set(id, geometry)
 		this.bounds.set(id, bounds)
+		const metadata = this.metadata.get(sourceId)
+		if (metadata) this.metadata.set(id, structuredClone(metadata))
 		const client = this.descriptors.get(sourceId)?.client
 		if (!client) throw new Error(`Cannot alias mesh asset "${sourceId}" without a client ID`)
 		this.descriptors.set(id, { id, label, client, selectable: true })
@@ -62,6 +65,21 @@ export class MeshRepository implements MeshCatalog {
 	public getBounds(id: string): MeshBounds | undefined {
 		const bounds = this.bounds.get(id)
 		return bounds ? { ...bounds, center: { ...bounds.center } } : undefined
+	}
+
+	public setMetadata(id: string, metadata: Record<string, unknown>): void {
+		if (!this.descriptors.has(id)) {
+			throw new Error(
+				`Cannot register metadata for unknown mesh asset "${id}". `
+				+ `Known asset count: ${this.descriptors.size}.`
+			)
+		}
+		this.metadata.set(id, structuredClone(metadata))
+	}
+
+	public getMetadata(id: string): Record<string, unknown> | undefined {
+		const metadata = this.metadata.get(id)
+		return metadata ? structuredClone(metadata) : undefined
 	}
 
 	public getMeshes(): readonly MeshDescriptor[] {
@@ -87,6 +105,10 @@ class ClientMeshCatalog implements MeshCatalog {
 
 	public getBounds(id: string): MeshBounds | undefined {
 		return this.hasAccess(id) ? this.repository.getBounds(id) : undefined
+	}
+
+	public getMetadata(id: string): Record<string, unknown> | undefined {
+		return this.hasAccess(id) ? this.repository.getMetadata(id) : undefined
 	}
 
 	public createGeometry(id: string): BufferGeometry | undefined {

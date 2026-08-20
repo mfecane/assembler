@@ -2,6 +2,7 @@ import { EditorController } from '@/parametric/editor/EditorController'
 import { ReactBridge } from '@/parametric/editor/ReactBridge'
 import type { GraphDocumentModel } from '@/parametric/model/GraphDocumentModel'
 import type { MeshCatalog } from '@/parametric/model/MeshCatalog'
+import type { MaterialCatalog } from '@/parametric/model/MaterialCatalog'
 import type { NodeRegistry } from '@/parametric/model/NodeDefinition'
 import { ViewportEditor } from '@/parametric/three/editor/ViewportEditor'
 
@@ -16,12 +17,14 @@ export class Editor {
 	public constructor(
 		document: GraphDocumentModel,
 		nodeRegistry: NodeRegistry,
-		meshCatalog: MeshCatalog
+		meshCatalog: MeshCatalog,
+		materialCatalog: MaterialCatalog
 	) {
 		this.controller = new EditorController(
 			document,
 			nodeRegistry,
 			meshCatalog,
+			materialCatalog,
 			this.bridge
 		)
 		this.viewport = new ViewportEditor(this.controller, this.bridge)

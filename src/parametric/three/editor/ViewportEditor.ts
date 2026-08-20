@@ -136,6 +136,14 @@ export class ViewportEditor {
 					bridgeSnapshot.previewNodeId
 				)
 				: graphOutputMetadata
+			console.log(
+				`[node-chain-debug] stage=viewport graph="${graphSnapshot.activeGraphId}" `
+				+ `previewNode="${bridgeSnapshot.previewNodeId ?? 'assembly-output'}" `
+				+ `instanceCount=${metadata.assetInstances.length} `
+				+ `instances="${metadata.assetInstances.map((instance) => (
+					`${instance.instanceId}:(${instance.transform[12]},${instance.transform[13]},${instance.transform[14]})`
+				)).join(',')}"`
+			)
 			const transformNode = bridgeSnapshot.transformNodeId
 				? graphSnapshot.model.getNode(bridgeSnapshot.transformNodeId)
 				: null

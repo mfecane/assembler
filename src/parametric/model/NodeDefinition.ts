@@ -7,6 +7,7 @@ import type {
 	GraphValueType,
 } from '@/parametric/model/GraphNode'
 import type { MeshCatalog } from '@/parametric/model/MeshCatalog'
+import type { MaterialCatalog } from '@/parametric/model/MaterialCatalog'
 import type {
 	EvaluatedNodeOutputs,
 	NodeEvaluationContext,
@@ -15,12 +16,14 @@ import type { GraphInterface } from '@/parametric/model/GraphDocumentModel'
 
 export interface NodeCreationContext {
 	meshCatalog: MeshCatalog
+	materialCatalog: MaterialCatalog
 }
 
 export interface NodePortContext {
 	containingGraphId: string
 	getGraphInterface(graphId: string): GraphInterface | undefined
 	getEnumOptions(enumId: string): readonly string[]
+	getStretchableAxes?(meshId: string): readonly ('x' | 'y' | 'z')[]
 }
 
 export interface NodePortDefinition<TNode extends GraphNode> {
@@ -38,7 +41,7 @@ export interface NodePortDefinition<TNode extends GraphNode> {
 	) => readonly string[] | undefined
 }
 
-export type FieldKind = 'number' | 'boolean' | 'enum' | 'color'
+export type FieldKind = 'number' | 'boolean' | 'enum' | 'text'
 
 export interface FieldDefinition<TNode extends GraphNode> {
 	kind: FieldKind
@@ -56,6 +59,7 @@ export interface NodeDefinition<TNode extends GraphNode = GraphNode> {
 	isOutput?: boolean
 	fields?: Record<string, FieldDefinition<TNode>>
 	bypass?: { enabledField?: string; enabledInput?: string; input: string; output: string }
+	defaultData?: Record<string, unknown>
 	serialize(node: TNode): unknown
 	deserialize(id: string, position: GraphPoint, data: unknown): TNode
 	evaluate?: (node: TNode, context: NodeEvaluationContext) => EvaluatedNodeOutputs
@@ -128,7 +132,7 @@ export class NodeRegistry {
 
 	public isMultiInput(node: GraphNode, portId: string, context?: NodePortContext): boolean {
 		const port = this.getInputPorts(node, context).find((candidate) => candidate.id === portId)
-		return Boolean(port && (port.multiple || port.valueType === 'geometry'))
+		return Boolean(port && (port.multiple ?? port.valueType === 'geometry'))
 	}
 
 	public getFieldValue(node: GraphNode, field: string): unknown {
@@ -157,13 +161,14 @@ export class NodeRegistry {
 	}
 
 	public serialize(node: GraphNode): unknown {
-		return this.requireDefinition(node.type).serialize(node)
+		const definition = this.requireDefinition(node.type)
+		return omitDefaultData(definition.serialize(node), definition.defaultData)
 	}
 
 	public deserialize(type: string, id: string, position: GraphPoint, data: unknown): GraphNode {
 		const definition = this.definitions.get(type)
 		if (!definition) throw new Error(`Unknown node type "${type}"`)
-		return definition.deserialize(id, position, data)
+		return definition.deserialize(id, position, mergeDefaultData(definition.defaultData, data))
 	}
 
 	public evaluate(node: GraphNode, context: NodeEvaluationContext): EvaluatedNodeOutputs {
@@ -171,10 +176,23 @@ export class NodeRegistry {
 		if (definition.bypass) {
 			const enabledInput = definition.bypass.enabledInput
 			const inputValue = enabledInput ? context.resolveInput(node, enabledInput) : undefined
+			const storedEnabled = this.getFieldValue(node, definition.bypass.enabledField ?? 'enabled')
 			const enabled = inputValue?.valueType === 'boolean'
 				? inputValue.value
-				: this.getFieldValue(node, definition.bypass.enabledField ?? 'enabled')
+				: storedEnabled
+			if (node.type === 'transform') {
+				const reference = context.getNodeInstanceReference(node.id)
+				console.log(
+					`[node-chain-debug] stage=transform-enabled graph="${reference.graphId}" `
+					+ `node="${node.id}" instance="${reference.nodeInstanceId}" `
+					+ `stored=${String(storedEnabled)} resolvedType=${inputValue?.valueType ?? 'missing'} `
+					+ `resolved=${String(inputValue?.value)} effective=${String(enabled)}`
+				)
+			}
 			if (enabled === false) {
+				if (node.type === 'transform') {
+					console.log(`[node-chain-debug] stage=transform node="${node.id}" action=bypass`)
+				}
 				const input = context.resolveInput(node, definition.bypass.input)
 				return input ? new Map([[definition.bypass.output, input]]) : new Map()
 			}
@@ -191,4 +209,27 @@ export class NodeRegistry {
 		if (!definition) throw new Error(`Unknown node type "${type}"`)
 		return definition
 	}
+}
+
+function omitDefaultData(data: unknown, defaultData: Record<string, unknown> | undefined): unknown {
+	if (!defaultData || !isDataObject(data)) return data
+	return Object.fromEntries(Object.entries(data).flatMap(([key, value]) => {
+		if (JSON.stringify(value) === JSON.stringify(defaultData[key])) return []
+		const compactValue = omitDefaultData(value, isDataObject(defaultData[key]) ? defaultData[key] : undefined)
+		return [[key, compactValue]]
+	}))
+}
+
+function mergeDefaultData(defaultData: Record<string, unknown> | undefined, data: unknown): unknown {
+	if (!defaultData || !isDataObject(data)) return data
+	return Object.fromEntries([...new Set([...Object.keys(defaultData), ...Object.keys(data)])].map((key) => [
+		key,
+		key in data
+			? mergeDefaultData(isDataObject(defaultData[key]) ? defaultData[key] : undefined, data[key])
+			: defaultData[key],
+	]))
+}
+
+function isDataObject(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }

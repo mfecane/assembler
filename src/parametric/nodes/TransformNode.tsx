@@ -1,5 +1,9 @@
 import { Position, type NodeProps } from '@xyflow/react'
+import { Plus } from 'lucide-react'
+import { useState } from 'react'
 import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Switch } from '@/components/ui/switch'
 import { NumericInput } from '@/parametric/components/NumericInput'
 import { Vec3Field } from '@/parametric/components/Vec3Field'
@@ -10,13 +14,31 @@ import { TypedHandle } from '@/parametric/components/TypedHandle'
 import { useTransformNode, useVectorNumericFields } from '@/parametric/hooks/useGraphNode'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 
+type OptionalTransformSection = 'rotation' | 'scale' | 'origin' | 'copy'
+
+const optionalTransformSections: ReadonlyArray<{ id: OptionalTransformSection; label: string }> = [
+	{ id: 'rotation', label: 'Rotation' },
+	{ id: 'scale', label: 'Scale' },
+	{ id: 'origin', label: 'Origin' },
+	{ id: 'copy', label: 'Clone Input' },
+]
+
 export function TransformNode({ id }: NodeProps<ParametricFlowNode>) {
 	const binding = useTransformNode(id)
+	const [visibleSections, setVisibleSections] = useState<Set<OptionalTransformSection>>(new Set())
 	const translation = useVectorNumericFields(id, 'translation', 'Position')
 	const rotation = useVectorNumericFields(id, 'rotation', 'Rotation')
 	const scale = useVectorNumericFields(id, 'scale', 'Scale')
 
 	if (!binding) return null
+	const toggleSection = (section: OptionalTransformSection) => {
+		setVisibleSections((current) => {
+			const next = new Set(current)
+			if (next.has(section)) next.delete(section)
+			else next.add(section)
+			return next
+		})
+	}
 
 	return (
 		<div
@@ -45,62 +67,96 @@ export function TransformNode({ id }: NodeProps<ParametricFlowNode>) {
 						position={Position.Left}
 						valueType="vector3"
 					/>
-					<Vec3Field label="Position" fields={translation} step={0.01} roundStep={0.01} />
+					<Vec3Field label="Position" fields={translation} step={0.01} />
 					{binding.translationConnected && (
 						<span className="text-[10px] text-muted-foreground">Driven by connection</span>
 					)}
 				</div>
-				<Vec3Field label="Rotation" fields={rotation} step={1} roundStep={1} />
-				<div className="nodrag flex flex-col gap-1 text-xs">
-					<div className="flex items-center justify-between gap-3">
-						<span className="text-muted-foreground">Scale</span>
-						<div className="flex items-center gap-1.5">
-							<Label
-								htmlFor={`${id}-uniform-scale`}
-								className="text-xs text-muted-foreground"
-							>
-								Uniform
-							</Label>
-							<Switch
-								id={`${id}-uniform-scale`}
-								checked={binding.uniformScale}
-								onCheckedChange={binding.setUniformScale}
-								aria-label="Use uniform scale"
-							/>
-						</div>
-					</div>
-					{binding.uniformScale ? (
-						<NumericInput
-							value={binding.scale.x}
-							onValueChange={(value) => binding.setScale({ x: value, y: value, z: value })}
-							roundStep={0.01}
-						/>
-					) : (
-						<div className="flex gap-1">
-							{(['x', 'y', 'z'] as const).map((axis) => (
-								<NumericInput
-									key={axis}
-									value={scale[axis].value}
-									onValueChange={scale[axis].setValue}
-									roundStep={0.01}
+				{visibleSections.has('rotation') && <Vec3Field label="Rotation" fields={rotation} step={1} />}
+				{visibleSections.has('scale') && (
+					<div className="nodrag flex flex-col gap-1 text-xs">
+						<div className="flex items-center justify-between gap-3">
+							<span className="text-muted-foreground">Scale</span>
+							<div className="flex items-center gap-1.5">
+								<Label htmlFor={`${id}-uniform-scale`} className="text-xs text-muted-foreground">
+									Uniform
+								</Label>
+								<Switch
+									id={`${id}-uniform-scale`}
+									checked={binding.uniformScale}
+									onCheckedChange={binding.setUniformScale}
+									aria-label="Use uniform scale"
 								/>
+							</div>
+						</div>
+						{binding.uniformScale ? (
+							<NumericInput
+								value={binding.scale.x}
+								onValueChange={(value) => binding.setScale({ x: value, y: value, z: value })}
+							/>
+						) : (
+							<div className="flex gap-1">
+								{(['x', 'y', 'z'] as const).map((axis) => (
+									<NumericInput
+										key={axis}
+										value={scale[axis].value}
+										onValueChange={scale[axis].setValue}
+									/>
+								))}
+							</div>
+						)}
+					</div>
+				)}
+				{visibleSections.has('copy') && (
+					<div className="nodrag flex items-center justify-between gap-3">
+						<Label htmlFor={`${id}-copy`} className="text-xs text-muted-foreground">
+							Clone input
+						</Label>
+						<Switch
+							data-id="clone-input-switch"
+							id={`${id}-copy`}
+							checked={binding.copy}
+							onCheckedChange={binding.setCopy}
+							aria-label="Clone input"
+						/>
+					</div>
+				)}
+				{visibleSections.has('origin') && (
+					<TransformOriginField value={binding.origin} onChange={binding.setOrigin} />
+				)}
+				<Popover>
+					<PopoverTrigger asChild>
+						<Button
+							data-id="transform-add-section-button"
+							type="button"
+							variant="ghost"
+							size="sm"
+							className="nodrag h-7 w-full justify-start px-2 text-xs text-muted-foreground"
+							aria-label="Add transform section"
+						>
+							<Plus className="size-3.5" />
+							Add...
+						</Button>
+					</PopoverTrigger>
+					<PopoverContent className="w-44 p-1" align="start">
+						<div className="flex flex-col" role="menu" aria-label="Transform sections">
+							{optionalTransformSections.map((section) => (
+								<button
+									key={section.id}
+									data-id={`transform-section-option-${section.id}`}
+									type="button"
+									role="menuitemcheckbox"
+									aria-checked={visibleSections.has(section.id)}
+									className="flex items-center justify-between rounded-sm px-2 py-1.5 text-left text-xs hover:bg-accent"
+									onClick={() => toggleSection(section.id)}
+								>
+									{section.label}
+									{visibleSections.has(section.id) && <span aria-hidden="true">✓</span>}
+								</button>
 							))}
 						</div>
-					)}
-				</div>
-				<div className="nodrag flex items-center justify-between gap-3">
-					<Label htmlFor={`${id}-copy`} className="text-xs text-muted-foreground">
-						Clone input
-					</Label>
-					<Switch
-						data-id="clone-input-switch"
-						id={`${id}-copy`}
-						checked={binding.copy}
-						onCheckedChange={binding.setCopy}
-						aria-label="Clone input"
-					/>
-				</div>
-				<TransformOriginField value={binding.origin} onChange={binding.setOrigin} />
+					</PopoverContent>
+				</Popover>
 			</div>
 			<TypedHandle id="geometry" type="source" position={Position.Right} valueType="geometry" />
 		</div>

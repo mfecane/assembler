@@ -1,14 +1,22 @@
 import { useEditorController } from '@/parametric/editor/react/EditorContext'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
+import { InputGraphNode } from '@/parametric/model/GraphNode'
 
 export function useEnumDefinition(inputId: string) {
 	const controller = useEditorController()
-	const { document, activeGraphId } = useGraphSnapshot()
-	const input = document.requireGraph(activeGraphId).inputs.find(
-		(candidate) => candidate.id === inputId
-	)
-	if (input?.valueType !== 'enum' || !input.enumId) return undefined
-	const definition = document.requireEnumDefinition(input.enumId)
+	const { document, model } = useGraphSnapshot()
+	const node = model.getNode(inputId)
+	if (!(node instanceof InputGraphNode) || node.getValueType() !== 'enum' || !node.getEnumId()) {
+		return undefined
+	}
+	const definition = document.requireEnumDefinition(node.getEnumId() as string)
+	const input = {
+		id: node.id,
+		label: node.getName(),
+		valueType: 'enum' as const,
+		defaultValue: node.getValue(),
+		enumId: definition.id,
+	}
 
 	return {
 		input,

@@ -13,7 +13,10 @@
   "properties": {
     "client": {
       "type": "string",
-      "enum": ["maxshelf", "kitchen"]
+      "enum": [
+        "maxshelf",
+        "kitchen"
+      ]
     },
     "rootGraphs": {
       "type": "array",
@@ -72,6 +75,9 @@
                   "type": "number",
                   "minimum": 0
                 }
+              },
+              {
+                "$ref": "#/$defs/point3"
               }
             ]
           }
@@ -142,11 +148,21 @@
     "point3": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["x", "y", "z"],
+      "required": [
+        "x",
+        "y",
+        "z"
+      ],
       "properties": {
-        "x": { "type": "number" },
-        "y": { "type": "number" },
-        "z": { "type": "number" }
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "z": {
+          "type": "number"
+        }
       }
     },
     "transformField": {
@@ -162,41 +178,93 @@
         "translation": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["x", "y", "z"],
+          "required": [
+            "x",
+            "y",
+            "z"
+          ],
           "properties": {
-            "x": { "type": "number" },
-            "y": { "type": "number" },
-            "z": { "type": "number" }
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "z": {
+              "type": "number"
+            }
           }
         },
         "rotation": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["x", "y", "z"],
+          "required": [
+            "x",
+            "y",
+            "z"
+          ],
           "properties": {
-            "x": { "type": "number" },
-            "y": { "type": "number" },
-            "z": { "type": "number" }
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "z": {
+              "type": "number"
+            }
           }
         },
         "scale": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["x", "y", "z"],
+          "required": [
+            "x",
+            "y",
+            "z"
+          ],
           "properties": {
-            "x": { "type": "number" },
-            "y": { "type": "number" },
-            "z": { "type": "number" }
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "z": {
+              "type": "number"
+            }
           }
         },
         "origin": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["x", "y", "z"],
+          "required": [
+            "x",
+            "y",
+            "z"
+          ],
           "properties": {
-            "x": { "enum": ["min", "middle", "max"] },
-            "y": { "enum": ["min", "middle", "max"] },
-            "z": { "enum": ["min", "middle", "max"] }
+            "x": {
+              "enum": [
+                "min",
+                "middle",
+                "max"
+              ]
+            },
+            "y": {
+              "enum": [
+                "min",
+                "middle",
+                "max"
+              ]
+            },
+            "z": {
+              "enum": [
+                "min",
+                "middle",
+                "max"
+              ]
+            }
           }
         }
       }
@@ -224,6 +292,30 @@
             },
             "defaultValue": {
               "type": "number"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "label",
+            "valueType",
+            "defaultValue"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "label": {
+              "type": "string"
+            },
+            "valueType": {
+              "const": "vector3"
+            },
+            "defaultValue": {
+              "$ref": "#/$defs/point3"
             }
           }
         },
@@ -301,11 +393,36 @@
               "type": "string"
             },
             "valueType": {
+              "const": "materialInstance"
+            },
+            "defaultValue": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "label",
+            "valueType",
+            "defaultValue"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "label": {
+              "type": "string"
+            },
+            "valueType": {
               "const": "color"
             },
             "defaultValue": {
               "type": "string",
-              "pattern": "^#[0-9A-Fa-f]{6}$"
+              "pattern": "^#[0-9a-fA-F]{6}$"
             }
           }
         },
@@ -450,22 +567,26 @@
         "type": {
           "enum": [
             "primitive",
-            "numberInput",
-            "selector",
+            "input",
+            "inputReference",
+            "vector3",
+            "vector3Components",
+            "pin",
             "choiceToScalarMap",
+            "choiceToBooleanMap",
             "choiceToVector3Map",
             "choiceToMeshMap",
             "geometryToggle",
-            "color",
             "meshAsset",
+            "stretchableAsset",
             "transform",
-            "material",
+            "applyMaterial",
             "array",
             "meshArray",
             "multiArray",
             "group",
             "sum",
-            "graphInput",
+            "mathExpression",
             "graphOutput",
             "graphInstance"
           ]
@@ -479,7 +600,7 @@
           "if": {
             "properties": {
               "type": {
-                "const": "selector"
+                "const": "inputReference"
               }
             }
           },
@@ -489,24 +610,145 @@
                 "type": "object",
                 "additionalProperties": false,
                 "required": [
-                  "options",
-                  "value"
+                  "inputId"
                 ],
                 "properties": {
-                  "options": {
-                    "type": "array",
-                    "minItems": 1,
-                    "uniqueItems": true,
-                    "items": {
-                      "type": "string",
-                      "minLength": 1
-                    }
-                  },
-                  "value": {
-                    "type": "integer",
-                    "minimum": 0
+                  "inputId": {
+                    "$ref": "#/$defs/id"
                   }
                 }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "input"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "data": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "valueType",
+                  "exported"
+                ],
+                "properties": {
+                  "valueType": {
+                    "enum": [
+                      "number",
+                      "numberArray",
+                      "vector3",
+                      "enum",
+                      "materialInstance",
+                      "color",
+                      "boolean",
+                      "geometry"
+                    ]
+                  },
+                  "value": {
+                    "oneOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "number"
+                        }
+                      },
+                      {
+                        "$ref": "#/$defs/point3"
+                      }
+                    ]
+                  },
+                  "exported": {
+                    "type": "boolean"
+                  },
+                  "enumId": {
+                    "$ref": "#/$defs/id"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "applyMaterial"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "data": {
+                "type": "object",
+                "additionalProperties": false,
+                "maxProperties": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "stretchableAsset"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "data": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "meshId",
+                  "targetSize",
+                  "transform"
+                ],
+                "properties": {
+                  "meshId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "targetSize": {
+                    "$ref": "#/$defs/point3"
+                  },
+                  "transform": {
+                    "$ref": "#/$defs/transformField"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "vector3"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "data": {
+                "type": "object",
+                "additionalProperties": false
               }
             }
           }
@@ -676,6 +918,48 @@
           "if": {
             "properties": {
               "type": {
+                "const": "choiceToBooleanMap"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "data": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "mappings"
+                ],
+                "properties": {
+                  "mappings": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "enumIndex",
+                        "value"
+                      ],
+                      "properties": {
+                        "enumIndex": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "value": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
                 "const": "sum"
               }
             }
@@ -705,7 +989,7 @@
           "if": {
             "properties": {
               "type": {
-                "const": "graphInput"
+                "const": "mathExpression"
               }
             }
           },
@@ -715,11 +999,47 @@
                 "type": "object",
                 "additionalProperties": false,
                 "required": [
-                  "inputId"
+                  "expression"
                 ],
                 "properties": {
-                  "inputId": {
-                    "$ref": "#/$defs/id"
+                  "expression": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "pin"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "data": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "valueType"
+                ],
+                "properties": {
+                  "valueType": {
+                    "enum": [
+                      "geometry",
+                      "meshArray",
+                      "number",
+                      "numberArray",
+                      "vector3",
+                      "enum",
+                      "materialInstance",
+                      "color",
+                      "boolean"
+                    ]
                   }
                 }
               }
@@ -817,6 +1137,13 @@
         },
         "targetPort": {
           "$ref": "#/$defs/id"
+        },
+        "component": {
+          "enum": [
+            "x",
+            "y",
+            "z"
+          ]
         }
       }
     },
@@ -962,8 +1289,7 @@
             "id",
             "inputId",
             "label",
-            "type",
-            "options"
+            "type"
           ],
           "properties": {
             "id": {
@@ -976,16 +1302,7 @@
               "type": "string"
             },
             "type": {
-              "const": "color"
-            },
-            "options": {
-              "type": "array",
-              "minItems": 1,
-              "uniqueItems": true,
-              "items": {
-                "type": "string",
-                "pattern": "^#[0-9A-Fa-f]{6}$"
-              }
+              "const": "material"
             }
           }
         },

@@ -8,14 +8,24 @@ Ports are written as `port-id: value-type`. Built-in value types are:
 - `meshArray` — an ordered array of geometry bundles used by Mesh Array and Multi Array.
 - `number` — a JavaScript number.
 - `numberArray` — an ordered array of non-negative JavaScript numbers.
-- `vector3` — an internal `{ x, y, z }` connection value for driving vector fields.
+- `vector3` — an `{ x, y, z }` connection value for driving vector fields or graph inputs.
 - `enum` — a zero-based numeric index into a source node's ordered options.
-- `color` — an RGB color string in `#RRGGBB` format.
+- `materialInstance` — a selected registered PBR material.
+- `color` — a six-digit hexadecimal color string.
 - `boolean` — a JavaScript boolean.
 
 Connections require exact value-type equality. Geometry inputs accept any number of incoming edges
 and concatenate their scene instances before evaluation. Other inputs accept one edge unless the
 port explicitly declares multi-connect behavior; Sum's `number` input does so.
+
+Hovering a connection shows its source and target nodes, port IDs, value types, and optional Vector3
+component. Hovering an input or output handle shows the owning node, port details, and every connected
+endpoint.
+
+`vector3` and `number` ports also interoperate through a component-bound edge. Completing a mixed
+connection opens an x/y/z selector. Vector-to-number reads the selected component; number-to-vector
+replaces that component on the target's stored/default vector. The selected component appears on
+the edge in its axis color, and the connected input and output handles use the same color.
 
 All nodes persist the common fields `id`, non-empty `name`, `type`, `position: { x, y }`, and
 type-specific `data`. Every node header displays a Lucide icon for its type. Node bodies remain
@@ -52,42 +62,93 @@ Emits one registered catalog mesh.
 - Evaluation: emits one instance using catalog bounds and applies the embedded transform. An
   unknown asset ID produces no output.
 
-## Constant value sources
+### Stretchable Asset (`stretchableAsset`)
 
-### Number Input (`numberInput`)
+Emits one registered catalog mesh deformed with its model-editor stretch metadata.
 
-Emits a stored number inside a graph. It does not create a configuration-panel control.
+- Inputs: one numeric stretch input for each enabled model stretch axis (`stretchX`, `stretchY`,
+  and/or `stretchZ`).
+- Outputs: `geometry: geometry`.
+- Data: `meshId` string; `targetSize` (`{ x, y, z }`); and the same embedded `transform` used by
+  Mesh Asset.
+- Default: the first selectable mesh with at least one enabled stretch axis and its natural
+  `metadata.boundingBox.size` dimensions.
+- Editor: only assets with at least one enabled stretch axis can be selected. Choosing another mesh
+  resets its stored target dimensions to that asset's natural metadata size and removes connections
+  to axes the new asset does not define. The embedded transform remains unchanged and supports the
+  same viewport widgets.
+- Evaluation: connected dimensions override stored dimensions. Each configured model stretch axis
+  may contain multiple non-intersecting boxes. Boxes share one stretch percentage while geometry
+  outside them translates rigidly. Every axis uses the model editor's piecewise deformation and
+  optional UV adjustment. Target dimensions are
+  constrained by the same minimum fixed-region gap and ten-times-natural-size maximum. Changing an
+  axis without enabled stretch boxes fails with the asset ID, requested size, natural size, and
+  configured axes.
+- Placement: model `pivot` metadata becomes the asset's local origin after deformation, so expanding
+  around a custom origin preserves the same anchor behavior as the model editor and the viewport
+  transform gizmo starts at that origin. The node's embedded transform is applied afterward.
+
+## Input values
+
+### Input (`input`)
+
+Stores a graph-local value and optionally exports it through the containing graph interface.
+
+- Output: `value`, using the node's persisted `valueType`.
+- Data: `valueType`, local `value`, `exported`, and `enumId` for choices.
+- Export off: evaluation uses the local value and the node is absent from `graph.inputs`.
+- Export on: a matching graph input with the node ID accepts supplied values and uses the local value
+  as its default.
+- Material values accept `color: color`; the connected palette value tints the material instance.
+- Disabling Export removes dependent instance values and connections while preserving the node.
+
+### Input Reference (`inputReference`)
+
+Emits the effective value of an existing input on the current graph.
 
 - Inputs: none.
-- Outputs: `number: number`.
-- Data: `value` number.
-- Default: name `Number`, value `1`.
-- Normalization: non-finite values set through the model become `0`.
+- Outputs: `value`, using the referenced graph input's value type.
+- Data: `inputId`, the ID of a current graph input. No value or default is stored on the node.
+- Evaluation: resolves the graph input after root values, assembly-instance values, and connections have
+  been applied. Changing the referenced input's value, type, or choice set is reflected immediately.
+- Editor: the selector lists only the current graph's inputs. Changing the selection removes this
+  node's outgoing connections because its output type may have changed. Removing the source graph
+  input removes its references and their connections.
 
-### Selector (`selector`)
+### Split XYZ (`vector3Components`)
 
-Emits one stored choice index inside a graph. It does not create a configuration-panel control.
+Splits an XYZ vector into three numeric component outputs.
 
-- Inputs: none.
-- Outputs: `enum: enum`.
-- Data: non-empty `options` string array; `value`, a valid zero-based index into that array.
-- Default: name `Choice`, options `Cube`, `Cone`, and `Ring`, with `Cube` selected.
-- Normalization: options are trimmed, empty and duplicate values are removed, and an empty list becomes `["Option"]`. An invalid current value becomes the first option.
+- Inputs: `vector3: vector3`.
+- Outputs: `x: number`; `y: number`; `z: number`.
+- Data: empty object.
+- Evaluation: emits each finite vector component on its matching numeric output.
 
-### Color Input (`color`)
+### Vector3 (`vector3`)
 
-Emits a stored preset material color inside a graph. It does not create a
-configuration-panel control.
+Combines three numeric values into an XYZ vector for vector inputs such as Transform translation.
 
-- Inputs: none.
-- Outputs: `color: color`.
-- Data: `color` preset hex value.
-- Default: name `Color`, color `#eaceac` (Sand).
-- Normalization: an unrecognized color becomes the default color.
-
-Supported persisted colors are `#eaceac`, `#f4f4f5`, `#27272a`, `#dc5a5a`, `#e8913a`, `#e3c84f`, `#55a86d`, `#528bd1`, and `#9067c6`.
+- Inputs: `x: number`; `y: number`; `z: number`.
+- Outputs: `vector3: vector3`.
+- Data: empty object.
+- Default: every unconnected component is `0`.
+- Evaluation: emits `{ x, y, z }` using connected finite numbers and zero for unconnected components.
 
 ## Value operations
+
+### Pin (`pin`)
+
+Routes one connection through a movable point and fans its value out to any number of destinations.
+
+- Creation: drag from any output handle and release on empty graph canvas.
+- Inputs: `value`, using the source output's persisted value type. Only one connection is accepted.
+- Outputs: `value`, using the same value type. The output can connect to multiple compatible inputs.
+- Data: `valueType`, copied from the source output when the pin is created.
+- Evaluation: passes the complete incoming value through unchanged.
+- Choice values: option labels are resolved through chained pins, so downstream choice mapping nodes
+  retain their editable options.
+- Editing: pins can be moved, selected, deleted, undone, and redone like regular nodes. Dropping a
+  connection from an existing pin on empty canvas creates another pin.
 
 ### Map to Scalar (`choiceToScalarMap`)
 
@@ -98,6 +159,17 @@ Maps an enum value to a number for driving numeric operation inputs.
 - Data: `mappings`, an array of `{ enumIndex, value }` mappings.
 - Default: no mappings; connecting an enum exposes its options for editing in the node.
 - Evaluation: emits the number mapped to the incoming enum index. A missing input or mapping
+produces no output.
+
+### Map to Boolean (`choiceToBooleanMap`)
+
+Maps an enum value to a boolean for driving Toggle nodes and boolean graph-instance inputs.
+
+- Inputs: `enum: enum`.
+- Outputs: `boolean: boolean`.
+- Data: `mappings`, an array of `{ enumIndex, value }` mappings with boolean values.
+- Default: no mappings; connecting an enum exposes its options as Switch controls.
+- Evaluation: emits the boolean mapped to the incoming enum index. A missing input or mapping
   produces no output.
 
 ### Map to Vector 3 (`choiceToVector3Map`)
@@ -160,34 +232,31 @@ Applies translation, rotation, scale, and a selectable pivot to every incoming i
 - Toggle: the stored value is used while `enabled` is disconnected. A connected boolean controls
   the node and disables the fallback switch. When disabled, the geometry input is passed through
   without running transform evaluation.
+- Editor: the node shows Enabled and Position by default. Rotation, Scale, Origin, and Clone Input
+  are optional sections available from the `Add...` menu and can be hidden again without changing
+  their stored values.
 - Compatibility: missing `copy` defaults to false. Missing `uniformScale` is inferred by checking whether all persisted scale components are equal.
 
-### Material (`material`)
+### Apply Material (`applyMaterial`)
 
-Assigns a standard material color to every incoming instance.
+Assigns an incoming material instance to every incoming geometry instance.
 
-- Inputs: `geometry: geometry`; `color: color`.
+- Inputs: `geometry: geometry`; `material: materialInstance`.
 - Outputs: `geometry: geometry`.
-- Data: `color` preset hex value.
-- Default: Sand (`#eaceac`).
-- Fallback: when `color` is unconnected, the stored color is used.
+- Data: empty object.
 - Evaluation: preserves geometry and transforms while replacing each instance's material.
 
 ### Array (`array`)
 
-Repeats incoming geometry along one axis.
+Repeats incoming geometry in a three-dimensional grid.
 
-- Inputs: `geometry: geometry`; `count: number`; `startIndex: number`; `offset: number`.
+- Inputs: `geometry: geometry`; `countX`, `countY`, `countZ`, `offsetX`, `offsetY`, and `offsetZ`: `number`.
 - Outputs: `geometry: geometry`.
-- Data: non-negative integer `count`; `axis` (`x`, `y`, or `z`); and `offset`, the editable
-  duplication distance.
-- Default: count `2`, x-axis, offset `1`.
-- Fallback: stored `count` and `offset` values are used while their ports are disconnected; when
-  `startIndex` is unconnected, zero is used. `startIndex` is connection-only.
-- Evaluation: floors the effective count, clamps it to at least zero, and emits copies at
-  `(startIndex + index) × offset` along the selected axis. A zero count emits empty geometry.
-- 3D editing: opening the node attaches a single-axis gizmo to the final duplicate. Dragging it
-  changes the per-copy duplication distance and is recorded as one undoable history action.
+- Data: integer counts of at least `1` and numeric offsets for each of the x, y, and z axes.
+- Default: every count is `1`; every offset is `0`.
+- Fallback: stored count and offset values are used while their corresponding ports are disconnected.
+- Evaluation: floors each effective count, clamps it to at least `1`, and emits the Cartesian
+  product of the three counts at `(x × offsetX, y × offsetY, z × offsetZ)`.
 
 ### Mesh Array (`meshArray`)
 
@@ -237,25 +306,26 @@ Adds any number of numeric inputs to an optionally enabled stored constant.
   connected numeric value. Disabling the node suppresses only its stored constant; numeric inputs
   continue to be summed. Missing numeric inputs contribute zero.
 
+### Expression (`mathExpression`)
+
+Calculates one number from a compact expression and indexed number inputs.
+
+- Inputs: indexed `number` ports whose internal IDs are zero-based indexes. One compact, unlabeled
+  placeholder is shown after the highest occupied port, up to the 26 automatically named inputs.
+  Removing a connection immediately removes trailing variable rows that are no longer occupied.
+- Outputs: `number: number`.
+- Data: `expression` string, beginning with `=`.
+- Default: `= $x`.
+- Variables: indexes are assigned without editing: `0` is `$x`, `1` is `$y`, `2` is `$z`, then
+  `3` is `$a`, `4` is `$b`, through `$w`. Further indexes use `$v26`, `$v27`, and so on.
+- Syntax: finite numeric literals, generated variables, `+`, `-`, `*`, `/`, parentheses, and unary
+  `+` or `-`. For example: `= $x + ($y + $z) / $a`.
+- Editor validation: invalid drafts remain editable and show the parser's exact error and character
+  position inside the node. Only valid expressions are committed to the graph and undo history.
+- Evaluation: every variable referenced by the expression must have a connected finite number.
+  An unconnected referenced input, division by zero, or non-finite result produces no output.
+
 ## Graph boundaries and instances
-
-### Graph Input (`graphInput`)
-
-Exposes one public input of the containing graph.
-
-- Data: `inputId`, referencing an input declared by the containing graph.
-- Inputs: none.
-- Output: the referenced input ID and value type.
-- Placement: add a Number, Choice, Color, Boolean, or Geometry graph input from the node menu.
-- Editing: number, boolean, and arbitrary RGB color defaults are edited directly on the node.
-  Choice inputs select a document choice set and open a separate dialog to edit its shared name and
-  values. A choice set must keep at least one value, and the input default must be one of them.
-  Customer-facing color choices are edited on the color item in the configuration-panel dialog.
-  The public input label is managed separately by the
-  configuration-panel mapping UI; the node's own name is edited from its header like every other
-  node.
-- Deletion: deleting the node also removes its public input declaration, configuration control,
-  saved root value when applicable, and affected graph-instance connections.
 
 ### Graph Output (`graphOutput`)
 

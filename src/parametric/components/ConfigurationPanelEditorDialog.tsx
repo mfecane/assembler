@@ -6,7 +6,7 @@ import {
 	Hash,
 	ListPlus,
 	ListFilter,
-	Palette,
+	PaintBucket,
 	Plus,
 	SlidersHorizontal,
 	ToggleRight,
@@ -31,7 +31,6 @@ import {
 	SelectValue,
 } from '@/components/ui/select'
 import { NumericInput } from '@/parametric/components/NumericInput'
-import { RgbColorInput } from '@/parametric/components/RgbColorInput'
 import { useEditorController } from '@/parametric/editor/react/EditorContext'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
 import { useSortableControl } from '@/parametric/hooks/useSortableControl'
@@ -39,11 +38,6 @@ import type {
 	ConfigurationPanelControl,
 	GraphInputDefinition,
 } from '@/parametric/model/GraphDocumentModel'
-import {
-	defaultMaterialColor,
-	isRgbColor,
-	presetColorValues,
-} from '@/parametric/model/ColorPalette'
 
 export function ConfigurationPanelEditorDialog({
 	open,
@@ -82,13 +76,7 @@ export function ConfigurationPanelEditorDialog({
 		const input = findAvailableInput(type, inputs, controls)
 		if (!input) return
 		const control = createControl(input, controls, undefined, type)
-		const currentValue = graphDocument.getRootInputValue(activeGraphId, input.id)
-		const initializedControl = control.type === 'color'
-			&& typeof currentValue === 'string'
-			&& isRgbColor(currentValue)
-			? { ...control, options: [currentValue.toLowerCase()] }
-			: control
-		setControls([...controls, initializedControl])
+		setControls([...controls, control])
 		setAddOpen(false)
 	}
 
@@ -448,14 +436,6 @@ function ControlEditor({
 					</div>
 				)}
 
-				{control.type === 'color' && (
-					<ColorOptionsEditor
-						controlId={control.id}
-						options={control.options}
-						onChange={(options) => onChange({ ...control, options })}
-					/>
-				)}
-
 				{control.type === 'numberArray' && (
 					<NumberArraySettings
 						control={control}
@@ -540,78 +520,6 @@ function NumberArraySettings({
 	)
 }
 
-function ColorOptionsEditor({
-	controlId,
-	options,
-	onChange,
-}: {
-	controlId: string
-	options: string[]
-	onChange: (options: string[]) => void
-}) {
-	return (
-		<div
-			data-id={`configuration-control-colors-${controlId}`}
-			className="space-y-2 sm:col-span-2"
-		>
-			<div>
-				<Label className="text-xs text-muted-foreground">Available colors</Label>
-				<p className="text-[10px] text-muted-foreground">
-					These are the choices shown in the customer configuration panel.
-				</p>
-			</div>
-			<div className="grid gap-2 sm:grid-cols-2">
-				{options.map((option, index) => (
-					<div
-						key={index}
-						data-id={`configuration-color-${controlId}-${index}`}
-						className="flex items-center gap-2"
-					>
-						<RgbColorInput
-							dataId={`configuration-color-value-${controlId}-${index}`}
-							value={option}
-							onValueChange={(value) => {
-								if (options.some((candidate, candidateIndex) => (
-									candidateIndex !== index && candidate === value
-								))) return
-								onChange(options.map((candidate, candidateIndex) => (
-									candidateIndex === index ? value : candidate
-								)))
-							}}
-							ariaLabel={`Available color ${index + 1}`}
-							className="min-w-0 flex-1"
-						/>
-						<Button
-							data-id={`configuration-remove-color-${controlId}-${index}`}
-							type="button"
-							variant="ghost"
-							size="icon"
-							className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
-							disabled={options.length === 1}
-							onClick={() => onChange(options.filter((_, candidateIndex) => (
-								candidateIndex !== index
-							)))}
-							aria-label={`Remove available color ${option}`}
-						>
-							<Trash2 />
-						</Button>
-					</div>
-				))}
-			</div>
-			<Button
-				data-id={`configuration-add-color-${controlId}`}
-				type="button"
-				variant="outline"
-				size="sm"
-				onClick={() => onChange([...options, nextAvailableColor(options)])}
-			>
-				<Plus />
-				Add color
-			</Button>
-		</div>
-	)
-}
-
 function NumberSetting({
 	id,
 	label,
@@ -643,7 +551,7 @@ const controlTypes: ControlType[] = [
 	'slider',
 	'numberArray',
 	'select',
-	'color',
+	'material',
 	'switch',
 ]
 
@@ -652,7 +560,7 @@ const controlTypeLabels: Record<ControlType, string> = {
 	slider: 'Slider',
 	numberArray: 'Number array',
 	select: 'Select',
-	color: 'Color picker',
+	material: 'Material select',
 	switch: 'Switch',
 }
 
@@ -665,8 +573,8 @@ function WidgetIcon({ type }: { type: ControlType }) {
 				? ListPlus
 				: type === 'select'
 				? ListFilter
-				: type === 'color'
-					? Palette
+				: type === 'material'
+					? PaintBucket
 					: ToggleRight
 	return <Icon className="shrink-0 text-muted-foreground" />
 }
@@ -675,7 +583,7 @@ function getCompatibleControlTypes(input: GraphInputDefinition): ControlType[] {
 	if (input.valueType === 'number') return ['number', 'slider']
 	if (input.valueType === 'numberArray') return ['numberArray']
 	if (input.valueType === 'enum') return ['select']
-	if (input.valueType === 'color') return ['color']
+	if (input.valueType === 'materialInstance') return ['material']
 	if (input.valueType === 'boolean') return ['switch']
 	return []
 }
@@ -699,7 +607,7 @@ function requiredInputLabel(type: ControlType): string {
 	if (type === 'number' || type === 'slider') return 'number'
 	if (type === 'numberArray') return 'number-array'
 	if (type === 'select') return 'choice'
-	if (type === 'color') return 'color'
+	if (type === 'material') return 'material'
 	return 'boolean'
 }
 
@@ -731,23 +639,7 @@ function createControl(
 	}
 	if (type === 'select') return { ...base, type }
 	if (type === 'switch') return { ...base, type }
-	const defaultColor = typeof input.defaultValue === 'string' && isRgbColor(input.defaultValue)
-		? input.defaultValue.toLowerCase()
-		: defaultMaterialColor
-	return { ...base, type: 'color', options: [defaultColor] }
-}
-
-function nextAvailableColor(options: readonly string[]): string {
-	const preset = presetColorValues.find((color) => !options.includes(color))
-	if (preset) return preset
-	for (let value = 0; value <= 0xffffff; value += 1) {
-		const color = `#${value.toString(16).padStart(6, '0')}`
-		if (!options.includes(color)) return color
-	}
-	throw new Error(
-		`Cannot add another configuration color because all 16,777,216 RGB values are already used. `
-		+ `Current control options: ${JSON.stringify(options)}.`
-	)
+	return { ...base, type: 'material' }
 }
 
 function createControlId(inputId: string, controls: ConfigurationPanelControl[]): string {

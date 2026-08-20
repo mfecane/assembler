@@ -8,7 +8,7 @@ interface Vec3FieldProps {
 	roundStep?: number
 }
 
-export function Vec3Field({ label, fields, step = 0.1, roundStep = step }: Vec3FieldProps) {
+export function Vec3Field({ label, fields, step = 0.1, roundStep = 0.001 }: Vec3FieldProps) {
 	return (
 		<div data-id={`vector-field-${label.toLowerCase()}`} className="flex flex-col gap-1 text-xs">
 			<span className="text-muted-foreground">{label}</span>

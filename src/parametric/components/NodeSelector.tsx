@@ -2,11 +2,14 @@ import { useState, type FormEvent } from 'react'
 import { type Edge, useReactFlow } from '@xyflow/react'
 import {
 	Circle,
+	Copy,
 	Hash,
 	ListFilter,
 	ListPlus,
+	Move3d,
 	Network,
 	Palette,
+	PaintBucket,
 	Plus,
 	Search,
 	Shapes,
@@ -29,6 +32,7 @@ import {
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { useGraphActions } from '@/parametric/hooks/useGraphActions'
+import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
 import { useNodeSelectorShortcut } from '@/parametric/hooks/useNodeSelectorShortcut'
 import type { GraphInputDefinition } from '@/parametric/model/GraphDocumentModel'
 import {
@@ -44,17 +48,24 @@ const graphInputOptions: Array<{
 	description: string
 	icon: LucideIcon
 }> = [
-	{ valueType: 'number', label: 'Number input', description: 'Expose a numeric assembly input', icon: Hash },
+	{ valueType: 'number', label: 'Number', description: 'Add a numeric value', icon: Hash },
 	{
 		valueType: 'numberArray',
-		label: 'Number array input',
-		description: 'Expose a numeric list assembly input',
+		label: 'Number array',
+		description: 'Add a numeric list value',
 		icon: ListPlus,
 	},
-	{ valueType: 'enum', label: 'Choice input', description: 'Expose a choice assembly input', icon: ListFilter },
-	{ valueType: 'color', label: 'Color input', description: 'Expose a color assembly input', icon: Palette },
-	{ valueType: 'boolean', label: 'Boolean input', description: 'Expose a toggle assembly input', icon: ToggleLeft },
-	{ valueType: 'geometry', label: 'Geometry input', description: 'Expose a geometry assembly input', icon: Shapes },
+	{ valueType: 'vector3', label: 'Vector 3', description: 'Add an XYZ vector value', icon: Move3d },
+	{ valueType: 'enum', label: 'Choice', description: 'Add a choice value', icon: ListFilter },
+	{
+		valueType: 'materialInstance',
+		label: 'Material',
+		description: 'Add a material value',
+		icon: PaintBucket,
+	},
+	{ valueType: 'color', label: 'Color', description: 'Add a palette color value', icon: Palette },
+	{ valueType: 'boolean', label: 'Boolean', description: 'Add a toggle value', icon: ToggleLeft },
+	{ valueType: 'geometry', label: 'Geometry', description: 'Add an exportable geometry input', icon: Shapes },
 ]
 
 interface NodeSelectionOption {
@@ -72,10 +83,13 @@ export function NodeSelector({ selectedEdges }: { selectedEdges: Edge[] }) {
 	const {
 		addNode,
 		addGraphInput,
+		addInputReference,
 		addGraphInstance,
 		graphDefinitions,
 		nodeDefinitions,
 	} = useGraphActions()
+	const { document, activeGraphId } = useGraphSnapshot()
+	const documentGraphInputs = document.requireGraph(activeGraphId).inputs
 	const { getNodes, screenToFlowPosition } = useReactFlow()
 	useNodeSelectorShortcut(setOpen)
 
@@ -98,7 +112,7 @@ export function NodeSelector({ selectedEdges }: { selectedEdges: Edge[] }) {
 	const options: NodeSelectionOption[] = [
 		...graphInputOptions.map((option) => ({
 			id: `input:${option.valueType}`,
-			group: 'Assembly inputs',
+			group: 'Inputs',
 			label: option.label,
 			description: option.description,
 			icon: option.icon,
@@ -107,6 +121,17 @@ export function NodeSelector({ selectedEdges }: { selectedEdges: Edge[] }) {
 				close()
 			},
 		})),
+		...(documentGraphInputs.length > 0 ? [{
+			id: 'input-reference',
+			group: 'Inputs',
+			label: 'Input Reference',
+			description: 'Use an existing graph input',
+			icon: Copy,
+			select: () => {
+				addInputReference(documentGraphInputs[0].id, getInsertPosition())
+				close()
+			},
+		}] : []),
 		...graphDefinitions.map((graph) => ({
 			id: `graph:${graph.id}`,
 			group: 'Assemblies in this project',

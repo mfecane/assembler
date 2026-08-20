@@ -1,25 +1,19 @@
 import { Position, type NodeProps } from '@xyflow/react'
-import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from '@/components/ui/select'
 import { GeometryNodeActions } from '@/parametric/components/GeometryNodeActions'
 import { NumericInput } from '@/parametric/components/NumericInput'
 import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
-import { useField, useNumericField } from '@/parametric/hooks/useGraphNode'
-import type { Axis } from '@/parametric/model/GraphNode'
+import { useNumericField } from '@/parametric/hooks/useGraphNode'
 
 export function ArrayNode({ id }: NodeProps<ParametricFlowNode>) {
-	const axis = useField<Axis>(id, 'axis', 'x')
-	const count = useNumericField(id, 'count', 'Count')
-	const offset = useNumericField(id, 'offset', 'Duplication distance')
+	const countX = useNumericField(id, 'countX', 'X count')
+	const countY = useNumericField(id, 'countY', 'Y count')
+	const countZ = useNumericField(id, 'countZ', 'Z count')
+	const offsetX = useNumericField(id, 'offsetX', 'X offset')
+	const offsetY = useNumericField(id, 'offsetY', 'Y offset')
+	const offsetZ = useNumericField(id, 'offsetZ', 'Z offset')
 
 	return (
 		<div
@@ -32,44 +26,52 @@ export function ArrayNode({ id }: NodeProps<ParametricFlowNode>) {
 			<TypedHandle id="geometry" type="target" position={Position.Left} valueType="geometry" />
 			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} />} />
 			<div className="flex flex-col gap-2 text-xs">
-				<div className="nodrag relative flex items-center justify-between gap-2 text-muted-foreground">
-					<TypedHandle id="count" type="target" position={Position.Left} valueType="number" />
-					<span>Count</span>
-					<NumericInput value={count.value} onValueChange={count.setValue} min={0} step={1} />
-				</div>
-				<div className="nodrag relative flex items-center justify-between gap-2 text-muted-foreground">
-					<TypedHandle id="startIndex" type="target" position={Position.Left} valueType="number" />
-					<span>Start index</span>
-					<span className="text-[10px] text-muted-foreground/70">0 when disconnected</span>
-				</div>
-				<div className="nodrag relative flex items-center justify-between gap-2 text-muted-foreground">
-					<TypedHandle id="offset" type="target" position={Position.Left} valueType="number" />
-					<Label htmlFor={`${id}-axis`} className="text-xs text-muted-foreground">Axis</Label>
-					<Select value={axis.value} onValueChange={(next) => axis.setValue(next as Axis)}>
-						<SelectTrigger id={`${id}-axis`} className="h-7 w-16 px-2 text-xs">
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="x">X</SelectItem>
-							<SelectItem value="y">Y</SelectItem>
-							<SelectItem value="z">Z</SelectItem>
-						</SelectContent>
-					</Select>
-				</div>
-				<div className="nodrag flex items-center justify-between gap-2 text-muted-foreground">
-					<Label htmlFor={`${id}-duplication-distance`} className="text-xs text-muted-foreground">
-						Distance
-					</Label>
-					<NumericInput
-						id={`${id}-duplication-distance`}
-						value={offset.value}
-						onValueChange={offset.setValue}
-						step={0.01}
-						roundStep={0.01}
-					/>
-				</div>
+				<ArrayAxisInputs axis="X" count={countX} offset={offsetX} />
+				<ArrayAxisInputs axis="Y" count={countY} offset={offsetY} />
+				<ArrayAxisInputs axis="Z" count={countZ} offset={offsetZ} />
 			</div>
 			<TypedHandle id="geometry" type="source" position={Position.Right} valueType="geometry" />
+		</div>
+	)
+}
+
+interface ArrayAxisInputsProps {
+	axis: 'X' | 'Y' | 'Z'
+	count: ReturnType<typeof useNumericField>
+	offset: ReturnType<typeof useNumericField>
+}
+
+function ArrayAxisInputs({ axis, count, offset }: ArrayAxisInputsProps) {
+	return (
+		<div className="flex flex-col gap-2 text-muted-foreground">
+			<div className="nodrag relative flex items-center justify-between gap-2">
+				<TypedHandle
+					id={`count${axis}`}
+					type="target"
+					position={Position.Left}
+					valueType="number"
+				/>
+				<span>{axis} count</span>
+				<NumericInput
+					value={count.value}
+					onValueChange={count.setValue}
+					min={1}
+					step={1}
+					roundStep={1}
+				/>
+			</div>
+			{count.value > 1 && (
+				<div className="nodrag relative flex items-center justify-between gap-2">
+					<TypedHandle
+						id={`offset${axis}`}
+						type="target"
+						position={Position.Left}
+						valueType="number"
+					/>
+					<span>{axis} offset</span>
+					<NumericInput value={offset.value} onValueChange={offset.setValue} step={0.01} />
+				</div>
+			)}
 		</div>
 	)
 }

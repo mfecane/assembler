@@ -1,9 +1,11 @@
-import { Background, Controls, ReactFlow, SelectionMode } from '@xyflow/react'
+import { Background, Controls, ReactFlow, SelectionMode, type Edge } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { ResizableSplitView } from '@/components/ResizableSplitView'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { GraphToolbar } from '@/parametric/components/GraphToolbar'
-import { useFlowGraph } from '@/parametric/hooks/useFlowGraph'
+import { ConnectionTooltip } from '@/parametric/components/ConnectionTooltip'
+import { VectorComponentSelector } from '@/parametric/components/VectorComponentSelector'
+import { useFlowGraph, type ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 import { ThreeViewport } from '@/parametric/three/ThreeViewport'
 import type { Editor } from '@/parametric/editor/Editor'
 import { EditorProvider } from '@/parametric/editor/react/EditorContext'
@@ -30,14 +32,19 @@ function ParametricEditorContent() {
 }
 
 function GraphCanvas() {
-	const { selectedEdges, ...flowGraph } = useFlowGraph()
+	const {
+		selectedEdges,
+		componentSelector,
+		connectionTooltip,
+		...flowGraph
+	} = useFlowGraph()
 
 	return (
-		<ReactFlow
+		<ReactFlow<ParametricFlowNode, Edge>
 			{...flowGraph}
 			data-id="graph-view"
 			nodeTypes={nodeViewTypes}
-			deleteKeyCode={null}
+			deleteKeyCode={['Backspace', 'Delete']}
 			fitView
 			maxZoom={4}
 			minZoom={0.2}
@@ -45,6 +52,8 @@ function GraphCanvas() {
 			selectionMode={SelectionMode.Partial}
 		>
 			<GraphToolbar selectedEdges={selectedEdges} />
+			{componentSelector && <VectorComponentSelector {...componentSelector} />}
+			{connectionTooltip && <ConnectionTooltip {...connectionTooltip} />}
 			<Background />
 			<Controls />
 		</ReactFlow>

@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { ChevronDown, SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { NumericInput } from '@/parametric/components/NumericInput'
-import { ColorOptionSelect } from '@/parametric/components/ColorOptionSelect'
+import { MaterialSelect } from '@/parametric/components/MaterialSelect'
 import { useConfiguration } from '@/parametric/hooks/useConfiguration'
+import { COLOR_PALETTE } from '@/parametric/model/ColorPalette'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
@@ -18,12 +19,15 @@ import {
 export function ConfiguratorPanel() {
 	const [expanded, setExpanded] = useState(true)
 	const {
+		isRootGraphOpen,
 		rootGraphId,
 		rootLabel,
 		values,
 		setNumberValue,
 		setEnumValue,
+		setMaterialValue,
 		setColorValue,
+		setVector3Value,
 		setBooleanValue,
 		setNumberArrayValue,
 	} = useConfiguration()
@@ -31,7 +35,7 @@ export function ConfiguratorPanel() {
 
 	return (
 		<div
-			data-id="configuration-panel"
+			data-id={isRootGraphOpen ? 'configuration-panel' : 'subgraph-input-panel'}
 			data-root-graph-id={rootGraphId}
 			className="absolute right-3 top-3 w-72 overflow-hidden rounded-lg border border-border bg-surface shadow-md"
 		>
@@ -47,9 +51,9 @@ export function ConfiguratorPanel() {
 				<SlidersHorizontal className="text-muted-foreground" />
 				<span
 					className="flex-1 truncate text-left text-sm font-semibold"
-					title={`Configuration for ${rootLabel}`}
+					title={`${isRootGraphOpen ? 'Configuration' : 'Inputs'} for ${rootLabel}`}
 				>
-					Configuration · {rootLabel}
+					{isRootGraphOpen ? 'Configuration' : 'Inputs'} · {rootLabel}
 				</span>
 				<ChevronDown
 					className={`text-muted-foreground transition-transform ${
@@ -60,7 +64,7 @@ export function ConfiguratorPanel() {
 			{expanded && (
 				<div
 					id="configuration-panel-fields"
-					data-id="configuration-panel-fields"
+					data-id={isRootGraphOpen ? 'configuration-panel-fields' : 'subgraph-input-fields'}
 					className="grid grid-cols-[minmax(0,1fr)_9rem] items-center gap-x-3 gap-y-3 border-t border-border p-3"
 				>
 					{values.map((value) => (
@@ -97,13 +101,16 @@ export function ConfiguratorPanel() {
 												value={item}
 												min={0}
 												step={value.step}
+												roundStep={value.step}
 												onValueChange={(next) => setNumberArrayValue(value.id, index, next)}
 											/>
 										</div>
 									))}
-									<div className="text-right text-[10px] text-muted-foreground">
-										{value.value.reduce((total, item) => total + item, 0)} / {value.total} total
-									</div>
+									{value.total !== undefined && (
+										<div className="text-right text-[10px] text-muted-foreground">
+											{value.value.reduce((total, item) => total + item, 0)} / {value.total} total
+										</div>
+									)}
 								</div>
 							) : value.type === 'number' ? (
 								<NumericInput
@@ -135,9 +142,9 @@ export function ConfiguratorPanel() {
 									</span>
 								</div>
 							) : value.type === 'enum' ? (
-									<Select
-										value={String(value.value)}
-										onValueChange={(next) => setEnumValue(value.id, Number(next))}
+								<Select
+									value={String(value.value)}
+									onValueChange={(next) => setEnumValue(value.id, Number(next))}
 								>
 									<SelectTrigger
 										id={`configuration-${value.id}`}
@@ -146,19 +153,59 @@ export function ConfiguratorPanel() {
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
-											{value.options.map((option, index) => (
-												<SelectItem key={index} value={String(index)}>{option}</SelectItem>
+										{value.options.map((option, index) => (
+											<SelectItem key={index} value={String(index)}>{option}</SelectItem>
 										))}
 									</SelectContent>
 								</Select>
-							) : value.type === 'color' ? (
-								<ColorOptionSelect
+							) : value.type === 'material' ? (
+								<MaterialSelect
 									id={`configuration-${value.id}`}
+									dataId={`configuration-${value.id}`}
+									value={value.value}
+									onValueChange={(next) => setMaterialValue(value.id, next)}
+									className="h-8 w-full px-2 text-xs"
+									ariaLabel={value.label}
+								/>
+							) : value.type === 'color' ? (
+								<Select
 									value={value.value}
 									onValueChange={(next) => setColorValue(value.id, next)}
-									className="h-8 w-full"
-									options={value.options}
-								/>
+								>
+									<SelectTrigger
+										id={`configuration-${value.id}`}
+										data-id={`configuration-color-${value.id}`}
+										className="h-8 w-full px-2 text-xs"
+									>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{COLOR_PALETTE.map((option) => (
+											<SelectItem key={option.hex} value={option.hex}>
+												{option.name}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							) : value.type === 'vector3' ? (
+								<div
+									data-id={`configuration-vector3-${value.id}`}
+									className="flex flex-col gap-1"
+								>
+									{(['x', 'y', 'z'] as const).map((axis) => (
+										<NumericInput
+											key={axis}
+											data-id={`configuration-vector3-${value.id}-${axis}`}
+											className="h-8 w-full px-2 text-xs tabular-nums"
+											value={value.value[axis]}
+											step={value.step}
+											onValueChange={(next) => setVector3Value(
+												value.id,
+												{ ...value.value, [axis]: next }
+											)}
+										/>
+									))}
+								</div>
 							) : (
 								<div className="flex h-8 items-center justify-end">
 									<Switch

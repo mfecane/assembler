@@ -10,8 +10,9 @@ drive terminal post, base, and shelf-bracket translations through the Transform 
 translation input. Mesh Asset nodes feeding Choice-to-Mesh maps choose width-specific backplates,
 shelves, post alignment, and base alignment.
 
-`projects/maxshelf/maxshelf.json` is the canonical project and is copied byte-for-byte to
-`src/data/defaultGraph.json` for seeding. The former `maxshelf_wide.json` duplicate was removed.
+`projects/maxshelf/maxshelf.json` remains the detailed MaxShelf fixture and is copied to
+`scripts/data/maxshelf/defaultGraph.json` for local seeding. The New Project action instead uses the
+shared one-primitive `scripts/data/defaultGraph.json` template.
 
 This is an intentionally non-backwards-compatible node-schema change: `enumNumberMap` was replaced
 by `choiceToScalarMap`, and `choiceToVector3Map` plus the internal `vector3` connection value were

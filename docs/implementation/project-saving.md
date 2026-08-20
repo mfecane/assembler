@@ -5,6 +5,10 @@ toolbar also provides a manual save action and supports `Ctrl+S` and `Command+S`
 remains available when the document has no detected changes, allowing users to explicitly
 persist the current document at any time.
 
+Saving omits registered node fields that match their node defaults. For example, identity
+transforms omit their zero translation and rotation, unit scale, and middle origins, while changed
+components remain. Root and nested assembly input values remain fully persisted.
+
 ## States
 
 - **Clean**: **Save** remains enabled; no redundant status line is shown.
@@ -21,6 +25,10 @@ which opens a name dialog and creates a new project from the editor's current do
 opening the copy. The source project is not renamed or overwritten. Save and Save as failures
 preserve the relevant project ID, requested name, document version, underlying error, and stack
 in the details disclosure and console.
+
+If a persisted project cannot be opened because its graph document is invalid, the open error page
+offers **Download JSON**. This downloads the raw stored graph document so it can be manually repaired
+and imported again from the editor's graph file menu.
 
 ## Project rename
 

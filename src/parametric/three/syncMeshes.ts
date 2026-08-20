@@ -1,28 +1,88 @@
-import { BufferGeometry, LessDepth, Mesh, MeshStandardMaterial, Scene } from 'three'
-import type {
-	SceneAssetInstanceMetadata,
-	SceneMetadata,
-} from '@/parametric/evaluation/SceneMetadata'
-import { defaultMaterialColor } from '@/parametric/model/ColorPalette'
+import { ModelPivot } from '@/models/ModelPivotMetadata'
+import { ModelStretchService } from '@/models/ModelStretchService'
+import { ModelStretchAxis, ModelStretchBox } from '@/models/ModelStretchMetadata'
+import type { SceneAssetInstanceMetadata, SceneMetadata } from '@/parametric/evaluation/SceneMetadata'
+import { materialRepository } from '@/parametric/three/MaterialRepository'
 import { meshRepository } from '@/parametric/three/MeshRepository'
+import {
+	BufferGeometry,
+	LessDepth,
+	Mesh,
+	MeshStandardMaterial,
+	RepeatWrapping,
+	Scene,
+	SRGBColorSpace,
+	TextureLoader,
+} from 'three'
+
+const modelStretchService = new ModelStretchService()
 
 function createGeometry(item: SceneAssetInstanceMetadata): BufferGeometry {
 	const geometry = meshRepository.createGeometry(item.assetId)
 	if (!geometry) {
 		throw new Error(
-			`Cannot build scene instance "${item.instanceId}" from asset "${item.assetId}": `
-			+ `no registered geometry exists. Origin node: graph "${item.originNode.graphId}", `
-			+ `node "${item.originNode.nodeId}", instance "${item.originNode.nodeInstanceId}".`
+			`Cannot build scene instance "${item.instanceId}" from asset "${item.assetId}": ` +
+				`no registered geometry exists. Origin node: graph "${item.originNode.graphId}", ` +
+				`node "${item.originNode.nodeId}", instance "${item.originNode.nodeInstanceId}".`
 		)
 	}
 	const baseSize = meshRepository.getSize(item.assetId)
 	if (!baseSize) {
 		geometry.dispose()
 		throw new Error(
-			`Cannot size scene instance "${item.instanceId}" from asset "${item.assetId}": `
-			+ `registered bounds are missing. Origin node: graph "${item.originNode.graphId}", `
-			+ `node "${item.originNode.nodeId}", instance "${item.originNode.nodeInstanceId}".`
+			`Cannot size scene instance "${item.instanceId}" from asset "${item.assetId}": ` +
+				`registered bounds are missing. Origin node: graph "${item.originNode.graphId}", ` +
+				`node "${item.originNode.nodeId}", instance "${item.originNode.nodeInstanceId}".`
 		)
+	}
+	if (item.deformation?.kind === 'stretch') {
+		geometry.computeBoundingBox()
+		const sourceBounds = geometry.boundingBox?.clone()
+		if (!sourceBounds) {
+			geometry.dispose()
+			throw new Error(
+				`Cannot stretch scene instance "${item.instanceId}" from asset "${item.assetId}": ` +
+					'source geometry has no bounding box.'
+			)
+		}
+		const position = geometry.getAttribute('position')
+		const uv = geometry.getAttribute('uv')
+		const sourcePositions = Float32Array.from(position.array)
+		const sourceUvs = uv ? Float32Array.from(uv.array) : null
+		const stretchAxes = item.deformation.axes.map(
+			(axis) => new ModelStretchAxis(
+				axis.axis,
+				axis.boxes.map((box) => new ModelStretchBox(box.min, box.max)),
+				axis.textureAxis
+			)
+		)
+		modelStretchService.deformGeometry(
+			geometry,
+			sourcePositions,
+			sourceUvs,
+			stretchAxes,
+			item.deformation.sourceSize,
+			item.size
+		)
+		if (!geometry.boundingBox) {
+			geometry.dispose()
+			throw new Error(
+				`Cannot place stretched scene instance "${item.instanceId}" from asset "${item.assetId}": ` +
+					'deformed geometry has no bounding box.'
+			)
+		}
+		const pivot = item.deformation.pivot
+		const offset = modelStretchService.getPivotOffset(
+			sourceBounds,
+			geometry.boundingBox,
+			item.deformation.sourceSize,
+			item.size,
+			new ModelPivot(pivot.x, pivot.y, pivot.z)
+		)
+		geometry.translate(offset.x - pivot.x, offset.y - pivot.y, offset.z - pivot.z)
+		geometry.computeBoundingBox()
+		geometry.computeBoundingSphere()
+		return geometry
 	}
 	return geometry.scale(
 		baseSize.x === 0 ? 1 : item.size.x / baseSize.x,
@@ -31,23 +91,54 @@ function createGeometry(item: SceneAssetInstanceMetadata): BufferGeometry {
 	)
 }
 
-function getMaterialColor(item: SceneAssetInstanceMetadata): string {
-	return item.material?.type === 'standard' ? item.material.color : defaultMaterialColor
+const textureLoader = new TextureLoader()
+const DEFAULT_ASSET_MATERIAL_ID = 'plastic'
+
+function getMaterialId(item: SceneAssetInstanceMetadata): string {
+	return item.material?.materialId ?? DEFAULT_ASSET_MATERIAL_ID
+}
+
+function getMaterialColor(item: SceneAssetInstanceMetadata): string | undefined {
+	return item.material?.color
 }
 
 function createMaterial(item: SceneAssetInstanceMetadata, ghost: boolean): MeshStandardMaterial {
+	const materialId = getMaterialId(item)
+	const definition = materialRepository.getMaterial(materialId)
+	if (!definition) {
+		throw new Error(
+			`Cannot render scene instance "${item.instanceId}" from asset "${item.assetId}": ` +
+				`material "${materialId}" is not registered. Origin node: graph ` +
+				`"${item.originNode.graphId}", node "${item.originNode.nodeId}", instance ` +
+				`"${item.originNode.nodeInstanceId}". Registered materials: ` +
+				`${JSON.stringify(materialRepository.getMaterials().map((material) => material.id))}.`
+		)
+	}
+	const texture = definition.textureUrl ? textureLoader.load(definition.textureUrl) : null
+	if (texture) {
+		texture.colorSpace = SRGBColorSpace
+		texture.wrapS = RepeatWrapping
+		texture.wrapT = RepeatWrapping
+	}
 	return new MeshStandardMaterial({
-		color: getMaterialColor(item),
+		map: texture,
+		roughness: definition.roughness,
+		metalness: definition.metalness,
 		transparent: ghost,
 		opacity: ghost ? 0.18 : 1,
 		depthWrite: !ghost,
 		depthFunc: ghost ? LessDepth : undefined,
+		color: getMaterialColor(item) ?? '#ffffff',
 	})
 }
 
 function disposeMaterial(mesh: Mesh): void {
 	const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
-	for (const material of materials) material.dispose()
+	for (const material of materials) {
+		const standardMaterial = material as MeshStandardMaterial
+		standardMaterial.map?.dispose()
+		material.dispose()
+	}
 }
 
 export function syncSceneMetadata(
@@ -62,8 +153,12 @@ export function syncSceneMetadata(
 	for (const item of metadata.assetInstances) {
 		seenIds.add(item.instanceId)
 		let mesh = meshesById.get(item.instanceId)
-		const geometryKey = `${item.assetId}:${item.size.x}:${item.size.y}:${item.size.z}`
-		const materialKey = `standard:${getMaterialColor(item)}:${ghost ? 'ghost' : 'opaque'}`
+		const geometryKey = JSON.stringify({
+			assetId: item.assetId,
+			size: item.size,
+			deformation: item.deformation,
+		})
+		const materialKey = `${getMaterialId(item)}:${getMaterialColor(item) ?? 'default'}:${ghost ? 'ghost' : 'opaque'}`
 
 		if (!mesh) {
 			mesh = new Mesh(createGeometry(item), createMaterial(item, ghost))

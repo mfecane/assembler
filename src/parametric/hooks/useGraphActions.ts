@@ -9,11 +9,12 @@ export interface GraphActions {
 	nodeDefinitions: CreatableNodeDefinition[]
 	addNode: (type: string, position: GraphPoint, selectedEdgeId?: string) => void
 	addGraphInput: (valueType: GraphInputDefinition['valueType'], position: GraphPoint) => void
+	addInputReference: (inputId: string, position: GraphPoint) => void
 	addGraphInstance: (graphId: string, position: GraphPoint, selectedEdgeId?: string) => void
 	graphDefinitions: Array<{ id: string; label: string }>
 	clearGraph: () => void
 	removeNode: (nodeId: string) => void
-	removeEdge: (edgeId: string) => void
+	removeEdges: (edgeIds: readonly string[]) => void
 }
 
 export function useGraphActions(): GraphActions {
@@ -30,24 +31,32 @@ export function useGraphActions(): GraphActions {
 			controller.addGraphInput(valueType, position),
 		[controller]
 	)
+	const addInputReference = useCallback(
+		(inputId: string, position: GraphPoint) => controller.addInputReference(inputId, position),
+		[controller]
+	)
 	const addGraphInstance = useCallback(
 		(graphId: string, position: GraphPoint, selectedEdgeId?: string) =>
 			controller.addGraphInstance(graphId, position, selectedEdgeId),
 		[controller]
 	)
 	const removeNode = useCallback((nodeId: string) => controller.removeNode(nodeId), [controller])
-	const removeEdge = useCallback((edgeId: string) => controller.removeEdge(edgeId), [controller])
+	const removeEdges = useCallback(
+		(edgeIds: readonly string[]) => controller.removeGraphElements([], edgeIds),
+		[controller]
+	)
 
 	return {
 		nodeDefinitions: controller.getCreatableNodeDefinitions(),
 		addNode,
 		addGraphInput,
+		addInputReference,
 		addGraphInstance,
 		graphDefinitions: document.getGraphs()
 			.filter((graph) => graph.id !== activeGraphId)
 			.map((graph) => ({ id: graph.id, label: graph.label })),
 		clearGraph,
 		removeNode,
-		removeEdge,
+		removeEdges,
 	}
 }

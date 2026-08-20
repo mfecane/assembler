@@ -27,7 +27,7 @@ the currently rendered preview matrices, including the node's configured transfo
 Array distance drags reposition the rendered copies directly. The graph still receives each
 undo-grouped drag value, while the debounced evaluation replaces the transient matrices with the
 authoritative finished result after interaction settles.
-Holding Shift during a Transform or Array gizmo drag applies one tenth of the normal delta from the
+Holding Ctrl or Command during a Transform or Array gizmo drag applies one tenth of the normal delta from the
 gesture's starting value. The gizmo and transient meshes follow the precision-adjusted value
 together; Array distance persistence uses `0.001` snapping in this mode instead of `0.01`.
 
@@ -45,7 +45,8 @@ one undo step alongside React Flow graph edits.
   opens the detailed per-axis alignment dialog while the primary Align button controls the gizmo.
 - Alignment markers distinguish corners, edge centers, face centers, and the bounds center by
   color. Larger invisible hit targets make them forgiving to acquire; hover recolors only the
-  visible marker and switches the viewport cursor to a pointer.
+  visible marker and switches the viewport cursor to a pointer. Markers and hit targets retain a
+  consistent screen size as the camera zoom changes.
 - Opening an Array activates a dedicated single-axis distance gizmo at its final duplicate. The
   gizmo follows the Array axis and edits per-copy duplication distance instead of a transform.
 - Translation, scale, and Array duplication distance snap to `0.01`; rotation snaps to `15`

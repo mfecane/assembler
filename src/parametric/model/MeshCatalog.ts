@@ -22,5 +22,6 @@ export interface MeshBounds {
 export interface MeshCatalog {
 	getMeshes(): readonly MeshDescriptor[]
 	getBounds(id: string): MeshBounds | undefined
+	getMetadata(id: string): Record<string, unknown> | undefined
 	createGeometry(id: string): BufferGeometry | undefined
 }

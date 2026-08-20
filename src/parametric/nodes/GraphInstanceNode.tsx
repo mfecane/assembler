@@ -15,16 +15,19 @@ import { EmbeddedTransformSection } from '@/parametric/components/EmbeddedTransf
 import { GeometryPreviewButton } from '@/parametric/components/GeometryPreviewButton'
 import { NodeHeader } from '@/parametric/components/NodeHeader'
 import { NumberArrayEditor } from '@/parametric/components/NumberArrayEditor'
-import { RgbColorInput } from '@/parametric/components/RgbColorInput'
+import { MaterialSelect } from '@/parametric/components/MaterialSelect'
+import { AxisLabel } from '@/parametric/components/AxisLabel'
 import { TypedHandle } from '@/parametric/components/TypedHandle'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 import { useEditorController } from '@/parametric/editor/react/EditorContext'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
 import { GraphInstanceGraphNode } from '@/parametric/model/GraphNode'
+import { COLOR_PALETTE } from '@/parametric/model/ColorPalette'
 import type {
 	GraphInputDefinition,
 	GraphInputValue,
 } from '@/parametric/model/GraphDocumentModel'
+import type { Vector3Snapshot } from '@/parametric/model/Vector3Value'
 
 export function GraphInstanceNode({ id }: NodeProps<ParametricFlowNode>) {
 	const controller = useEditorController()
@@ -147,6 +150,12 @@ function GraphInstanceInput({
 					onChange={onValueChange}
 					disabled={connected}
 				/>
+				) : input.valueType === 'vector3' ? (
+					<Vector3Input
+						value={value as Vector3Snapshot}
+						onChange={onValueChange}
+						disabled={connected}
+					/>
 				) : input.valueType === 'enum' ? (
 					<Select
 						value={String(typeof value === 'number' ? value : 0)}
@@ -166,14 +175,43 @@ function GraphInstanceInput({
 						))}
 					</SelectContent>
 				</Select>
-			) : input.valueType === 'color' ? (
-				<RgbColorInput
+			) : input.valueType === 'materialInstance' ? (
+				<MaterialSelect
 					id={controlId}
-					value={typeof value === 'string' ? value : '#eaceac'}
+					dataId={`${controlId}-control`}
+					value={typeof value === 'string' ? value : 'wood'}
 					onValueChange={onValueChange}
 					disabled={connected}
 					ariaLabel={input.label}
 				/>
+			) : input.valueType === 'color' ? (
+				<Select
+					value={typeof value === 'string' ? value : '#ffffff'}
+					onValueChange={onValueChange}
+					disabled={connected}
+				>
+					<SelectTrigger
+						id={controlId}
+						data-id={`${controlId}-control`}
+						className="nodrag h-8 px-2 text-xs"
+					>
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						{COLOR_PALETTE.map((option) => (
+							<SelectItem key={option.hex} value={option.hex}>
+								<span className="flex items-center gap-2">
+									<span
+										aria-hidden="true"
+										className="h-3.5 w-3.5 rounded-sm border border-border"
+										style={{ backgroundColor: option.hex }}
+									/>
+									{option.name}
+								</span>
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
 			) : input.valueType === 'boolean' ? (
 				<div className="flex h-8 items-center justify-end">
 					<Switch
@@ -189,6 +227,34 @@ function GraphInstanceInput({
 			) : (
 				<span className="text-right text-[11px] text-muted-foreground">connection only</span>
 			)}
+		</div>
+	)
+}
+
+function Vector3Input({
+	value,
+	onChange,
+	disabled,
+}: {
+	value: Vector3Snapshot
+	onChange: (value: Vector3Snapshot) => void
+	disabled: boolean
+}) {
+	return (
+		<div data-id="graph-instance-vector3-fields" className="flex flex-col gap-1">
+			{(['x', 'y', 'z'] as const).map((axis) => (
+				<div key={axis} className="flex items-center gap-2">
+					<AxisLabel axis={axis} />
+					<NumericInput
+						data-id={`graph-instance-vector3-${axis}`}
+						className="nodrag h-8 min-w-0 flex-1 px-2 text-xs"
+						value={value[axis]}
+						onValueChange={(next) => onChange({ ...value, [axis]: next })}
+						step={0.1}
+						disabled={disabled}
+					/>
+				</div>
+			))}
 		</div>
 	)
 }

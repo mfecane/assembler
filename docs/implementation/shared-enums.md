@@ -11,8 +11,8 @@ available options are shared by every referencing input.
 
 ## Editing flow
 
-Adding a Choice Graph Input creates a new definition with one `Option` value and binds the input to
-it. The Graph Input node provides a choice-set selector, a create-and-bind action, a usage count,
+Adding a Choice Input creates a new definition with one `Option` value and binds the node to
+it. The Input node provides a choice-set selector, a create-and-bind action, a usage count,
 the input-specific default selector, and an Edit choices action. That action opens a focused dialog for
 the shared name and values. Editing from any referencing input updates the single document
 definition in one history command. Choice labels enter rename mode on double-click and can be
@@ -34,8 +34,8 @@ numeric defaults, and must not contain `options`. Switch cases and mapping nodes
 `enumIndex`. Imports containing string choice values or the earlier graph-local enum option shape
 are intentionally unsupported; this is a one-shot schema replacement with no compatibility migration.
 
-Standalone Enum nodes retain their local options. They are concrete graph value sources, while
-document enums define reusable graph-interface choice domains.
+Choice Input nodes use document enums whether they remain local or are exported, so the same node can
+cross the graph boundary without changing its value domain.
 
 ## Verification
 

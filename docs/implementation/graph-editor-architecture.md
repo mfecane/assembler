@@ -25,6 +25,12 @@ and persistent document-version identity. `EditorController` owns `GraphState` a
 application-facing mutation boundary. React components and hooks select state and call explicit
 controller methods; they do not receive arbitrary model-mutation callbacks.
 
+Published controller snapshots contain a detached document copy exposed through read-only document
+and graph-model contracts. React, viewport coordination, and other consumers therefore cannot reach
+the mutable source-of-truth document through a snapshot. Persistent changes must pass through the
+controller command boundary so history, dirty state, reconciliation, and evaluation revisions stay
+coordinated.
+
 `ReactBridge` owns shared UI-only state: history availability, viewport preview and transform
 mode, mesh selection, context menus, graph focus requests, and contextual editor errors. None of
 that state is serialized.

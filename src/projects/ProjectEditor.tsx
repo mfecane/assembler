@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
+import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ParametricEditor } from '@/parametric/ParametricEditor'
 import type { Editor } from '@/parametric/editor/Editor'
 import { createEditor } from '@/parametric/editor/createEditor'
 import type { ProjectRepository } from '@/projects/ProjectRepository'
+import type { ModelMetadataRepository } from '@/models/ModelMetadataRepository'
+import { getRegisteredModels } from '@/models/getRegisteredModels'
+import { meshRepository } from '@/parametric/three/MeshRepository'
 import { ProjectToolbar, type SaveState } from '@/projects/ProjectToolbar'
 import type { Project } from '@/projects/projectTypes'
+import type { GraphDocument } from '@/parametric/model/GraphSerialization'
 
 interface LoadedEditor {
 	project: Project
@@ -20,6 +25,7 @@ export function ProjectEditor({
 	projectId,
 	user,
 	repository,
+	modelMetadataRepository,
 	onBack,
 	onOpenProject,
 	onSignOut,
@@ -27,12 +33,15 @@ export function ProjectEditor({
 	projectId: string
 	user: User
 	repository: ProjectRepository
+	modelMetadataRepository: ModelMetadataRepository
 	onBack: () => void
 	onOpenProject: (projectId: string) => void
 	onSignOut: () => void
 }) {
 	const [loaded, setLoaded] = useState<LoadedEditor | null>(null)
 	const [loadError, setLoadError] = useState<string | null>(null)
+	const [loadErrorDocument, setLoadErrorDocument] = useState<GraphDocument | null>(null)
+	const [loadErrorProjectName, setLoadErrorProjectName] = useState<string | null>(null)
 	const [isLoading, setIsLoading] = useState(true)
 	const [documentVersion, setDocumentVersion] = useState(0)
 	const [savedDocumentVersion, setSavedDocumentVersion] = useState(0)
@@ -50,8 +59,16 @@ export function ProjectEditor({
 	const load = useCallback(async () => {
 		setIsLoading(true)
 		setLoadError(null)
+		setLoadErrorDocument(null)
+		setLoadErrorProjectName(null)
+		let project: Project | null = null
 		try {
-			const project = await repository.get(projectId)
+			project = await repository.get(projectId)
+			const modelIds = getRegisteredModels(project.graphDocument.client).map((model) => model.id)
+			const metadataRecords = await modelMetadataRepository.listMetadata(modelIds)
+			for (const record of metadataRecords) {
+				meshRepository.setMetadata(record.modelId, record.metadata)
+			}
 			const editor = createEditor(project.graphDocument)
 			const initialDocumentVersion = editor.controller.getSnapshot().documentVersion
 			setLoaded({ project, editor })
@@ -62,6 +79,10 @@ export function ProjectEditor({
 			setSaveAsError(null)
 			setShowSavedConfirmation(false)
 		} catch (cause) {
+			if (project) {
+				setLoadErrorDocument(project.graphDocument)
+				setLoadErrorProjectName(project.name)
+			}
 			setLoadError(
 				cause instanceof Error
 					? cause.message
@@ -70,7 +91,7 @@ export function ProjectEditor({
 		} finally {
 			setIsLoading(false)
 		}
-	}, [projectId, repository])
+	}, [modelMetadataRepository, projectId, repository])
 
 	useEffect(() => {
 		void load()
@@ -247,10 +268,23 @@ export function ProjectEditor({
 	if (loadError || !loaded) {
 		return (
 			<FullPageMessage
+				dataId="project-load-error"
 				title="Project could not be opened"
 				message={loadError ?? 'The project was not found.'}
 				actions={
 					<>
+						{loadErrorDocument && (
+							<Button
+								data-id="download-project-json-button"
+								onClick={() => downloadJsonDocument(
+									loadErrorDocument,
+									`${safeFileName(loadErrorProjectName ?? projectId)}.json`,
+								)}
+							>
+								<Download />
+								Download JSON
+							</Button>
+						)}
 						<Button onClick={() => void load()}>Retry</Button>
 						<Button variant="outline" onClick={onBack}>Back to projects</Button>
 					</>
@@ -300,16 +334,18 @@ function describeError(cause: unknown): string {
 }
 
 function FullPageMessage({
+	dataId,
 	title,
 	message,
 	actions,
 }: {
+	dataId?: string
 	title: string
 	message?: string
 	actions?: React.ReactNode
 }) {
 	return (
-		<main className="flex min-h-full items-center justify-center p-6 text-center">
+		<main data-id={dataId} className="flex min-h-full items-center justify-center p-6 text-center">
 			<div>
 				<h1 className="m-0 text-xl font-semibold">{title}</h1>
 				{message && <p className="mt-2 max-w-lg text-sm text-muted-foreground">{message}</p>}
@@ -317,4 +353,18 @@ function FullPageMessage({
 			</div>
 		</main>
 	)
+}
+
+function downloadJsonDocument(graphDocument: GraphDocument, fileName: string): void {
+	const blob = new Blob([JSON.stringify(graphDocument, null, 2)], { type: 'application/json' })
+	const url = URL.createObjectURL(blob)
+	const link = document.createElement('a')
+	link.href = url
+	link.download = fileName
+	link.click()
+	URL.revokeObjectURL(url)
+}
+
+function safeFileName(value: string): string {
+	return value.trim().replace(/[^a-z0-9-_]+/gi, '-').replace(/^-+|-+$/g, '') || 'project'
 }

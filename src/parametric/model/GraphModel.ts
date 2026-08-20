@@ -1,8 +1,20 @@
-import { GraphEdge } from '@/parametric/model/GraphEdge'
-import type { GraphNode } from '@/parametric/model/GraphNode'
+import { GraphEdge, supportsVectorComponentInterop } from '@/parametric/model/GraphEdge'
+import type { GraphNode, GraphValueType } from '@/parametric/model/GraphNode'
 import type { NodePortContext, NodeRegistry } from '@/parametric/model/NodeDefinition'
 
-export class GraphModel {
+export interface GraphModelReader {
+	getNodes(): GraphNode[]
+	getNode(nodeId: string): GraphNode | undefined
+	getNodeTypeLabel(nodeId: string): string | undefined
+	getEdges(): GraphEdge[]
+	getInputPortValueType(nodeId: string, portId: string): GraphValueType | undefined
+	getOutputPortValueType(nodeId: string, portId: string): GraphValueType | undefined
+	getInputOptions(nodeId: string, portId: string): string[]
+	getFieldValue(nodeId: string, field: string): unknown
+	isNodeRemovable(nodeId: string): boolean
+}
+
+export class GraphModel implements GraphModelReader {
 	private readonly nodes = new Map<string, GraphNode>()
 	private readonly edges = new Map<string, GraphEdge>()
 
@@ -33,17 +45,47 @@ export class GraphModel {
 		return [...this.edges.values()]
 	}
 
+	public getInputPortValueType(nodeId: string, portId: string): GraphValueType | undefined {
+		const node = this.nodes.get(nodeId)
+		return node
+			? this.nodeRegistry.getInputPorts(node, this.portContext)
+				.find((port) => port.id === portId)?.valueType
+			: undefined
+	}
+
+	public getOutputPortValueType(nodeId: string, portId: string): GraphValueType | undefined {
+		const node = this.nodes.get(nodeId)
+		return node
+			? this.nodeRegistry.getOutputPorts(node, this.portContext)
+				.find((port) => port.id === portId)?.valueType
+			: undefined
+	}
+
 	public setPortContext(context: NodePortContext): void {
 		this.portContext = context
 	}
 
 	public getInputOptions(nodeId: string, portId: string): string[] {
+		return this.resolveInputOptions(nodeId, portId, new Set())
+	}
+
+	private resolveInputOptions(
+		nodeId: string,
+		portId: string,
+		visitedPorts: Set<string>
+	): string[] {
+		const portKey = `${nodeId}:${portId}`
+		if (visitedPorts.has(portKey)) return []
+		visitedPorts.add(portKey)
 		const edge = [...this.edges.values()].find(
 			(candidate) => candidate.targetNodeId === nodeId && candidate.targetPort === portId
 		)
 		if (!edge?.sourcePort) return []
 		const sourceNode = this.nodes.get(edge.sourceNodeId)
 		if (!sourceNode) return []
+		if (sourceNode.type === 'pin' && edge.sourcePort === 'value') {
+			return this.resolveInputOptions(sourceNode.id, 'value', visitedPorts)
+		}
 		return [
 			...(this.nodeRegistry.getOutputOptions(sourceNode, edge.sourcePort, this.portContext) ?? []),
 		]
@@ -114,11 +156,10 @@ export class GraphModel {
 			.find((port) => port.id === normalizedEdge.sourcePort)
 		const targetPort = this.nodeRegistry.getInputPorts(targetNode, this.portContext)
 			.find((port) => port.id === normalizedEdge.targetPort)
-		return Boolean(
-			sourcePort
-			&& targetPort
-			&& this.nodeRegistry.canConnect(sourcePort.valueType, targetPort.valueType)
-		)
+		if (!sourcePort || !targetPort) return false
+		return normalizedEdge.component
+			? supportsVectorComponentInterop(sourcePort.valueType, targetPort.valueType)
+			: this.nodeRegistry.canConnect(sourcePort.valueType, targetPort.valueType)
 	}
 
 	public removeEdge(edgeId: string): void {
@@ -145,7 +186,14 @@ export class GraphModel {
 		const targetPort = edge.targetPort
 			?? this.nodeRegistry.getInputPorts(targetNode, this.portContext)[0]?.id
 		if (!sourcePort || !targetPort) return undefined
-		return new GraphEdge(edge.id, edge.sourceNodeId, edge.targetNodeId, sourcePort, targetPort)
+		return new GraphEdge(
+			edge.id,
+			edge.sourceNodeId,
+			edge.targetNodeId,
+			sourcePort,
+			targetPort,
+			edge.component
+		)
 	}
 
 }

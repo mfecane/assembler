@@ -1,35 +1,21 @@
-export interface PresetColor {
-	label: string
-	value: string
+export interface ColorPaletteOption {
+	name: string
+	hex: string
 }
 
-export const presetColors: readonly PresetColor[] = [
-	{ label: 'Sand', value: '#eaceac' },
-	{ label: 'White', value: '#f4f4f5' },
-	{ label: 'Charcoal', value: '#27272a' },
-	{ label: 'Red', value: '#dc5a5a' },
-	{ label: 'Orange', value: '#e8913a' },
-	{ label: 'Yellow', value: '#e3c84f' },
-	{ label: 'Green', value: '#55a86d' },
-	{ label: 'Blue', value: '#528bd1' },
-	{ label: 'Purple', value: '#9067c6' },
+export const COLOR_PALETTE: readonly ColorPaletteOption[] = [
+	{ name: 'White', hex: '#ffffff' },
+	{ name: 'Pearl', hex: '#eae0c8' },
+	{ name: 'Ink', hex: '#20232a' },
+	{ name: 'Rose', hex: '#d9829b' },
+	{ name: 'Salmon', hex: '#fa8072' },
+	{ name: 'Coral', hex: '#e97865' },
+	{ name: 'Apricot', hex: '#f2b880' },
+	{ name: 'Saffron', hex: '#e3b341' },
+	{ name: 'Sage', hex: '#9caf88' },
+	{ name: 'Eucalyptus', hex: '#5faf9b' },
+	{ name: 'Lagoon', hex: '#55b8c9' },
+	{ name: 'Cornflower', hex: '#7d9ccb' },
+	{ name: 'Iris', hex: '#9b8fd4' },
+	{ name: 'Plum', hex: '#b477a8' },
 ]
-
-export const defaultMaterialColor = presetColors[0].value
-export const presetColorValues = presetColors.map((color) => color.value)
-
-const rgbColorPattern = /^#[0-9a-f]{6}$/i
-
-export function isRgbColor(value: string): boolean {
-	return rgbColorPattern.test(value)
-}
-
-export function normalizeRgbColor(color: string): string {
-	const normalized = color.trim().toLowerCase()
-	return isRgbColor(normalized) ? normalized : defaultMaterialColor
-}
-
-export function getColorLabel(color: string): string {
-	return presetColors.find((preset) => preset.value === color.toLowerCase())?.label
-		?? color.toUpperCase()
-}

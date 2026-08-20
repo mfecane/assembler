@@ -12,21 +12,14 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { ASSET_METADATA_FILE_NAME } from '@/cosntants'
-import { useGraphJson } from '@/parametric/hooks/useGraphJson'
+import type { EditorController } from '@/parametric/editor/EditorController'
 
-export function GraphJsonControls() {
+export function GraphJsonControls({ controller }: { controller: EditorController }) {
 	const fileInputRef = useRef<HTMLInputElement>(null)
 	const [menuOpen, setMenuOpen] = useState(false)
-	const { exportGraph, exportAssetMetadata, importGraph } = useGraphJson()
 
 	const handleExport = () => {
-		downloadJson(exportGraph(), 'assembly.json')
-		setMenuOpen(false)
-	}
-
-	const handleAssetMetadataExport = () => {
-		downloadJson(exportAssetMetadata(), ASSET_METADATA_FILE_NAME)
+		downloadJson(JSON.stringify(controller.exportGraph(), null, 2), 'assembly.json')
 		setMenuOpen(false)
 	}
 
@@ -43,7 +36,7 @@ export function GraphJsonControls() {
 	const handleImport = async (file: File | undefined) => {
 		if (!file) return
 		try {
-			importGraph(await file.text())
+			controller.importGraph(JSON.parse(await file.text()))
 		} catch (cause) {
 			const reason = cause instanceof Error
 				? `${cause.name}: ${cause.message}${cause.stack ? `\n${cause.stack}` : ''}`
@@ -114,17 +107,6 @@ export function GraphJsonControls() {
 						>
 							<Download />
 							Export assembly JSON
-						</Button>
-						<Button
-							data-id="export-asset-metadata-button"
-							type="button"
-							variant="ghost"
-							className="h-9 justify-start px-2 font-normal"
-							role="menuitem"
-							onClick={handleAssetMetadataExport}
-						>
-							<Download />
-							Export asset metadata
 						</Button>
 					</div>
 				</PopoverContent>

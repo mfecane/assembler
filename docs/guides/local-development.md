@@ -16,9 +16,14 @@ Open `http://localhost:5175/assembler/` and choose **Continue as local developer
 
 The stack contains only the services the application uses: PostgreSQL, Auth, PostgREST, the
 one-shot schema and seed jobs, and the Vite frontend. Vite proxies the local Auth and
-REST paths. The seed job creates the local user and upserts a **Seeded MaxShelf configurator**
-project from `src/data/defaultGraph.json`, so the seeded project and newly created
-projects start from the same checked-in graph.
+REST paths. The seed job creates the local user, any optional per-model metadata present in each
+checked-in metadata document, and one seeded project for each client. Selectable assets come from the
+runtime mesh registrar, not database catalog rows.
+To persist Kitchen metadata in fresh local rebuilds, replace `scripts/data/kitchen/metadata.json` with
+the Kitchen model-editor export before seeding.
+
+Connection pins are disabled by default. To enable creating a pin when an output connection is
+dropped on empty graph canvas, set `VITE_ENABLE_GRAPH_CONNECTION_PINS=true` for the frontend.
 
 Remove the containers and temporary database:
 

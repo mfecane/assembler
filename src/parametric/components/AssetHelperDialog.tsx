@@ -24,6 +24,15 @@ export function AssetHelperDialog() {
 		controller.addMeshAsset(meshId, position)
 	}
 
+	const addStretchableAsset = (meshId: string) => {
+		const cascadeOffset = (getNodes().length % 8) * 18
+		const position = screenToFlowPosition({
+			x: window.innerWidth / 4 + cascadeOffset,
+			y: window.innerHeight / 2 + cascadeOffset,
+		})
+		controller.addStretchableAsset(meshId, position)
+	}
+
 	return (
 		<>
 			<Tooltip>
@@ -47,6 +56,8 @@ export function AssetHelperDialog() {
 				open={open}
 				onOpenChange={setOpen}
 				onSelect={addAsset}
+				showInstanceActions
+				onAddStretchableInstance={addStretchableAsset}
 				description="Select a registered mesh asset to add it to the current assembly."
 			/>
 		</>

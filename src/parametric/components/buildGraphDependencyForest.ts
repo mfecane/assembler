@@ -1,11 +1,11 @@
 import type {
-	GraphDefinition,
-	GraphDocumentModel,
+	GraphDefinitionReader,
+	GraphDocumentReader,
 } from '@/parametric/model/GraphDocumentModel'
 import { GraphInstanceGraphNode } from '@/parametric/model/GraphNode'
 
 export interface GraphDependencyTreeItem {
-	graph: GraphDefinition
+	graph: GraphDefinitionReader
 	root: boolean
 	children: GraphDependencyTreeItem[]
 }
@@ -15,7 +15,7 @@ export interface GraphDependencyForest {
 	unusedTrees: GraphDependencyTreeItem[]
 }
 
-export function buildGraphDependencyForest(document: GraphDocumentModel): GraphDependencyForest {
+export function buildGraphDependencyForest(document: GraphDocumentReader): GraphDependencyForest {
 	const dependencies = new Map<string, string[]>()
 	const referencedGraphIds = new Set<string>()
 
@@ -30,7 +30,7 @@ export function buildGraphDependencyForest(document: GraphDocumentModel): GraphD
 	}
 
 	const buildTree = (
-		graph: GraphDefinition,
+		graph: GraphDefinitionReader,
 		root: boolean,
 		path: ReadonlySet<string>
 	): GraphDependencyTreeItem => {

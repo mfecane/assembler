@@ -3,9 +3,10 @@ import type {
 	GeometryValue,
 	MeshArrayValue,
 	NumberValue,
-	EnumValue,
-	ColorValue,
+	MaterialInstanceValue,
 	Vector3GraphValue,
+	NodeEvaluationContext,
+	GraphValue,
 } from '@/parametric/evaluation/EvaluationTypes'
 import {
 	isSceneMetadata,
@@ -18,8 +19,10 @@ import {
 } from '@/parametric/model/NodeDefinition'
 import {
 	ArrayGraphNode,
+	ApplyMaterialGraphNode,
 	type Axis,
-	ColorGraphNode,
+	ChoiceToBooleanMapGraphNode,
+	type ChoiceBooleanMapping,
 	ChoiceToScalarMapGraphNode,
 	type ChoiceScalarMapping,
 	ChoiceToVector3MapGraphNode,
@@ -27,45 +30,54 @@ import {
 	type ChoiceMeshMapping,
 	ChoiceToMeshMapGraphNode,
 	GeometryToggleGraphNode,
-	GraphInputGraphNode,
 	GraphInstanceGraphNode,
 	type GraphNode,
+	type GraphValueType,
 	GroupGraphNode,
-	MaterialGraphNode,
+	InputGraphNode,
+	InputReferenceGraphNode,
 	MeshArrayGraphNode,
 	MeshAssetGraphNode,
+	StretchableAssetGraphNode,
 	MultiArrayGraphNode,
-	NumberInputGraphNode,
 	OutputGraphNode,
+	PinGraphNode,
 	PrimitiveGraphNode,
 	type PrimitiveKind,
-	SelectorGraphNode,
 	SumGraphNode,
+	MathExpressionGraphNode,
 	TransformGraphNode,
+	Vector3GraphNode,
+	Vector3ComponentsGraphNode,
 	type TransformOrigin,
 } from '@/parametric/model/GraphNode'
-import { defaultMaterialColor } from '@/parametric/model/ColorPalette'
+import {
+	evaluateMathExpression,
+	getMathExpressionAvailableInputIndexes,
+	getMathExpressionInputIndexes,
+} from '@/parametric/model/MathExpression'
+import { MaterialInstance } from '@/parametric/model/MaterialInstance'
 import { Vector3Value, type Vector3Snapshot } from '@/parametric/model/Vector3Value'
 import { applyTransform } from '@/parametric/evaluation/applyTransform'
 import { TransformField, type TransformFieldSnapshot } from '@/parametric/model/fields/TransformField'
-import type { GraphInputValue } from '@/parametric/model/GraphDocumentModel'
+import type {
+	GraphInputValue,
+	GraphInputValueType,
+} from '@/parametric/model/GraphDocumentModel'
+import { StretchableAssetMetadata } from '@/parametric/model/StretchableAssetMetadata'
+import { COLOR_PALETTE } from '@/parametric/model/ColorPalette'
 
 interface PrimitiveData {
 	primitive: PrimitiveKind
 	size: Vector3Snapshot
 }
 
-interface NumberInputData {
-	value: number
-}
-
-interface SelectorData {
-	options: string[]
-	value: number
-}
-
 interface ChoiceScalarMapData {
 	mappings: ChoiceScalarMapping[]
+}
+
+interface ChoiceBooleanMapData {
+	mappings: ChoiceBooleanMapping[]
 }
 
 interface ChoiceVector3MapData {
@@ -100,13 +112,15 @@ function parseChoiceMeshMappings(nodeId: string, data: unknown): ChoiceMeshMappi
 	return mappings
 }
 
-interface ColorData {
-	color: string
-}
-
 interface MeshAssetData {
 	meshId: string
 	transform?: TransformFieldSnapshot
+}
+
+interface StretchableAssetData {
+	meshId: string
+	targetSize: Vector3Snapshot
+	transform: TransformFieldSnapshot
 }
 
 interface TransformData {
@@ -119,14 +133,24 @@ interface TransformData {
 	enabled?: boolean
 }
 
-interface MaterialData {
-	color: string
+interface InputData {
+	valueType: GraphInputValueType
+	value?: GraphInputValue
+	exported: boolean
+	enumId?: string
+}
+
+interface InputReferenceData {
+	inputId: string
 }
 
 interface ArrayData {
-	count: number
-	axis: Axis
-	offset: number
+	countX: number
+	countY: number
+	countZ: number
+	offsetX: number
+	offsetY: number
+	offsetZ: number
 }
 
 interface MultiArrayData {
@@ -145,8 +169,17 @@ interface SumData {
 	enabled: boolean
 }
 
+interface MathExpressionData {
+	expression: string
+}
+
+interface PinData {
+	valueType: GraphValueType
+}
+
 const geometryInput = [{ id: 'geometry', valueType: 'geometry' }] as const
 const geometryOutput = [{ id: 'geometry', valueType: 'geometry' }] as const
+const defaultTransformData = TransformField.identitySnapshot()
 
 function vectorNumericFields<TNode extends GraphNode>(
 	prefix: string,
@@ -186,11 +219,6 @@ const enumField = <TNode extends GraphNode, TValue extends string>(
 	options?: (node: TNode) => readonly string[]
 ): FieldDefinition<TNode> => ({ kind: 'enum', get, set: (node, value) => set(node, value as TValue), options })
 
-const colorField = <TNode extends GraphNode>(
-	get: (node: TNode) => string,
-	set: (node: TNode, value: string) => void
-): FieldDefinition<TNode> => ({ kind: 'color', get, set: (node, value) => set(node, value as string) })
-
 function transformFields<TNode extends GraphNode>(
 	prefix: string,
 	getTransform: (node: TNode) => TransformField
@@ -226,6 +254,25 @@ function number(value: number): NumberValue {
 	return { valueType: 'number', value }
 }
 
+function stretchPortAxis(portId: string): Axis | undefined {
+	if (portId === 'stretchX') return 'x'
+	if (portId === 'stretchY') return 'y'
+	if (portId === 'stretchZ') return 'z'
+	return undefined
+}
+
+function resolveStretchSize(
+	context: NodeEvaluationContext,
+	node: StretchableAssetGraphNode,
+	portId: string,
+	fallback: number
+): number {
+	const input = context.resolveInput(node, portId)
+	return input?.valueType === 'number' && Number.isFinite(input.value)
+		? input.value as number
+		: fallback
+}
+
 function vector3(value: Vector3Snapshot): Vector3GraphValue {
 	return { valueType: 'vector3', value: { ...value } }
 }
@@ -234,12 +281,26 @@ function meshArray(value: MeshArrayValue['value']): MeshArrayValue {
 	return { valueType: 'meshArray', value }
 }
 
-function enumValue(value: number): EnumValue {
-	return { valueType: 'enum', value }
+function materialInstanceValue(materialId: string): MaterialInstanceValue {
+	return { valueType: 'materialInstance', value: new MaterialInstance(materialId) }
 }
 
-function colorValue(value: string): ColorValue {
-	return { valueType: 'color', value }
+function localInputValue(node: InputGraphNode): GraphValue | undefined {
+	const value = node.getValue()
+	if (value === undefined) return undefined
+	if (node.getValueType() === 'materialInstance') {
+		return typeof value === 'string'
+			? { valueType: 'materialInstance', value: new MaterialInstance(value) }
+			: undefined
+	}
+	return { valueType: node.getValueType(), value }
+}
+
+function resolveMaterial(context: NodeEvaluationContext, node: GraphNode) {
+	const input = context.resolveInput(node, 'material')
+	return input?.valueType === 'materialInstance' && input.value instanceof MaterialInstance
+		? { materialId: input.value.materialId, color: input.value.color }
+		: { materialId: 'plastic' }
 }
 
 function matrixSnapshot(matrix: Matrix4): Matrix4Snapshot {
@@ -255,7 +316,11 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		creatable: true,
 		create: (id, position) =>
 			new PrimitiveGraphNode(id, position, 'box', new Vector3Value(1, 1, 1)),
-		ports: { outputs: geometryOutput },
+		ports: {
+			inputs: [{ id: 'material', valueType: 'materialInstance' }],
+			outputs: geometryOutput,
+			getInputDefault: () => materialInstanceValue('plastic'),
+		},
 		fields: {
 			primitive: enumField(
 				(node) => node.getPrimitive(),
@@ -265,6 +330,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			...vectorNumericFields('size', (node) => node.getSize(),
 				(node, value) => node.setSize(value)),
 		},
+		defaultData: { primitive: 'box', size: { x: 1, y: 1, z: 1 } },
 		serialize: (node) => ({
 			primitive: node.getPrimitive(),
 			size: node.getSize().toSnapshot(),
@@ -281,63 +347,171 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 				size: node.getSize().toSnapshot(),
 				transform: matrixSnapshot(new Matrix4()),
 				originNode: context.getNodeInstanceReference(node.id),
+				material: resolveMaterial(context, node),
 			}])],
 		]),
 	})
 
-	registry.register<NumberInputGraphNode>({
-		type: 'numberInput',
-		label: 'Number',
+	registry.register<Vector3GraphNode>({
+		type: 'vector3',
+		label: 'Vector3',
 		creatable: true,
-		create: (id, position) => new NumberInputGraphNode(id, position, 1),
-		ports: { outputs: [{ id: 'number', valueType: 'number' }] },
-		fields: { value: numberField((node) => node.getValue(), (node, value) => node.setValue(value)) },
-		serialize: (node) => ({ value: node.getValue() }),
-		deserialize: (id, position, data) => {
-			const value = data as NumberInputData
-			return new NumberInputGraphNode(id, position, value.value)
-		},
-		evaluate: (node) => new Map([['number', number(node.getValue())]]),
-	})
-
-	registry.register<SelectorGraphNode>({
-		type: 'selector',
-		label: 'Choice',
-		creatable: true,
-		create: (id, position) =>
-			new SelectorGraphNode(id, position, ['Cube', 'Cone', 'Ring'], 0),
+		create: (id, position) => new Vector3GraphNode(id, position),
 		ports: {
-			outputs: [{ id: 'enum', valueType: 'enum' }],
-			getOutputOptions: (node, portId) => portId === 'enum' ? node.getOptions() : undefined,
-		},
-		fields: {
-			value: numberField(
-				(node) => node.getValue(),
-				(node, value) => node.setValue(value)
+			inputs: [
+				{ id: 'x', valueType: 'number' },
+				{ id: 'y', valueType: 'number' },
+				{ id: 'z', valueType: 'number' },
+			],
+			outputs: [{ id: 'vector3', valueType: 'vector3' }],
+			getInputDefault: (_node, portId) => (
+				portId === 'x' || portId === 'y' || portId === 'z'
+					? { valueType: 'number', value: 0 }
+					: undefined
 			),
 		},
-		serialize: (node) => ({
-			options: node.getOptions(),
-			value: node.getValue(),
-		}),
-		deserialize: (id, position, data) => {
-			const value = data as SelectorData
+		serialize: () => ({}),
+		deserialize: (id, position) => new Vector3GraphNode(id, position),
+		evaluate: (node, context) => {
+			const reference = context.getNodeInstanceReference(node.id)
+			const x = context.resolveInput(node, 'x')
+			const y = context.resolveInput(node, 'y')
+			const z = context.resolveInput(node, 'z')
 			if (
-				!Array.isArray(value?.options)
-				|| value.options.length === 0
-				|| value.options.some((option) => typeof option !== 'string' || !option.trim())
-				|| !Number.isInteger(value.value)
-				|| value.value < 0
-				|| value.value >= value.options.length
+				x?.valueType !== 'number' || typeof x.value !== 'number' || !Number.isFinite(x.value)
+				|| y?.valueType !== 'number' || typeof y.value !== 'number' || !Number.isFinite(y.value)
+				|| z?.valueType !== 'number' || typeof z.value !== 'number' || !Number.isFinite(z.value)
 			) {
+				console.log(
+					`[node-chain-debug] stage=vector3 graph="${reference.graphId}" `
+					+ `node="${node.id}" x=${String(x?.value)} y=${String(y?.value)} `
+					+ `z=${String(z?.value)} output=missing`
+				)
+				return new Map()
+			}
+			console.log(
+				`[node-chain-debug] stage=vector3 graph="${reference.graphId}" `
+				+ `node="${node.id}" output=(${x.value},${y.value},${z.value})`
+			)
+			return new Map([['vector3', vector3({ x: x.value, y: y.value, z: z.value })]])
+		},
+	})
+
+	registry.register<Vector3ComponentsGraphNode>({
+		type: 'vector3Components',
+		label: 'Split XYZ',
+		creatable: true,
+		create: (id, position) => new Vector3ComponentsGraphNode(id, position),
+		ports: {
+			inputs: [{ id: 'vector3', valueType: 'vector3' }],
+			outputs: [
+				{ id: 'x', valueType: 'number' },
+				{ id: 'y', valueType: 'number' },
+				{ id: 'z', valueType: 'number' },
+			],
+		},
+		serialize: () => ({}),
+		deserialize: (id, position) => new Vector3ComponentsGraphNode(id, position),
+		evaluate: (node, context) => {
+			const input = context.resolveInput(node, 'vector3')
+			if (input?.valueType !== 'vector3') return new Map()
+			const value = input.value as Vector3Snapshot
+			return new Map([
+				['x', number(value.x)],
+				['y', number(value.y)],
+				['z', number(value.z)],
+			])
+		},
+	})
+
+	registry.register<PinGraphNode>({
+		type: 'pin',
+		label: 'Pin',
+		creatable: false,
+		ports: {
+			inputs: (node) => [{ id: 'value', valueType: node.getValueType(), multiple: false }],
+			outputs: (node) => [{ id: 'value', valueType: node.getValueType() }],
+		},
+		serialize: (node) => ({ valueType: node.getValueType() }),
+		deserialize: (id, position, data) => {
+			const value = data as Partial<PinData> | undefined
+			const supportedTypes: GraphValueType[] = [
+				'geometry', 'meshArray', 'number', 'numberArray', 'vector3',
+				'enum', 'materialInstance', 'color', 'boolean',
+			]
+			if (!value?.valueType || !supportedTypes.includes(value.valueType)) {
 				throw new Error(
-					`Cannot deserialize Choice node "${id}": data.options must be a non-empty string `
-					+ `array and data.value must be a valid option index. Received ${JSON.stringify(data)}`
+					`Cannot deserialize Pin node "${id}": data.valueType must be one of `
+					+ `${JSON.stringify(supportedTypes)}. Received ${JSON.stringify(data)}.`
 				)
 			}
-			return new SelectorGraphNode(id, position, value.options, value.value)
+			return new PinGraphNode(id, position, value.valueType)
 		},
-		evaluate: (node) => new Map([['enum', enumValue(node.getValue())]]),
+		evaluate: (node, context) => {
+			const value = context.resolveInput(node, 'value')
+			return value ? new Map([['value', value]]) : new Map()
+		},
+	})
+
+	registry.register<MathExpressionGraphNode>({
+		type: 'mathExpression',
+		label: 'Expression',
+		creatable: true,
+		create: (id, position) => new MathExpressionGraphNode(id, position, '= $x'),
+		ports: {
+			inputs: (node) => getMathExpressionAvailableInputIndexes(node.getExpression())
+				.map((index) => ({ id: String(index), valueType: 'number' })),
+			outputs: [{ id: 'number', valueType: 'number' }],
+		},
+		fields: {
+			expression: {
+				kind: 'text',
+				get: (node) => node.getExpression(),
+				set: (node, value) => node.setExpression(value as string),
+			},
+		},
+		defaultData: { expression: '= $x' },
+		serialize: (node) => ({ expression: node.getExpression() }),
+		deserialize: (id, position, data) => {
+			const value = data as MathExpressionData
+			if (typeof value?.expression !== 'string') {
+				throw new Error(
+					`Cannot deserialize Expression node "${id}": data.expression must be a string. `
+					+ `Received ${JSON.stringify(data)}`
+				)
+			}
+			return new MathExpressionGraphNode(id, position, value.expression)
+		},
+		evaluate: (node, context) => {
+			const reference = context.getNodeInstanceReference(node.id)
+			const expression = node.getExpression()
+			const values = new Map<number, number>()
+			for (const inputIndex of getMathExpressionInputIndexes(expression)) {
+				const input = context.resolveInput(node, String(inputIndex))
+				if (
+					input?.valueType !== 'number'
+					|| typeof input.value !== 'number'
+					|| !Number.isFinite(input.value)
+				) {
+					console.log(
+						`[node-chain-debug] stage=math graph="${reference.graphId}" node="${node.id}" `
+						+ `expression=${JSON.stringify(expression)} input=${inputIndex} `
+						+ `inputType=${input?.valueType ?? 'missing'} inputValue=${String(input?.value)} `
+						+ 'output=missing'
+					)
+					return new Map()
+				}
+				values.set(inputIndex, input.value)
+			}
+			const result = evaluateMathExpression(expression, values)
+			console.log(
+				`[node-chain-debug] stage=math graph="${reference.graphId}" node="${node.id}" `
+				+ `expression=${JSON.stringify(expression)} `
+				+ `inputs="${[...values].map(([index, value]) => `${index}:${value}`).join(',')}" `
+				+ `output=${Number.isFinite(result) ? result : 'missing'}`
+			)
+			return Number.isFinite(result) ? new Map([['number', number(result)]]) : new Map()
+		},
 	})
 
 	registry.register<ChoiceToScalarMapGraphNode>({
@@ -349,6 +523,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			inputs: [{ id: 'enum', valueType: 'enum' }],
 			outputs: [{ id: 'number', valueType: 'number' }],
 		},
+		defaultData: { mappings: [] },
 		serialize: (node) => ({ mappings: node.getMappings() }),
 		deserialize: (id, position, data) =>
 			new ChoiceToScalarMapGraphNode(id, position, (data as ChoiceScalarMapData).mappings),
@@ -362,6 +537,29 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		},
 	})
 
+	registry.register<ChoiceToBooleanMapGraphNode>({
+		type: 'choiceToBooleanMap',
+		label: 'Map to Boolean',
+		creatable: true,
+		create: (id, position) => new ChoiceToBooleanMapGraphNode(id, position, []),
+		ports: {
+			inputs: [{ id: 'enum', valueType: 'enum' }],
+			outputs: [{ id: 'boolean', valueType: 'boolean' }],
+		},
+		defaultData: { mappings: [] },
+		serialize: (node) => ({ mappings: node.getMappings() }),
+		deserialize: (id, position, data) =>
+			new ChoiceToBooleanMapGraphNode(id, position, (data as ChoiceBooleanMapData).mappings),
+		evaluate: (node, context) => {
+			const input = context.resolveInput(node, 'enum')
+			if (input?.valueType !== 'enum' || !Number.isInteger(input.value)) return new Map()
+			const mappedBoolean = node.getBoolean(input.value as number)
+			return mappedBoolean === undefined
+				? new Map()
+				: new Map([['boolean', { valueType: 'boolean', value: mappedBoolean }]])
+		},
+	})
+
 	registry.register<ChoiceToVector3MapGraphNode>({
 		type: 'choiceToVector3Map',
 		label: 'Map to Vector 3',
@@ -371,6 +569,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			inputs: [{ id: 'enum', valueType: 'enum' }],
 			outputs: [{ id: 'vector3', valueType: 'vector3' }],
 		},
+		defaultData: { mappings: [] },
 		serialize: (node) => ({ mappings: node.getMappings() }),
 		deserialize: (id, position, data) =>
 			new ChoiceToVector3MapGraphNode(id, position, (data as ChoiceVector3MapData).mappings),
@@ -402,6 +601,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			],
 			outputs: geometryOutput,
 		},
+		defaultData: { mappings: [{ id: 'mesh-1', enumIndex: 0 }, { id: 'mesh-2', enumIndex: 1 }] },
 		serialize: (node) => ({ mappings: node.getMappings() }),
 		deserialize: (id, position, data) =>
 			new ChoiceToMeshMapGraphNode(id, position, parseChoiceMeshMappings(id, data)),
@@ -434,6 +634,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		fields: {
 			enabled: booleanField((node) => node.getEnabled(), (node, value) => node.setEnabled(value)),
 		},
+		defaultData: { enabled: true },
 		serialize: (node) => ({ enabled: node.getEnabled() }),
 		deserialize: (id, position, data) => {
 			const value = data as GeometryToggleData
@@ -457,21 +658,6 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		},
 	})
 
-	registry.register<ColorGraphNode>({
-		type: 'color',
-		label: 'Color',
-		creatable: true,
-		create: (id, position) => new ColorGraphNode(id, position, defaultMaterialColor),
-		ports: { outputs: [{ id: 'color', valueType: 'color' }] },
-		fields: { color: colorField((node) => node.getColor(), (node, value) => node.setColor(value)) },
-		serialize: (node) => ({ color: node.getColor() }),
-		deserialize: (id, position, data) => {
-			const value = data as ColorData
-			return new ColorGraphNode(id, position, value.color)
-		},
-		evaluate: (node) => new Map([['color', colorValue(node.getColor())]]),
-	})
-
 	registry.register<MeshAssetGraphNode>({
 		type: 'meshAsset',
 		label: 'Mesh Asset',
@@ -480,11 +666,16 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			const meshId = meshCatalog.getMeshes().find((mesh) => mesh.selectable)?.id ?? ''
 			return new MeshAssetGraphNode(id, position, meshId)
 		},
-		ports: { outputs: geometryOutput },
+		ports: {
+			inputs: [{ id: 'material', valueType: 'materialInstance' }],
+			outputs: geometryOutput,
+			getInputDefault: () => materialInstanceValue('plastic'),
+		},
 		fields: {
 			meshId: enumField((node) => node.getMeshId(), (node, value) => node.setMeshId(value)),
 			...transformFields('transform', (node) => node.getTransform()),
 		},
+		defaultData: { transform: defaultTransformData },
 		serialize: (node) => ({
 			meshId: node.getMeshId(),
 			transform: node.getTransform().serialize(),
@@ -507,9 +698,146 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 					size,
 					transform: matrixSnapshot(new Matrix4()),
 					originNode: context.getNodeInstanceReference(node.id),
+					material: resolveMaterial(context, node),
 				}]
 			return new Map([['geometry', geometry(applyTransform(
 				node.getTransform(), instances, (instance) => instance.instanceId
+			))]])
+		},
+	})
+
+	registry.register<StretchableAssetGraphNode>({
+		type: 'stretchableAsset',
+		label: 'Stretchable Asset',
+		creatable: true,
+		create: (id, position, { meshCatalog }) => {
+			const meshId = meshCatalog.getMeshes().find((mesh) => {
+				if (!mesh.selectable) return false
+				const bounds = meshCatalog.getBounds(mesh.id)
+				return Boolean(
+					bounds && new StretchableAssetMetadata(
+						mesh.id,
+						bounds,
+						meshCatalog.getMetadata(mesh.id) ?? {}
+					).isStretchable()
+				)
+			})?.id
+			const bounds = meshId ? meshCatalog.getBounds(meshId) : undefined
+			if (!meshId || !bounds) {
+				throw new Error(
+					`Cannot create Stretchable Asset node "${id}": the active client mesh catalog `
+					+ 'contains no selectable asset with computed bounds and at least one enabled stretch axis.'
+				)
+			}
+			const metadata = new StretchableAssetMetadata(
+				meshId,
+				bounds,
+				meshCatalog.getMetadata(meshId) ?? {}
+			)
+			return new StretchableAssetGraphNode(id, position, meshId, metadata.naturalSize)
+		},
+		ports: {
+			inputs: (node, context) => [
+				{ id: 'material', valueType: 'materialInstance' },
+				...(context?.getStretchableAxes?.(node.getMeshId()) ?? ['x', 'y', 'z']).map((axis) => ({
+					id: `stretch${axis.toUpperCase()}`,
+					valueType: 'number' as const,
+				})),
+			],
+			outputs: geometryOutput,
+			getInputDefault: (node, portId) => {
+				if (portId === 'material') return materialInstanceValue('plastic')
+				const axis = stretchPortAxis(portId)
+				return axis
+					? { valueType: 'number', value: node.getTargetSize()[axis] }
+					: undefined
+			},
+		},
+		fields: {
+			meshId: enumField((node) => node.getMeshId(), (node, value) => node.setMeshId(value)),
+			...vectorNumericFields(
+				'targetSize',
+				(node) => node.getTargetSize(),
+				(node, value) => node.setTargetSize(value)
+			),
+			...transformFields('transform', (node) => node.getTransform()),
+		},
+		defaultData: { transform: defaultTransformData },
+		serialize: (node) => ({
+			meshId: node.getMeshId(),
+			targetSize: node.getTargetSize().toSnapshot(),
+			transform: node.getTransform().serialize(),
+		}),
+		deserialize: (id, position, data) => {
+			const value = data as StretchableAssetData
+			if (
+				typeof value?.meshId !== 'string'
+				|| !Vector3Value.isSnapshot(value.targetSize)
+				|| !value.transform
+			) {
+				throw new Error(
+					`Cannot deserialize Stretchable Asset node "${id}": data must contain meshId, `
+					+ `finite targetSize { x, y, z }, and transform. Received ${JSON.stringify(data)}.`
+				)
+			}
+			return new StretchableAssetGraphNode(
+				id,
+				position,
+				value.meshId,
+				Vector3Value.from(value.targetSize),
+				new TransformField(value.transform)
+			)
+		},
+		evaluate: (node, context) => {
+			const meshId = node.getMeshId()
+			const bounds = context.getMeshBounds(meshId)
+			if (!meshId || !bounds) {
+				const reference = context.getNodeInstanceReference(node.id)
+				throw new Error(
+					`Cannot evaluate Stretchable Asset node "${node.id}" in graph "${reference.graphId}" `
+					+ `(node instance "${reference.nodeInstanceId}"): mesh ID ${JSON.stringify(meshId)} `
+					+ 'is empty, inaccessible for the active client, or has no computed bounds.'
+				)
+			}
+			const metadata = new StretchableAssetMetadata(
+				meshId,
+				bounds,
+				context.getMeshMetadata(meshId) ?? {}
+			)
+			const storedSize = node.getTargetSize()
+			const requestedSize = new Vector3Value(
+				resolveStretchSize(context, node, 'stretchX', storedSize.x),
+				resolveStretchSize(context, node, 'stretchY', storedSize.y),
+				resolveStretchSize(context, node, 'stretchZ', storedSize.z)
+			)
+			const targetSize = metadata.constrainTargetSize(requestedSize.toSnapshot())
+			const instances = [{
+				instanceId: node.id,
+				assetId: meshId,
+				assetKind: 'catalog' as const,
+				size: targetSize.toSnapshot(),
+				transform: matrixSnapshot(new Matrix4()),
+				originNode: context.getNodeInstanceReference(node.id),
+				material: resolveMaterial(context, node),
+				deformation: {
+					kind: 'stretch' as const,
+					sourceSize: metadata.naturalSize.toSnapshot(),
+					pivot: {
+						x: metadata.pivot.x,
+						y: metadata.pivot.y,
+						z: metadata.pivot.z,
+					},
+					axes: metadata.stretchAxes.map((axis) => ({
+						axis: axis.axis,
+						boxes: axis.boxes.map((box) => ({ min: box.min, max: box.max })),
+						textureAxis: axis.textureAxis,
+					})),
+				},
+			}]
+			return new Map([['geometry', geometry(applyTransform(
+				node.getTransform(),
+				instances,
+				(instance) => instance.instanceId
 			))]])
 		},
 	})
@@ -535,8 +863,11 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 				...geometryInput,
 			],
 			outputs: geometryOutput,
-			getInputDefault: (node, portId) =>
-				portId === 'enabled' ? { valueType: 'boolean', value: node.getEnabled() } : undefined,
+			getInputDefault: (node, portId) => {
+				if (portId === 'enabled') return { valueType: 'boolean', value: node.getEnabled() }
+				if (portId === 'translation') return vector3(node.getTranslation().toSnapshot())
+				return undefined
+			},
 		},
 		fields: {
 			...transformFields('', (node) => node.getTransform()),
@@ -544,6 +875,12 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			enabled: booleanField((node) => node.getEnabled(), (node, value) => node.setEnabled(value)),
 		},
 		bypass: { enabledInput: 'enabled', input: 'geometry', output: 'geometry' },
+		defaultData: {
+			...defaultTransformData,
+			copy: false,
+			uniformScale: true,
+			enabled: true,
+		},
 		serialize: (node) => ({
 			translation: node.getTranslation().toSnapshot(),
 			rotation: node.getRotation().toSnapshot(),
@@ -570,13 +907,27 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			)
 		},
 		evaluate: (node, context) => {
+			const reference = context.getNodeInstanceReference(node.id)
 			const input = context.resolveInput(node, 'geometry')
-			if (input?.valueType !== 'geometry' || !isSceneMetadata(input.value)) return new Map()
+			if (input?.valueType !== 'geometry' || !isSceneMetadata(input.value)) {
+				console.log(
+					`[node-chain-debug] stage=transform graph="${reference.graphId}" node="${node.id}" `
+					+ `geometryType=${input?.valueType ?? 'missing'} output=missing`
+				)
+				return new Map()
+			}
 			const translationInput = context.resolveInput(node, 'translation')
 			const translation = translationInput?.valueType === 'vector3'
 				&& Vector3Value.isSnapshot(translationInput.value)
 				? translationInput.value
 				: node.getTranslation().toSnapshot()
+			console.log(
+				`[node-chain-debug] stage=transform graph="${reference.graphId}" node="${node.id}" `
+				+ `geometryCount=${input.value.assetInstances.length} `
+				+ `translationInputType=${translationInput?.valueType ?? 'missing'} `
+				+ `translation=(${translation.x},${translation.y},${translation.z}) `
+				+ `cloneInput=${node.getCopy()}`
+			)
 			const transform = new TransformField({
 				...node.getTransform().serialize(),
 				translation,
@@ -596,45 +947,48 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 					...transformed,
 				]
 				: transformed
+			console.log(
+				`[node-chain-debug] stage=transform-output graph="${reference.graphId}" node="${node.id}" `
+				+ `instances="${output.map((instance) => (
+					`${instance.instanceId}:(${instance.transform[12]},${instance.transform[13]},${instance.transform[14]})`
+				)).join(',')}"`
+			)
 			return new Map([
 				['geometry', geometry(output)],
 			])
 		},
 	})
 
-	registry.register<MaterialGraphNode>({
-		type: 'material',
-		label: 'Material',
+	registry.register<ApplyMaterialGraphNode>({
+		type: 'applyMaterial',
+		label: 'Apply Material',
 		creatable: true,
-		create: (id, position) => new MaterialGraphNode(id, position, defaultMaterialColor),
+		create: (id, position) => new ApplyMaterialGraphNode(id, position),
 		ports: {
 			inputs: [
 				{ id: 'geometry', valueType: 'geometry' },
-				{ id: 'color', valueType: 'color' },
+				{ id: 'material', valueType: 'materialInstance' },
 			],
 			outputs: geometryOutput,
-			getInputDefault: (node, portId) =>
-				portId === 'color' ? { valueType: 'color', value: node.getColor() } : undefined,
 		},
-		fields: { color: colorField((node) => node.getColor(), (node, value) => node.setColor(value)) },
-		serialize: (node) => ({ color: node.getColor() }),
-		deserialize: (id, position, data) =>
-			new MaterialGraphNode(id, position, (data as MaterialData).color),
+		serialize: () => ({}),
+		deserialize: (id, position) => new ApplyMaterialGraphNode(id, position),
 		evaluate: (node, context) => {
 			const input = context.resolveInput(node, 'geometry')
-			const color = context.resolveInput(node, 'color')
+			const material = context.resolveInput(node, 'material')
+			const materialInstance = material?.value
 			if (
 				input?.valueType !== 'geometry'
 				|| !isSceneMetadata(input.value)
-				|| color?.valueType !== 'color'
-				|| typeof color.value !== 'string'
+				|| material?.valueType !== 'materialInstance'
+				|| !(materialInstance instanceof MaterialInstance)
 			) return new Map()
 
 			return new Map([
 				['geometry', geometry(input.value.assetInstances.map((instance) => ({
 					...instance,
 					instanceId: `${node.id}/${instance.instanceId}`,
-					material: { type: 'standard', color: color.value as string },
+					material: { materialId: materialInstance.materialId, color: materialInstance.color },
 				})))],
 			])
 		},
@@ -644,76 +998,91 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		type: 'array',
 		label: 'Array',
 		creatable: true,
-		create: (id, position) => new ArrayGraphNode(id, position, 2, 'x', 1),
+		create: (id, position) => new ArrayGraphNode(id, position, 1, 1, 1, 0, 0, 0),
 		ports: {
 			inputs: [
 				{ id: 'geometry', valueType: 'geometry' },
-				{ id: 'count', valueType: 'number' },
-				{ id: 'startIndex', valueType: 'number' },
-				{ id: 'offset', valueType: 'number' },
+				{ id: 'countX', valueType: 'number' },
+				{ id: 'countY', valueType: 'number' },
+				{ id: 'countZ', valueType: 'number' },
+				{ id: 'offsetX', valueType: 'number' },
+				{ id: 'offsetY', valueType: 'number' },
+				{ id: 'offsetZ', valueType: 'number' },
 			],
 			outputs: geometryOutput,
 			getInputDefault: (node, portId) => {
-				if (portId === 'count') return { valueType: 'number', value: node.getCount() }
-				if (portId === 'startIndex') return { valueType: 'number', value: 0 }
-				if (portId === 'offset') return { valueType: 'number', value: node.getOffset() }
+				if (portId === 'countX') return { valueType: 'number', value: node.getCount('x') }
+				if (portId === 'countY') return { valueType: 'number', value: node.getCount('y') }
+				if (portId === 'countZ') return { valueType: 'number', value: node.getCount('z') }
+				if (portId === 'offsetX') return { valueType: 'number', value: node.getOffset('x') }
+				if (portId === 'offsetY') return { valueType: 'number', value: node.getOffset('y') }
+				if (portId === 'offsetZ') return { valueType: 'number', value: node.getOffset('z') }
 				return undefined
 			},
 		},
 		fields: {
-			count: numberField((node) => node.getCount(), (node, value) => node.setCount(value)),
-			offset: numberField((node) => node.getOffset(), (node, value) => node.setOffset(value)),
-			axis: enumField(
-				(node) => node.getAxis(),
-				(node, value) => node.setAxis(value),
-				() => ['x', 'y', 'z']
-			),
+			countX: numberField((node) => node.getCount('x'), (node, value) => node.setCount('x', value)),
+			countY: numberField((node) => node.getCount('y'), (node, value) => node.setCount('y', value)),
+			countZ: numberField((node) => node.getCount('z'), (node, value) => node.setCount('z', value)),
+			offsetX: numberField((node) => node.getOffset('x'), (node, value) => node.setOffset('x', value)),
+			offsetY: numberField((node) => node.getOffset('y'), (node, value) => node.setOffset('y', value)),
+			offsetZ: numberField((node) => node.getOffset('z'), (node, value) => node.setOffset('z', value)),
 		},
+		defaultData: { countX: 1, countY: 1, countZ: 1, offsetX: 0, offsetY: 0, offsetZ: 0 },
 		serialize: (node) => ({
-			count: node.getCount(),
-			axis: node.getAxis(),
-			offset: node.getOffset(),
+			countX: node.getCount('x'),
+			countY: node.getCount('y'),
+			countZ: node.getCount('z'),
+			offsetX: node.getOffset('x'),
+			offsetY: node.getOffset('y'),
+			offsetZ: node.getOffset('z'),
 		}),
 		deserialize: (id, position, data) => {
 			const value = data as ArrayData
-			return new ArrayGraphNode(id, position, value.count, value.axis, value.offset)
+			return new ArrayGraphNode(
+				id, position, value.countX, value.countY, value.countZ,
+				value.offsetX, value.offsetY, value.offsetZ
+			)
 		},
 		evaluate: (node, context) => {
 			const input = context.resolveInput(node, 'geometry')
-			const count = context.resolveInput(node, 'count')
-			const startIndex = context.resolveInput(node, 'startIndex')
-			const offset = context.resolveInput(node, 'offset')
+			const countX = context.resolveInput(node, 'countX')
+			const countY = context.resolveInput(node, 'countY')
+			const countZ = context.resolveInput(node, 'countZ')
+			const offsetX = context.resolveInput(node, 'offsetX')
+			const offsetY = context.resolveInput(node, 'offsetY')
+			const offsetZ = context.resolveInput(node, 'offsetZ')
 			if (
 				input?.valueType !== 'geometry'
 				|| !isSceneMetadata(input.value)
-				|| count?.valueType !== 'number'
-				|| typeof count.value !== 'number'
-				|| startIndex?.valueType !== 'number'
-				|| typeof startIndex.value !== 'number'
-				|| offset?.valueType !== 'number'
-				|| typeof offset.value !== 'number'
+				|| countX?.valueType !== 'number' || typeof countX.value !== 'number'
+				|| countY?.valueType !== 'number' || typeof countY.value !== 'number'
+				|| countZ?.valueType !== 'number' || typeof countZ.value !== 'number'
+				|| offsetX?.valueType !== 'number' || typeof offsetX.value !== 'number'
+				|| offsetY?.valueType !== 'number' || typeof offsetY.value !== 'number'
+				|| offsetZ?.valueType !== 'number' || typeof offsetZ.value !== 'number'
 			) return new Map()
 
-			const translation = node.getAxis() === 'x'
-				? new Vector3(offset.value, 0, 0)
-				: node.getAxis() === 'y'
-					? new Vector3(0, offset.value, 0)
-					: new Vector3(0, 0, offset.value)
+			const countXValue = countX.value as number
+			const countYValue = countY.value as number
+			const countZValue = countZ.value as number
+			const offsetXValue = offsetX.value as number
+			const offsetYValue = offsetY.value as number
+			const offsetZValue = offsetZ.value as number
 			const instances = input.value.assetInstances
-			const firstIndex = Math.floor(startIndex.value)
 			const arrayInstances = instances.flatMap((instance) =>
-					Array.from({ length: Math.max(0, Math.floor(count.value as number)) }, (_, index) => ({
-						...instance,
-						instanceId: `${node.id}/${index}/${instance.instanceId}`,
-						transform: matrixSnapshot(new Matrix4()
-							.makeTranslation(
-								translation.x * (firstIndex + index),
-								translation.y * (firstIndex + index),
-								translation.z * (firstIndex + index)
-							)
-							.multiply(new Matrix4().fromArray(instance.transform))),
-					}))
-				)
+					Array.from({ length: Math.max(1, Math.floor(countXValue)) }, (_, x) =>
+						Array.from({ length: Math.max(1, Math.floor(countYValue)) }, (_, y) =>
+							Array.from({ length: Math.max(1, Math.floor(countZValue)) }, (_, z) => ({
+								...instance,
+								instanceId: `${node.id}/${x}:${y}:${z}/${instance.instanceId}`,
+								transform: matrixSnapshot(new Matrix4()
+									.makeTranslation(x * offsetXValue, y * offsetYValue, z * offsetZValue)
+									.multiply(new Matrix4().fromArray(instance.transform))),
+							}))
+						)
+					)
+				).flat(2)
 			return new Map([['geometry', geometry(arrayInstances)]])
 		},
 	})
@@ -763,6 +1132,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 				() => ['x', 'y', 'z']
 			),
 		},
+		defaultData: { axis: 'x', offset: 1 },
 		serialize: (node) => ({ axis: node.getAxis(), offset: node.getOffset() }),
 		deserialize: (id, position, data) => {
 			const value = data as MultiArrayData
@@ -856,6 +1226,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			constant: numberField((node) => node.getConstant(), (node, value) => node.setConstant(value)),
 			enabled: booleanField((node) => node.getEnabled(), (node, value) => node.setEnabled(value)),
 		},
+		defaultData: { constant: 0, enabled: true },
 		serialize: (node) => ({
 			constant: node.getConstant(),
 			enabled: node.getEnabled(),
@@ -893,27 +1264,116 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 		deserialize: (id, position) => new OutputGraphNode(id, position),
 	})
 
-	registry.register<GraphInputGraphNode>({
-		type: 'graphInput',
-		label: 'Assembly Input',
+	registry.register<InputGraphNode>({
+		type: 'input',
+		label: 'Input',
+		creatable: false,
+		ports: {
+			inputs: (node) => node.getValueType() === 'materialInstance'
+				? [{ id: 'color', valueType: 'color' }]
+				: [],
+			outputs: (node) => [{ id: 'value', valueType: node.getValueType() }],
+			getOutputOptions: (node, portId, context) => {
+				return portId === 'value' && node.getValueType() === 'enum'
+					? context?.getEnumOptions(node.getEnumId() ?? '')
+					: undefined
+			},
+		},
+		serialize: (node) => ({
+			valueType: node.getValueType(),
+			value: node.getValue(),
+			exported: node.isExported(),
+			...(node.getEnumId() ? { enumId: node.getEnumId() } : {}),
+		}),
+		deserialize: (id, position, data) => {
+			const value = data as InputData
+			const supportedTypes: GraphInputValueType[] = [
+				'number', 'numberArray', 'vector3', 'enum', 'materialInstance', 'color', 'boolean', 'geometry',
+			]
+			if (
+				!value || !supportedTypes.includes(value.valueType)
+				|| typeof value.exported !== 'boolean'
+				|| (value.valueType === 'number' && !Number.isFinite(value.value))
+				|| (value.valueType === 'vector3' && !Vector3Value.isSnapshot(value.value))
+				|| (value.valueType === 'enum' && (!Number.isInteger(value.value) || !value.enumId))
+				|| (value.valueType !== 'enum' && value.enumId !== undefined)
+				|| (value.valueType === 'materialInstance' && typeof value.value !== 'string')
+				|| (value.valueType === 'color' && (
+					typeof value.value !== 'string'
+					|| !COLOR_PALETTE.some((color) => color.hex === value.value)
+				))
+				|| (value.valueType === 'boolean' && typeof value.value !== 'boolean')
+			) {
+				throw new Error(
+					`Cannot deserialize Input node "${id}": invalid input data ${JSON.stringify(data)}.`
+				)
+			}
+			return new InputGraphNode(
+				id,
+				position,
+				value.valueType,
+				value.value,
+				value.exported,
+				value.enumId
+			)
+		},
+		evaluate: (node, context) => {
+			const baseValue = node.isExported()
+				? context.resolveGraphInput(node.id) ?? localInputValue(node)
+				: localInputValue(node)
+			if (!baseValue) return new Map()
+			if (baseValue.valueType !== 'materialInstance' || !(baseValue.value instanceof MaterialInstance)) {
+				return new Map([['value', baseValue]])
+			}
+			const color = context.resolveInput(node, 'color')
+			return new Map([['value', {
+				valueType: 'materialInstance',
+				value: new MaterialInstance(
+					baseValue.value.materialId,
+					color?.valueType === 'color' && typeof color.value === 'string'
+						? color.value
+						: baseValue.value.color
+				),
+			}]])
+		},
+	})
+
+	registry.register<InputReferenceGraphNode>({
+		type: 'inputReference',
+		label: 'Input Reference',
 		creatable: false,
 		ports: {
 			outputs: (node, context) => {
-				const graph = context?.getGraphInterface(context.containingGraphId)
-				const input = graph?.inputs.find((candidate) => candidate.id === node.getInputId())
-				return input ? [{ id: input.id, valueType: input.valueType }] : []
+				const input = context?.getGraphInterface(context.containingGraphId)?.inputs.find(
+					(candidate) => candidate.id === node.getInputId()
+				)
+				return input ? [{ id: 'value', valueType: input.valueType }] : []
 			},
 			getOutputOptions: (node, portId, context) => {
-				const graph = context?.getGraphInterface(context.containingGraphId)
-				const input = graph?.inputs.find((candidate) => candidate.id === node.getInputId())
-				return input?.id === portId && input.valueType === 'enum'
+				if (portId !== 'value') return undefined
+				const input = context?.getGraphInterface(context.containingGraphId)?.inputs.find(
+					(candidate) => candidate.id === node.getInputId()
+				)
+				return input?.valueType === 'enum'
 					? context?.getEnumOptions(input.enumId ?? '')
 					: undefined
 			},
 		},
 		serialize: (node) => ({ inputId: node.getInputId() }),
-		deserialize: (id, position, data) =>
-			new GraphInputGraphNode(id, position, (data as { inputId: string }).inputId),
+		deserialize: (id, position, data) => {
+			const value = data as Partial<InputReferenceData> | undefined
+			if (!value || typeof value.inputId !== 'string' || !value.inputId.trim()) {
+				throw new Error(
+					`Cannot deserialize Input Reference node "${id}": data.inputId must be a non-empty string. `
+					+ `Received ${JSON.stringify(data)}.`
+				)
+			}
+			return new InputReferenceGraphNode(id, position, value.inputId)
+		},
+		evaluate: (node, context) => {
+			const value = context.resolveGraphInput(node.getInputId())
+			return value ? new Map([['value', value]]) : new Map()
+		},
 	})
 
 	registry.register<GraphInstanceGraphNode>({
@@ -932,6 +1392,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
 			},
 		},
 		fields: transformFields('transform', (node) => node.getTransform()),
+		defaultData: { transform: defaultTransformData },
 		serialize: (node) => ({
 			graphId: node.getGraphId(),
 			transform: node.getTransform().serialize(),
@@ -966,17 +1427,21 @@ function parseGraphInstanceInputValues(
 	for (const [inputId, inputValue] of Object.entries(value)) {
 		const numberArrayValue = Array.isArray(inputValue)
 			&& inputValue.every((item) => typeof item === 'number' && Number.isFinite(item))
+		const vector3Value = Vector3Value.isSnapshot(inputValue)
 		if (
 			(typeof inputValue !== 'number' || !Number.isFinite(inputValue))
 			&& typeof inputValue !== 'string'
 			&& typeof inputValue !== 'boolean'
 			&& !numberArrayValue
+			&& !vector3Value
 		) {
 			throw new Error(
 				`Graph instance node "${nodeId}" has invalid value for input "${inputId}"`
 			)
 		}
-		inputValues[inputId] = Array.isArray(inputValue) ? [...inputValue] : inputValue
+		inputValues[inputId] = vector3Value
+			? { ...inputValue }
+			: Array.isArray(inputValue) ? [...inputValue] : inputValue
 	}
 	return inputValues
 }

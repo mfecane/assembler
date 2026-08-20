@@ -30,6 +30,13 @@ export function PrimitiveNode({ id }: NodeProps<ParametricFlowNode>) {
 			data-id={`primitive-node-${id}`}
 			className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
 		>
+			<TypedHandle
+				id="material"
+				type="target"
+				position={Position.Left}
+				valueType="materialInstance"
+				style={{ top: '65%' }}
+			/>
 			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} />} />
 			<div className="flex flex-col gap-2">
 				<Select

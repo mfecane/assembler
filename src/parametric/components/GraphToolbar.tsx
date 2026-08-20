@@ -12,7 +12,6 @@ import {
 import { NodeSelector } from '@/parametric/components/NodeSelector'
 import { useGraphActions } from '@/parametric/hooks/useGraphActions'
 import { ConfigurationPanelEditorDialog } from '@/parametric/components/ConfigurationPanelEditorDialog'
-import { GraphJsonControls } from '@/parametric/components/GraphJsonControls'
 import { AssetHelperDialog } from '@/parametric/components/AssetHelperDialog'
 import { useEditorController } from '@/parametric/editor/react/EditorContext'
 import { useReactBridgeSnapshot } from '@/parametric/editor/react/EditorContext'
@@ -20,7 +19,7 @@ import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
 
 export function GraphToolbar({ selectedEdges }: { selectedEdges: Edge[] }) {
 	const [editingInterface, setEditingInterface] = useState(false)
-	const { removeEdge } = useGraphActions()
+	const { removeEdges } = useGraphActions()
 	const controller = useEditorController()
 	const { canUndo, canRedo } = useReactBridgeSnapshot()
 	const { document, activeGraphId } = useGraphSnapshot()
@@ -119,7 +118,7 @@ export function GraphToolbar({ selectedEdges }: { selectedEdges: Edge[] }) {
 											size="icon"
 											className="h-8 w-8 text-muted-foreground hover:text-destructive"
 											aria-label={`Delete ${selectedEdges.length} selected connection${selectedEdges.length === 1 ? '' : 's'}`}
-											onClick={() => selectedEdges.forEach((edge) => removeEdge(edge.id))}
+											onClick={() => removeEdges(selectedEdges.map((edge) => edge.id))}
 										>
 											<Unlink />
 										</Button>
@@ -130,8 +129,6 @@ export function GraphToolbar({ selectedEdges }: { selectedEdges: Edge[] }) {
 								</Tooltip>
 							</>
 						)}
-						<Separator orientation="vertical" className="h-5" />
-						<GraphJsonControls />
 					</TooltipProvider>
 				</div>
 			</Panel>

@@ -1,15 +1,15 @@
-import type { GraphValueType } from '@/parametric/model/GraphNode'
-import type { GraphModel } from '@/parametric/model/GraphModel'
+import { InputGraphNode, type GraphValueType } from '@/parametric/model/GraphNode'
+import type { Vector3Snapshot } from '@/parametric/model/Vector3Value'
+import type { GraphModel, GraphModelReader } from '@/parametric/model/GraphModel'
 import {
 	EnumDefinition,
 	type EnumDefinitionSnapshot,
 } from '@/parametric/model/EnumDefinition'
-import { isRgbColor } from '@/parametric/model/ColorPalette'
 import { RootGraph } from '@/parametric/model/RootGraph'
 import type { Client } from '@/cosntants'
 
-export type GraphInputValue = number | number[] | string | boolean
-export type GraphInputValueType = Exclude<GraphValueType, 'meshArray' | 'vector3'>
+export type GraphInputValue = number | number[] | Vector3Snapshot | string | boolean
+export type GraphInputValueType = Exclude<GraphValueType, 'meshArray'>
 
 export interface GraphInputDefinition {
 	id: string
@@ -36,6 +36,14 @@ export interface GraphDefinition extends GraphInterface {
 	model: GraphModel
 }
 
+export interface GraphDefinitionReader extends GraphInterface {
+	readonly model: GraphModelReader
+}
+
+export interface RootGraphReader {
+	getGraphId(): string
+}
+
 interface ConfigurationPanelControlBase {
 	id: string
 	inputId: string
@@ -51,7 +59,7 @@ export type ConfigurationPanelControl =
 		step: number
 	})
 	| (ConfigurationPanelControlBase & { type: 'select' })
-	| (ConfigurationPanelControlBase & { type: 'color'; options: string[] })
+	| (ConfigurationPanelControlBase & { type: 'material' })
 	| (ConfigurationPanelControlBase & { type: 'switch' })
 	| (ConfigurationPanelControlBase & {
 		type: 'numberArray'
@@ -77,14 +85,30 @@ export type ConfigurationField =
 		label: string
 		value: number[]
 		labels: string[]
-		total: number
+		total?: number
 		step: number
 	}
 	| { id: string; type: 'enum'; label: string; value: number; options: string[] }
-	| { id: string; type: 'color'; label: string; value: string; options: string[] }
+	| { id: string; type: 'material'; label: string; value: string }
+	| { id: string; type: 'color'; label: string; value: string }
+	| { id: string; type: 'vector3'; label: string; value: Vector3Snapshot; step: number }
 	| { id: string; type: 'boolean'; label: string; value: boolean }
 
-export class GraphDocumentModel {
+export interface GraphDocumentReader {
+	getRootGraphs(): RootGraphReader[]
+	isRootGraph(graphId: string): boolean
+	getEnumDefinitions(): EnumDefinitionSnapshot[]
+	requireEnumDefinition(enumId: string): EnumDefinitionSnapshot
+	getInputOptions(input: GraphInputDefinition): string[]
+	getEnumUsageCount(enumId: string): number
+	getGraphs(): GraphDefinitionReader[]
+	getGraph(graphId: string): GraphDefinitionReader | undefined
+	requireGraph(graphId: string): GraphDefinitionReader
+	getRootInputValue(graphId: string, inputId: string): GraphInputValue | undefined
+	getConfigurationControls(graphId: string): ConfigurationPanelControl[]
+}
+
+export class GraphDocumentModel implements GraphDocumentReader {
 	private readonly graphs = new Map<string, GraphDefinition>()
 	private readonly enumDefinitions = new Map<string, EnumDefinition>()
 	private readonly rootGraphs = new Map<string, RootGraph>()
@@ -185,7 +209,9 @@ export class GraphDocumentModel {
 
 	public getEnumUsageCount(enumId: string): number {
 		return this.getGraphs().reduce(
-			(count, graph) => count + graph.inputs.filter((input) => input.enumId === enumId).length,
+			(count, graph) => count + graph.model.getNodes().filter(
+				(node) => node instanceof InputGraphNode && node.getEnumId() === enumId
+			).length,
 			0
 		)
 	}
@@ -315,8 +341,8 @@ export class GraphDocumentModel {
 	public removeGraph(graphId: string): boolean {
 		if (!this.graphs.has(graphId)) return false
 		if (this.rootGraphs.has(graphId) && this.rootGraphs.size === 1) return false
-		const enumIds = this.graphs.get(graphId)?.inputs.flatMap((input) => (
-			input.enumId ? [input.enumId] : []
+		const enumIds = this.graphs.get(graphId)?.model.getNodes().flatMap((node) => (
+			node instanceof InputGraphNode && node.getEnumId() ? [node.getEnumId() as string] : []
 		)) ?? []
 		this.rootGraphs.delete(graphId)
 		this.graphs.delete(graphId)
@@ -354,17 +380,6 @@ export class GraphDocumentModel {
 					root.removeInputValue(inputId)
 				}
 			}
-			const colorControl = input.valueType === 'color'
-				? root.getConfigurationControls()
-					.filter(isColorConfigurationControl)
-					.find((control) => control.inputId === input.id)
-				: undefined
-			if (
-				colorControl
-				&& !colorControl.options.includes(this.getRootInputValue(graphId, input.id) as string)
-			) {
-				root.setInputValue(input.id, colorControl.options[0])
-			}
 			this.validateReferences(root)
 			this.validateConfigurationValues(root)
 		}
@@ -392,17 +407,13 @@ export class GraphDocumentModel {
 		const input = this.requireGraph(graphId).inputs.find((candidate) => candidate.id === inputId)
 		if (!input) return undefined
 		const value = this.requireRootGraph(graphId).getInputValue(inputId) ?? input.defaultValue
-		return Array.isArray(value) ? [...value] : value
+		return value === undefined ? undefined : copyInputValue(value)
 	}
 
 	public setRootInputValue(graphId: string, inputId: string, value: GraphInputValue): boolean {
 		const root = this.requireRootGraph(graphId)
 		const input = this.requireGraph(graphId).inputs.find((candidate) => candidate.id === inputId)
 		if (!input || !this.isInputValueCompatible(input, value)) return false
-		const colorControl = root.getConfigurationControls()
-			.filter(isColorConfigurationControl)
-			.find((control) => control.inputId === inputId)
-		if (colorControl && !colorControl.options.includes(value as string)) return false
 		const numberArrayControl = root.getConfigurationControls().find(
 			(control) => control.type === 'numberArray' && control.inputId === inputId
 		)
@@ -454,9 +465,6 @@ export class GraphDocumentModel {
 		root.setConfigurationControls(configurationControls)
 		for (const control of configurationControls) {
 			const value = this.getRootInputValue(graphId, control.inputId)
-			if (control.type === 'color' && !control.options.includes(value as string)) {
-				root.setInputValue(control.inputId, control.options[0])
-			}
 			if (control.type === 'numberArray') {
 				const current = Array.isArray(value) ? value : []
 				const previous = previousControls.find((candidate) => (
@@ -510,16 +518,6 @@ export class GraphDocumentModel {
 				)
 			}
 			assertConfigurationControl(control)
-			if (control.type === 'color') {
-				const value = this.getRootInputValue(graphId, control.inputId)
-				if (!control.options.includes(value as string)) {
-					throw new Error(
-						`Color configuration control "${control.id}" for root input `
-						+ `"${control.inputId}" cannot display its current value ${JSON.stringify(value)}. `
-						+ `Available colors: ${JSON.stringify(control.options)}.`
-					)
-				}
-			}
 			if (controlIds.has(control.id)) {
 				throw new Error(`Duplicate configuration control ID "${control.id}"`)
 			}
@@ -561,11 +559,17 @@ export class GraphDocumentModel {
 
 	private reconcileEnumInputValues(enumId: string, remapIndex: (value: number) => number): void {
 		for (const graph of this.graphs.values()) {
-			for (const input of graph.inputs) {
-				if (input.valueType !== 'enum' || input.enumId !== enumId) continue
-				input.defaultValue = typeof input.defaultValue === 'number'
-					? remapIndex(input.defaultValue)
-					: 0
+			for (const node of graph.model.getNodes()) {
+				if (!(node instanceof InputGraphNode) || node.getValueType() !== 'enum' || node.getEnumId() !== enumId) {
+					continue
+				}
+				const value = node.getValue()
+				const defaultValue = typeof value === 'number' ? remapIndex(value) : 0
+				node.setValue(defaultValue)
+				if (!node.isExported()) continue
+				const input = graph.inputs.find((candidate) => candidate.id === node.id)
+				if (!input) continue
+				input.defaultValue = defaultValue
 				const root = this.rootGraphs.get(graph.id)
 				if (!root) continue
 				const current = root.getInputValue(input.id)
@@ -578,7 +582,7 @@ export class GraphDocumentModel {
 		}
 	}
 
-	private removeEnumIfUnused(enumId: string): void {
+	public removeEnumIfUnused(enumId: string): void {
 		if (this.getEnumUsageCount(enumId) === 0) this.enumDefinitions.delete(enumId)
 	}
 }
@@ -601,30 +605,24 @@ function isControlCompatible(
 		return false
 	}
 	if (input.valueType === 'enum') return control.type === 'select'
-	if (input.valueType === 'color') return control.type === 'color'
+	if (input.valueType === 'materialInstance') return control.type === 'material'
 	if (input.valueType === 'boolean') return control.type === 'switch'
 	if (input.valueType === 'numberArray') return control.type === 'numberArray'
 	return false
 }
 
 function copyGraphInput(input: GraphInputDefinition): GraphInputDefinition {
-	return Array.isArray(input.defaultValue)
-		? { ...input, defaultValue: [...input.defaultValue] }
-		: { ...input }
+	return {
+		...input,
+		defaultValue: input.defaultValue === undefined ? undefined : copyInputValue(input.defaultValue),
+	}
 }
 
 function copyConfigurationControl(
 	control: ConfigurationPanelControl
 ): ConfigurationPanelControl {
-	if (control.type === 'color') return { ...control, options: [...control.options] }
 	if (control.type === 'numberArray') return { ...control, labels: [...control.labels] }
 	return { ...control }
-}
-
-function isColorConfigurationControl(
-	control: ConfigurationPanelControl
-): control is Extract<ConfigurationPanelControl, { type: 'color' }> {
-	return control.type === 'color'
 }
 
 function assertConfigurationControl(control: ConfigurationPanelControl): void {
@@ -646,24 +644,6 @@ function assertConfigurationControl(control: ConfigurationPanelControl): void {
 		}
 		return
 	}
-	if (control.type !== 'color') return
-	const options = Array.isArray(control.options) ? control.options : []
-	const invalidOptions = options.filter((option) => (
-		typeof option !== 'string' || !isRgbColor(option)
-	))
-	if (
-		!Array.isArray(control.options)
-		|| options.length === 0
-		|| new Set(options).size !== options.length
-		|| invalidOptions.length > 0
-	) {
-		throw new Error(
-			`Color configuration control "${control.id}" for root input "${control.inputId}" `
-			+ 'requires a non-empty, unique list of #RRGGBB colors. '
-			+ `Received ${JSON.stringify(control.options)}; invalid colors: `
-			+ `${JSON.stringify(invalidOptions)}.`
-		)
-	}
 }
 
 export function isInputValueCompatible(
@@ -672,6 +652,7 @@ export function isInputValueCompatible(
 	options: readonly string[] = []
 ): boolean {
 	if (input.valueType === 'number') return typeof value === 'number' && Number.isFinite(value)
+	if (input.valueType === 'vector3') return isVector3Snapshot(value)
 	if (input.valueType === 'numberArray') {
 		return Array.isArray(value)
 			&& value.every((item) => Number.isFinite(item) && item >= 0)
@@ -679,11 +660,22 @@ export function isInputValueCompatible(
 	if (input.valueType === 'enum') {
 		return Number.isInteger(value) && (value as number) >= 0 && (value as number) < options.length
 	}
-	if (input.valueType === 'color') {
-		return typeof value === 'string' && isRgbColor(value)
-	}
+	if (input.valueType === 'materialInstance') return typeof value === 'string' && value.trim().length > 0
+	if (input.valueType === 'color') return typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value)
 	if (input.valueType === 'boolean') return typeof value === 'boolean'
 	return false
+}
+
+function isVector3Snapshot(value: unknown): value is Vector3Snapshot {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+	const vector = value as Partial<Vector3Snapshot>
+	return Number.isFinite(vector.x) && Number.isFinite(vector.y) && Number.isFinite(vector.z)
+}
+
+function copyInputValue(value: GraphInputValue): GraphInputValue {
+	if (Array.isArray(value)) return [...value]
+	if (isVector3Snapshot(value)) return { ...value }
+	return value
 }
 
 export function remapMovedIndex(value: number, sourceIndex: number, targetIndex: number): number {

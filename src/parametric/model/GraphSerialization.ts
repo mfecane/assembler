@@ -1,4 +1,5 @@
 import { GraphEdge } from '@/parametric/model/GraphEdge'
+import type { VectorComponent } from '@/parametric/model/GraphEdge'
 import {
 	GraphDocumentModel,
 	isInputValueCompatible,
@@ -11,14 +12,15 @@ import {
 } from '@/parametric/model/GraphDocumentModel'
 import { GraphModel } from '@/parametric/model/GraphModel'
 import {
-	GraphInputGraphNode,
+	InputGraphNode,
+	InputReferenceGraphNode,
 	GraphInstanceGraphNode,
 	type GraphPoint,
 } from '@/parametric/model/GraphNode'
 import type { NodeRegistry } from '@/parametric/model/NodeDefinition'
-import { isRgbColor } from '@/parametric/model/ColorPalette'
 import type { EnumDefinitionSnapshot } from '@/parametric/model/EnumDefinition'
 import { RootGraph } from '@/parametric/model/RootGraph'
+import { Vector3Value } from '@/parametric/model/Vector3Value'
 import { Client } from '@/cosntants'
 
 export interface GraphDocument {
@@ -59,6 +61,7 @@ export interface GraphDocumentEdge {
 	targetNodeId: string
 	sourcePort: string
 	targetPort: string
+	component?: VectorComponent
 }
 
 export function serializeGraph(
@@ -95,6 +98,7 @@ export function serializeGraph(
 						targetNodeId: edge.targetNodeId,
 						sourcePort: edge.sourcePort,
 						targetPort: edge.targetPort,
+						...(edge.component ? { component: edge.component } : {}),
 					}]
 					: []
 			),
@@ -140,14 +144,15 @@ export function deserializeGraph(value: unknown, registry: NodeRegistry): GraphD
 			node.setName(serializedNode.name)
 			return node
 		})
-		assertBoundaryNodes(graph, nodes)
+		assertBoundaryNodes(graph, nodes, enumDefinitions)
 		const edges = graph.edges.map(
 			(edge) => new GraphEdge(
 				edge.id,
 				edge.sourceNodeId,
 				edge.targetNodeId,
 				edge.sourcePort,
-				edge.targetPort
+				edge.targetPort,
+				edge.component
 			)
 		)
 		const model = new GraphModel(registry, nodes, edges, {
@@ -222,7 +227,7 @@ function assertInputDefinition(
 	graphId: string,
 	enumDefinitions: ReadonlyMap<string, EnumDefinitionSnapshot>
 ): void {
-	if (!['number', 'numberArray', 'enum', 'color', 'boolean', 'geometry'].includes(input.valueType)) {
+	if (!['number', 'numberArray', 'vector3', 'enum', 'materialInstance', 'color', 'boolean', 'geometry'].includes(input.valueType)) {
 		throw new Error(`Input "${input.id}" in graph "${graphId}" has an unknown value type`)
 	}
 	if (input.valueType === 'geometry') {
@@ -248,6 +253,12 @@ function assertInputDefinition(
 			+ `numbers as its default. Received ${JSON.stringify(input.defaultValue)}.`
 		)
 	}
+	if (input.valueType === 'vector3' && !Vector3Value.isSnapshot(input.defaultValue)) {
+		throw new Error(
+			`Vector 3 input "${input.id}" in graph "${graphId}" requires finite x, y, and z defaults. `
+			+ `Received ${JSON.stringify(input.defaultValue)}.`
+		)
+	}
 	if (input.valueType === 'enum') {
 		const definition = enumDefinitions.get(input.enumId ?? '')
 		const options = definition?.options ?? []
@@ -269,22 +280,21 @@ function assertInputDefinition(
 			)
 		}
 	}
-	if (input.valueType === 'color') {
-		const localOptions = 'options' in input
-			? (input as GraphInputDefinition & { options?: unknown }).options
-			: undefined
-		if (
-			localOptions !== undefined
-			|| typeof input.defaultValue !== 'string'
-			|| !isRgbColor(input.defaultValue)
-		) {
-			throw new Error(
-				`Color input "${input.id}" in graph "${graphId}" requires a #RRGGBB default `
-				+ 'and must not define local options; available colors belong to its configuration control. '
-				+ `Received default ${JSON.stringify(input.defaultValue)} and local options `
-				+ `${JSON.stringify(localOptions)}.`
-			)
-		}
+	if (input.valueType === 'materialInstance' && (
+		typeof input.defaultValue !== 'string' || !input.defaultValue.trim()
+	)) {
+		throw new Error(
+			`Material input "${input.id}" in graph "${graphId}" requires a non-empty material ID `
+			+ `as its default. Received ${JSON.stringify(input.defaultValue)}.`
+		)
+	}
+	if (input.valueType === 'color' && (
+		typeof input.defaultValue !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(input.defaultValue)
+	)) {
+		throw new Error(
+			`Color input "${input.id}" in graph "${graphId}" requires a six-digit hex default. `
+			+ `Received ${JSON.stringify(input.defaultValue)}.`
+		)
 	}
 	if (input.valueType === 'boolean' && typeof input.defaultValue !== 'boolean') {
 		throw new Error(`Input "${input.id}" in graph "${graphId}" has an invalid boolean default`)
@@ -318,25 +328,55 @@ function isGraphDocumentNode(value: unknown): value is GraphDocumentNode {
 
 function assertBoundaryNodes(
 	graph: GraphDefinitionDocument,
-	nodes: ReturnType<NodeRegistry['deserialize']>[]
+	nodes: ReturnType<NodeRegistry['deserialize']>[],
+	enumDefinitions: ReadonlyMap<string, EnumDefinitionSnapshot>
 ): void {
 	const outputCount = nodes.filter((node) => node.type === 'graphOutput').length
 	if (outputCount !== 1) {
 		throw new Error(`Graph "${graph.id}" must contain exactly one graph output`)
 	}
-	const inputNodes = nodes
-		.filter((node): node is GraphInputGraphNode => node instanceof GraphInputGraphNode)
-	for (const input of graph.inputs) {
-		const count = inputNodes.filter((node) => node.getInputId() === input.id).length
-		if (count !== 1) {
+	const inputNodes = nodes.filter((node): node is InputGraphNode => node instanceof InputGraphNode)
+	for (const node of inputNodes) {
+		if (node.getValueType() !== 'enum') continue
+		const definition = enumDefinitions.get(node.getEnumId() ?? '')
+		const value = node.getValue()
+		if (!definition || typeof value !== 'number' || value >= definition.options.length) {
 			throw new Error(
-				`Graph "${graph.id}" requires exactly one boundary node for input "${input.id}"`
+				`Graph "${graph.id}" Input node "${node.id}" has invalid choice value `
+				+ `${JSON.stringify(value)} for choice set ${JSON.stringify(node.getEnumId())}.`
 			)
 		}
 	}
-	for (const inputId of inputNodes.map((node) => node.getInputId())) {
-		if (!graph.inputs.some((input) => input.id === inputId)) {
-			throw new Error(`Graph "${graph.id}" has boundary node for unknown input "${inputId}"`)
+	for (const node of nodes) {
+		if (!(node instanceof InputReferenceGraphNode)) continue
+		const input = graph.inputs.find((candidate) => candidate.id === node.getInputId())
+		if (!input) {
+			throw new Error(
+				`Graph "${graph.id}" Input Reference node "${node.id}" references missing graph input `
+				+ `"${node.getInputId()}". Available input IDs: ${JSON.stringify(graph.inputs.map(
+					(candidate) => candidate.id
+				))}.`
+			)
+		}
+	}
+	for (const input of graph.inputs) {
+		const node = inputNodes.find((candidate) => candidate.id === input.id)
+		if (
+			!node
+			|| !node.isExported()
+			|| node.getValueType() !== input.valueType
+			|| node.getEnumId() !== input.enumId
+			|| JSON.stringify(node.getValue()) !== JSON.stringify(input.defaultValue)
+		) {
+			throw new Error(
+				`Graph "${graph.id}" input "${input.id}" must match one exported Input node. `
+				+ `Input definition: ${JSON.stringify(input)}.`
+			)
+		}
+	}
+	for (const node of inputNodes) {
+		if (node.isExported() && !graph.inputs.some((input) => input.id === node.id)) {
+			throw new Error(`Graph "${graph.id}" has exported Input node "${node.id}" without a graph input`)
 		}
 	}
 }
@@ -394,8 +434,10 @@ function assertLocalAcyclicReferences(
 }
 
 function copyInput(input: GraphInputDefinition): GraphInputDefinition {
-	return Array.isArray(input.defaultValue)
-		? { ...input, defaultValue: [...input.defaultValue] }
+	if (input.defaultValue === undefined) return { ...input }
+	if (Array.isArray(input.defaultValue)) return { ...input, defaultValue: [...input.defaultValue] }
+	return Vector3Value.isSnapshot(input.defaultValue)
+		? { ...input, defaultValue: { ...input.defaultValue } }
 		: { ...input }
 }
 
@@ -424,6 +466,7 @@ function isRootGraphDocument(value: unknown): value is RootGraphDocument {
 			|| typeof inputValue === 'string'
 			|| typeof inputValue === 'boolean'
 			|| (Array.isArray(inputValue) && inputValue.every((item) => typeof item === 'number'))
+			|| Vector3Value.isSnapshot(inputValue)
 		))
 		&& Boolean(root.configurationPanel)
 		&& !('constraints' in (root.configurationPanel as object))
@@ -454,10 +497,6 @@ function isConfigurationPanelControl(value: unknown): value is ConfigurationPane
 			&& typeof control.step === 'number'
 			&& Number.isFinite(control.step)
 	}
-	if (control.type === 'color') {
-		return Array.isArray(control.options)
-			&& control.options.every((option) => typeof option === 'string')
-	}
 	if (control.type === 'numberArray') {
 		return Array.isArray(control.labels)
 			&& control.labels.every((label) => typeof label === 'string')
@@ -466,7 +505,7 @@ function isConfigurationPanelControl(value: unknown): value is ConfigurationPane
 			&& typeof control.step === 'number'
 			&& Number.isFinite(control.step)
 	}
-	return control.type === 'select' || control.type === 'switch'
+	return control.type === 'select' || control.type === 'material' || control.type === 'switch'
 }
 
 function assertEnumDefinitions(definitions: EnumDefinitionSnapshot[]): void {

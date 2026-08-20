@@ -29,15 +29,35 @@ Every graph definition contains:
 - One geometry `output`.
 - Its own nodes and edges.
 - Exactly one `graphOutput` boundary node.
-- Exactly one `graphInput` boundary node for each public input.
+- Exactly one exported `input` node, with the same ID, for each public input.
+
+An `inputReference` node may point to any public input of its containing graph. It persists only the
+target `inputId`; its output type and evaluated value are derived from that graph input, so a
+reference node never owns a duplicate default or override. Removing a public input removes its
+references from the same graph.
 
 Every persisted node has its own non-empty `name`, independent of graph-interface labels and
 configuration-control labels. Names are editable from node headers and do not affect evaluation or
 port identity.
 
+A `pin` node stores the value type of the output that created it. It has one same-typed input and
+output, passes evaluation through unchanged, and can fan that output out to multiple destinations.
+Pins use the existing node and edge document shape, so adding them does not change existing graph
+documents or require seed-data rewrites.
+
+An edge between `vector3` and `number` ports stores a `component` of `x`, `y`, or `z`. Vector-to-number
+evaluation extracts that component. Number-to-vector evaluation replaces that component on the
+target port's stored/default vector and preserves its other two components. Edges between matching
+types omit `component`.
+
 A root graph has exactly the same definition structure as every reusable child graph. Its root
 record supplies top-level values and presentation configuration without duplicating its definition.
 A graph can occur at most once in `rootGraphs`.
+
+Node data also stores overrides only for registered node defaults. This includes identity transform
+values: zero translation and rotation, unit scale, and middle origins are omitted independently;
+any changed transform component remains saved. Array nodes omit repeat counts of one and offsets of
+zero; Multi Array nodes omit its default x axis and offset of one.
 
 ## Enum definitions
 
@@ -51,10 +71,9 @@ Enum option lists live once in the top-level `enums` collection:
 }
 ```
 
-An enum graph input stores `enumId` instead of `options`. Its zero-based numeric default remains
-local to that graph interface and must index the referenced definition. Definitions have document-unique IDs,
-non-empty names, and non-empty unique option lists. Standalone Enum nodes remain local value-source
-nodes and continue to persist their own options.
+An enum input node stores `enumId` instead of `options`. Its zero-based numeric default remains
+local to that node and must index the referenced definition. Definitions have document-unique IDs,
+non-empty names, and non-empty unique option lists.
 
 ## Graph instances
 
@@ -79,7 +98,7 @@ Each root record owns a configuration panel whose controls bind only to public i
   "id": "finish-control",
   "inputId": "finish",
   "label": "Finish",
-  "type": "color",
+  "type": "material",
   "options": ["#eaceac", "#f4f4f5", "#27272a"]
 }
 ```
@@ -99,7 +118,7 @@ valid:
   positive `step`, and a non-negative `total` maximum shared by all items. Changing the label count
   resizes the root value; lowering the total preserves earlier values and reduces later values.
 - Enum inputs support `select`.
-- Color inputs support `color`; the control owns a non-empty, unique list of `#RRGGBB` choices.
+- Material inputs support `material`; the control uses the registered material catalog.
 - Boolean inputs support `switch`.
 - Geometry inputs cannot be mapped to the configuration panel.
 
@@ -121,10 +140,10 @@ The configuration-panel editor is available while any root graph is open. It pre
 ordered control list and lets authors manually add a predefined compatible UI item, bind it to an
 unused root input, configure its presentation settings, drag it into display order, or remove it.
 Number-array items additionally edit their value labels, item count, step, and shared total.
-Public inputs for all graphs are created, configured, and removed as nodes on the canvas. A color
-input stores only an arbitrary `#RRGGBB` default, edited with an RGB picker on its Graph Input node.
-When a root color input is exposed to customers, its configuration control owns and edits the
-available RGB choices. Choice Graph Input nodes select or create a shared choice set, show how many graph
+Input nodes own their local defaults. Their Export switch creates or removes the matching public
+graph input without deleting the local node. A material input stores a registered material ID.
+When a root material input is exposed to customers, its configuration control presents the
+registered materials. Choice Input nodes select or create a shared choice set, show how many graph
 inputs reference it, keep their own default selection, and open a separate dialog for editing the
 shared name and options.
 
@@ -136,14 +155,13 @@ Application validation enforces rules that JSON Schema cannot express:
 2. Every `rootGraphs.graphId` is unique and resolves inside `graphs`; at least one root is required.
 3. Every instance reference resolves inside the current document.
 4. Graph dependencies are acyclic.
-5. Boundary nodes match their containing graph interface.
+5. Every public input matches an exported Input node with the same ID, type, and default.
 6. Edge endpoints and ports exist in their containing graph.
 7. Connected ports have identical value types.
 8. At most one edge targets an input port.
 9. Root and graph-instance values match their input declarations.
 10. Configuration controls target compatible inputs on their owning root only.
-11. Every color input and stored color value uses `#RRGGBB`; every color configuration control owns
-    a non-empty, unique RGB option list containing its current root value.
+11. Every material input and stored material value is a non-empty registered-material ID.
 12. Number-array controls have one or more labels and stored values of the same length whose sum
     does not exceed the control total.
 13. Enum IDs are unique, every enum input resolves one definition, and its default belongs to that
@@ -156,9 +174,9 @@ only the document shape described here and rebuilds every graph scope against th
 local graph interface index.
 
 Top-level `client`, `rootGraphs`, `enums`, and `graphs`; root-level `inputValues` and `configurationPanel`;
-enum-input `enumId`; and color-control `options` are required.
+enum-input `enumId` is required when its input type is `enum`.
 Documents from the former singular `entryGraphId` / `entryInputValues` shape and documents that
-store choice or color options on graph inputs are intentionally unsupported. No compatibility
+store choice options on graph inputs are intentionally unsupported. No compatibility
 migration is provided.
 
 Choice to Mesh and Geometry Toggle add persisted `choiceToMeshMap` and `geometryToggle` node types.
@@ -171,52 +189,13 @@ are runtime data and are not serialized.
 
 ## Checked-in default
 
-`projects/maxshelf/maxshelf.json` is the editable MaxShelf project fixture, and
-`src/data/defaultGraph.json` is its identical new-project and local-seed copy. The fixtures preserve
-the full shelving example—including assets, required copy and assembly transforms, arrays,
-configurable inputs, and connections—rather than a reduced smoke-test graph.
-`scripts/seed-local-supabase.mjs` reads the default copy directly instead of carrying embedded data.
+[`scripts/data/defaultGraph.json`](../../scripts/data/defaultGraph.json) is the shared minimal template
+for the New Project action. It contains one root graph with a box primitive connected to the graph
+output, and `createDefaultGraph` assigns the selected client before creation.
 
-`projects/kitchen/kitchen.json` and `src/data/kitchen/defaultGraph.json` are the corresponding Kitchen
-fixture and new-project default. A project's client is immutable while it is open: importing a graph
-for another client is rejected, and mesh listing and geometry access expose only global primitives
-plus assets registered for the document client.
-Asset geometry uses a client-specific import scale: MaxShelf millimeter-authored GLBs use `0.05`,
-while meter-authored Kitchen GLBs use `1`.
-
-The fixture uses six graph definitions and two root records:
-
-- `main` (`Root`) exposes left-section count, one labeled shelf-count array, right-section
-  count, finish color, post height, and backplate type. It places two Wing instances and one corner
-  assembly into the configured-shelving output.
-- `graph-4` (`Wing`) repeats and combines instances of `graph-1` (`Wing Section`).
-- `graph-1` (`Wing Section`) builds one shelving section using Big and Small instances of the
-  reusable `shelf` (`Shelf`) subgraph. Mesh Array preserves those ordered bundles, and Multi Array
-  pairs them with the shelf-count array while applying one shared 0.2-unit level step. Mesh Asset
-  nodes feed Choice-to-Mesh mappings for post height and repeated backplate type forwarded by Wing. Its
-  optional `mirror-shelves-and-base` boolean input controls a Geometry Toggle that adds reflected
-  shelf, bracket, and base geometry behind the backplate without duplicating posts or panels. A
-  Choice to Scalar node maps post height to the repeated backplate count.
-- `shelf` (`Shelf`) owns the original big and small shelf geometry branches. Its shared `shelf-size`
-  enum input selects exactly one branch through Choice to Mesh while preserving each branch's
-  asset and transform data.
-- `graph-3` (`Corner 2`) builds the corner assembly currently instantiated by Root. Its post mesh
-  mappings share Root's post-height choice; its 665 × 400 mm back panels remain fixed because the
-  catalog has no matching alternate backplate-type assets. Its own Choice to Scalar mapping repeats
-  those panels high enough to fill the selected posts.
-- `graph-5` (`Root 3`) is a small independent root retained to exercise multi-root configuration.
-
-`main` is the first root and retains the complete MaxShelf configuration panel. `graph-5` is a
-second root with its own number slider, demonstrating that roots persist and evaluate independent
-UI configurations without copying their graph definitions.
-
-The fixture defines `post-height` and `backplate-type` once in the document-level enum collection.
-Every Root, Wing, Wing Section, and Corner 2 input that forwards those choices references the same
-definition rather than persisting another option array.
-
-Every graph exposes the finish-color input, forwards it through child graph instances, combines its
-output geometry, and applies the color with a final Material node. The `main` root binds this input
-to a color configuration control rendered from the allowed list stored on the control. Its panel
-enables all nine standard presets and binds post height and backplate type to select controls. Its
-number-array widget labels the two shelf sizes and limits their combined count to six. The fixture
-uses the shelf-oriented Mesh Array and Multi Array nodes for mixed-size placement.
+The local seed uses the separate complete graphs at
+[`scripts/data/maxshelf/defaultGraph.json`](../../scripts/data/maxshelf/defaultGraph.json) and
+[`scripts/data/kitchen/defaultGraph.json`](../../scripts/data/kitchen/defaultGraph.json), creating one
+project per client for each seeded user. These files are copies of the corresponding fixtures under
+`projects/`. A project's client remains immutable while it is open; importing a graph for another
+client is rejected.

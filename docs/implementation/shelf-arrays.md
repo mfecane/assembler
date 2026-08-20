@@ -39,10 +39,11 @@ and placement transforms. Wing Section contains one Big and one Small Shelf inst
 their outputs through Mesh Array, and places them through one y-axis Multi Array with a 0.2-unit
 step.
 
-`projects/maxshelf/maxshelf.json` and `src/data/defaultGraph.json` are kept byte-identical. The local
-Supabase seed script validates the number-array shape and requires Mesh Array, Multi Array,
-Choice to Mesh, and Geometry Toggle. Wing Section uses the Toggle directly for its optional
-mirrored shelves and bases instead of mapping the boolean through a Sum and zero-offset Array.
+`projects/maxshelf/maxshelf.json` remains the detailed example fixture and is copied to
+`scripts/data/maxshelf/defaultGraph.json` for local seeding. The New Project action uses the shared
+one-primitive `scripts/data/defaultGraph.json` template instead. Wing Section uses the Toggle directly
+for its optional mirrored shelves and bases instead of mapping the boolean through a Sum and zero-offset
+Array.
 
 ## Verification
 

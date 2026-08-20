@@ -38,7 +38,9 @@ import {
 } from '@/components/ui/tooltip'
 import { UserMenu } from '@/auth/UserMenu'
 import { ConfirmationDialog } from '@/parametric/components/ConfirmationDialog'
+import { CreateGraphDialog } from '@/parametric/components/CreateGraphDialog'
 import { GraphEditDialog } from '@/parametric/components/GraphEditDialog'
+import { GraphJsonControls } from '@/parametric/components/GraphJsonControls'
 import { GraphTree } from '@/parametric/components/GraphTree'
 import type { EditorController } from '@/parametric/editor/EditorController'
 import { GraphInstanceGraphNode } from '@/parametric/model/GraphNode'
@@ -85,6 +87,7 @@ export function ProjectToolbar({
 	const [saveMenuOpen, setSaveMenuOpen] = useState(false)
 	const [saveAsOpen, setSaveAsOpen] = useState(false)
 	const [saveAsName, setSaveAsName] = useState(`${name} copy`)
+	const [createGraphOpen, setCreateGraphOpen] = useState(false)
 
 	const openSaveAs = () => {
 		setSaveAsName(`${name} copy`)
@@ -168,26 +171,15 @@ export function ProjectToolbar({
 							disabled={projectRenamePending || saveState === 'saving'}
 						/>
 						<Button
-							data-id="add-root-graph-button"
-							type="button"
-							variant="outline"
-							size="sm"
-							disabled={projectRenamePending || saveState === 'saving'}
-							onClick={() => controller.addRootGraph()}
-						>
-							<Plus />
-							New root
-						</Button>
-						<Button
 							data-id="add-graph-button"
 							type="button"
 							variant="outline"
 							size="sm"
 							disabled={projectRenamePending || saveState === 'saving'}
-							onClick={() => controller.addGraph()}
+							onClick={() => setCreateGraphOpen(true)}
 						>
 							<Plus />
-							New assembly
+							New…
 						</Button>
 					</div>
 				</div>
@@ -255,6 +247,9 @@ export function ProjectToolbar({
 							</PopoverContent>
 						</Popover>
 					</div>
+					<TooltipProvider>
+						<GraphJsonControls controller={controller} />
+					</TooltipProvider>
 					<div className="h-6 w-px bg-border" aria-hidden="true" />
 					<UserMenu
 						user={user}
@@ -330,6 +325,14 @@ export function ProjectToolbar({
 					</form>
 				</DialogContent>
 			</Dialog>
+			<CreateGraphDialog
+				open={createGraphOpen}
+				onOpenChange={setCreateGraphOpen}
+				onCreate={(name, root) => {
+					if (root) controller.addRootGraph(name)
+					else controller.addGraph(name)
+				}}
+			/>
 		</>
 	)
 }

@@ -37,8 +37,8 @@
 :root {
 	--background: #232528;
 	--surface: #18181a;
-	--border: #1f2430;
-	--input: #1f2430;
+	--border: #373b42;
+	--input: #262931;
 	--foreground: #cbccd0;
 	--foreground-hover: #ffffff;
 	--muted-foreground: #a1a6ae;
@@ -77,38 +77,63 @@ body {
 }
 
 .react-flow__handle.port-geometry {
-	background: #5ca9ff;
-	border-color: #d8ebff;
+	background: #8b5cf6;
+	border-color: #ddd6fe;
 }
 
 .react-flow__handle.port-number {
-	background: #f3af3d;
-	border-color: #ffebc4;
+	background: #f59e0b;
+	border-color: #fde68a;
 }
 
 .react-flow__handle.port-numberArray {
-	background: #fb923c;
-	border-color: #ffedd5;
+	background: #f97316;
+	border-color: #fed7aa;
 }
 
 .react-flow__handle.port-meshArray {
-	background: #38bdf8;
-	border-color: #e0f2fe;
+	background: #d946ef;
+	border-color: #f5d0fe;
+}
+
+.react-flow__handle.port-vector3 {
+	background: #94a3b8;
+	border-color: #e2e8f0;
 }
 
 .react-flow__handle.port-enum {
-	background: #b878f2;
-	border-color: #ead8ff;
+	background: #a855f7;
+	border-color: #e9d5ff;
+}
+
+.react-flow__handle.port-materialInstance {
+	background: #c08457;
+	border-color: #ead8c9;
 }
 
 .react-flow__handle.port-color {
-	background: #ef5da8;
-	border-color: #ffd5e9;
+	background: #ec4899;
+	border-color: #fbcfe8;
 }
 
 .react-flow__handle.port-boolean {
-	background: #4ade80;
-	border-color: #dcfce7;
+	background: #eab308;
+	border-color: #fef08a;
+}
+
+.react-flow__handle[data-component='x'] {
+	background: #f87171;
+	border-color: #fecaca;
+}
+
+.react-flow__handle[data-component='y'] {
+	background: #34d399;
+	border-color: #a7f3d0;
+}
+
+.react-flow__handle[data-component='z'] {
+	background: #38bdf8;
+	border-color: #bae6fd;
 }
 
 .react-flow {
@@ -162,4 +187,10 @@ body {
 
 .react-flow__node.graph-node-focus-pulse {
 	animation: graph-node-focus-pulse 700ms ease-in-out 2;
+}
+
+@layer base {
+	* {
+		@apply border-border;
+	}
 }

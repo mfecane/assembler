@@ -1,0 +1,62 @@
+{
+  "rootGraphs": [
+    {
+      "graphId": "main",
+      "inputValues": {},
+      "configurationPanel": {
+        "controls": []
+      }
+    }
+  ],
+  "enums": [],
+  "graphs": [
+    {
+      "id": "main",
+      "label": "Assembly",
+      "inputs": [],
+      "output": {
+        "id": "geometry",
+        "label": "Geometry",
+        "valueType": "geometry"
+      },
+      "nodes": [
+        {
+          "id": "primitive",
+          "name": "Box",
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "type": "primitive",
+          "data": {
+            "primitive": "box",
+            "size": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            }
+          }
+        },
+        {
+          "id": "output",
+          "name": "Output",
+          "position": {
+            "x": 320,
+            "y": 0
+          },
+          "type": "graphOutput",
+          "data": {}
+        }
+      ],
+      "edges": [
+        {
+          "id": "primitive:geometry->output:geometry",
+          "sourceNodeId": "primitive",
+          "targetNodeId": "output",
+          "sourcePort": "geometry",
+          "targetPort": "geometry"
+        }
+      ]
+    }
+  ]
+}

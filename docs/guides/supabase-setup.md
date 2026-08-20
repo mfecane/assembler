@@ -85,8 +85,9 @@ application schema. The authoritative schema is
 
 Both queries are transactional. A failed wipe restores the previous `public` schema. A failed
 schema execution leaves the successfully wiped `public` schema empty instead of partially created.
-After both queries succeed, `public.projects`, its index, update trigger, RLS policies, and grants
-match the checked-in schema.
+After both queries succeed, `public.model_metadata` and `public.projects`, their indexes, update
+triggers, RLS policies, and grants match the checked-in schema. Clients and models are registered by the
+application runtime and have no database tables.
 
 The current `graph_document` constraint accepts only the root-graph document shape: top-level
 `rootGraphs`, `enums`, and `graphs` arrays are required. The former singular `entryGraphId`,
@@ -97,7 +98,8 @@ hosted project. It creates a fixed local developer account and seeded project.
 
 ## 6. Verify
 
-1. In the Table Editor, confirm that `public.projects` is empty and RLS is enabled.
+1. In the Table Editor, confirm that `public.model_metadata` and `public.projects` are empty and RLS is
+   enabled on both tables.
 2. Open the deployed site, sign in, create a project, edit it, save, refresh, and reopen it.
 3. With two separate Google users, verify that:
 

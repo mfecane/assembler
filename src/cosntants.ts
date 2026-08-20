@@ -49,18 +49,24 @@ export const MAXSHELF_ASSET_IDS = {
 } as const
 
 export const KITCHEN_ASSET_IDS = {
+	backPanel: 'asset:kitchen:back-panel',
+	bottomPanel: 'asset:kitchen:bottom-panel',
 	cabinet: 'asset:kitchen:cabinet',
 	door1: 'asset:kitchen:door:1',
 	door2: 'asset:kitchen:door:2',
 	door3: 'asset:kitchen:door:3',
 	faucet1: 'asset:kitchen:faucet:1',
 	faucet2: 'asset:kitchen:faucet:2',
+	frontPanel: 'asset:kitchen:front-panel',
 	handle1: 'asset:kitchen:handle:1',
 	handle2: 'asset:kitchen:handle:2',
+	innerSidePanel: 'asset:kitchen:inner-side-panel',
 	leg: 'asset:kitchen:leg',
+	outerSidePanel: 'asset:kitchen:outer-side-panel',
 	tabletop1: 'asset:kitchen:tabletop:1',
 	tabletop2: 'asset:kitchen:tabletop:2',
 	tabletop3: 'asset:kitchen:tabletop:3',
+	topPanelSmall: 'asset:kitchen:top-panel-small',
 } as const
 
 export const LEGACY_ASSET_ALIASES = [

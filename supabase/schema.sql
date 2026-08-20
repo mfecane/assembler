@@ -1,7 +1,16 @@
 begin;
 
 drop table if exists public.projects cascade;
+drop table if exists public.model_metadata cascade;
+drop table if exists public.models cascade;
+drop table if exists public.clients cascade;
 drop function if exists public.set_updated_at() cascade;
+
+create table public.model_metadata (
+  model_id text primary key,
+  metadata jsonb not null check (jsonb_typeof(metadata) = 'object'),
+  updated_at timestamptz not null default now()
+);
 
 create table public.projects (
   id uuid primary key default gen_random_uuid(),
@@ -41,7 +50,28 @@ create trigger projects_set_updated_at
 before update on public.projects
 for each row execute function public.set_updated_at();
 
+create trigger model_metadata_set_updated_at
+before update on public.model_metadata
+for each row execute function public.set_updated_at();
+
 alter table public.projects enable row level security;
+alter table public.model_metadata enable row level security;
+
+create policy "Authenticated users can read model metadata"
+on public.model_metadata for select
+to authenticated
+using (true);
+
+create policy "Authenticated users can create model metadata"
+on public.model_metadata for insert
+to authenticated
+with check (true);
+
+create policy "Authenticated users can update model metadata"
+on public.model_metadata for update
+to authenticated
+using (true)
+with check (true);
 
 create policy "Authenticated users can read all projects"
 on public.projects for select
@@ -68,6 +98,8 @@ to authenticated
 using (true);
 
 grant usage on schema public to authenticated, service_role;
+grant select, insert, update on table public.model_metadata to authenticated;
+grant select, insert, update, delete on table public.model_metadata to service_role;
 grant select, insert, delete on table public.projects to authenticated;
 grant update (name, graph_document) on table public.projects to authenticated;
 grant select, insert, update, delete on table public.projects to service_role;

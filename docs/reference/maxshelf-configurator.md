@@ -161,11 +161,10 @@ configuration panel. It is forwarded to Wing Section as `Include last post and b
 instances and their far bracket repeat along negative local X. Wing A disables the terminal support
 while Wing B keeps it enabled.
 
-The Root graph also exposes `Finish color` as a color configuration control. Its available list is
-configured on that item in the Configuration Panel dialog and currently enables Sand, White, Charcoal, Red, Orange,
-Yellow, Green, Blue, and Purple. The selected color is forwarded through every graph-instance
-boundary. Each graph combines its output geometry and applies the forwarded color through its final
-Material node, so the finish covers every emitted mesh.
+The Root graph exposes `Finish material` as a material configuration control. It presents the
+registered Wood, Marble, and Plastic PBR materials. The selected material is forwarded through every
+graph-instance boundary. Each graph combines its output geometry and applies the forwarded material
+through its final Apply Material node, so the finish covers every emitted mesh.
 
 `Post height` is an enum configuration control with 1200, 1400, 1600, 2100, 2400, 2600, and
 2800 mm options. Root forwards the selection through both Wing instances and the Corner 2 assembly.
@@ -190,8 +189,9 @@ generic Choice to Scalar node because Array accepts a numeric count and the sele
 stored internally as an enum. This node stores editable choice-to-number mappings and can be reused
 anywhere a choice must drive a numeric graph input.
 
-`src/data/defaultGraph.json`, which is consumed directly by the local seed script, mirrors the same
-graph document.
+The detailed MaxShelf fixture remains in `projects/maxshelf/maxshelf.json` and is copied to
+`scripts/data/maxshelf/defaultGraph.json` for local seeding. The New Project action uses the shared
+one-primitive `scripts/data/defaultGraph.json` template instead.
 
 No dedicated internal-corner GLB assets are registered. The Corner graph therefore builds an MVP
 L-shaped infill by pairing the available 1000 × 300 back panel, 470mm base leg, and 1000 × 370 shelf

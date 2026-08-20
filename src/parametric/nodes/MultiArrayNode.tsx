@@ -1,5 +1,7 @@
 import { Position, type NodeProps } from '@xyflow/react'
 import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
+import { AXIS_TEXT_CLASSES, AxisLabel } from '@/parametric/components/AxisLabel'
 import {
 	Select,
 	SelectContent,
@@ -37,13 +39,16 @@ export function MultiArrayNode({ id }: NodeProps<ParametricFlowNode>) {
 				<div className="nodrag flex items-center justify-between gap-2 text-muted-foreground">
 					<Label htmlFor={`${id}-axis`} className="text-xs">Axis</Label>
 					<Select value={axis.value} onValueChange={(next) => axis.setValue(next as Axis)}>
-						<SelectTrigger id={`${id}-axis`} className="h-7 w-16 px-2 text-xs">
+						<SelectTrigger
+							id={`${id}-axis`}
+							className={cn('h-7 w-16 px-2 text-xs', AXIS_TEXT_CLASSES[axis.value])}
+						>
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value="x">X</SelectItem>
-							<SelectItem value="y">Y</SelectItem>
-							<SelectItem value="z">Z</SelectItem>
+							<SelectItem value="x"><AxisLabel axis="x" /></SelectItem>
+							<SelectItem value="y"><AxisLabel axis="y" /></SelectItem>
+							<SelectItem value="z"><AxisLabel axis="z" /></SelectItem>
 						</SelectContent>
 					</Select>
 				</div>
@@ -54,7 +59,6 @@ export function MultiArrayNode({ id }: NodeProps<ParametricFlowNode>) {
 						value={offset.value}
 						onValueChange={offset.setValue}
 						step={0.01}
-						roundStep={0.01}
 					/>
 				</div>
 			</div>

@@ -43,11 +43,14 @@ export class ViewportScene {
 	private readonly renderer: WebGLRenderer
 	private readonly orbitControls: OrbitControls
 	private readonly disposeSceneSetup: () => void
+	private readonly fitShadowsToBounds: (bounds: Box3) => void
 	private readonly meshesById = new Map<string, Mesh>()
 	private readonly ghostMeshesById = new Map<string, Mesh>()
 	private readonly transformControls: TransformControls
 	private readonly transformTarget = new Object3D()
 	private readonly canvasEvents: CanvasEventHandler
+	private readonly cameraUpdateSubscription: AbortController
+	private readonly cameraWidgetRadii = new Map<Mesh, number>()
 	private selectionHelper: BoxHelper | null = null
 	private attachedTransformNodeId: string | null = null
 	private attachedArrayDistanceNodeId: string | null = null
@@ -62,7 +65,7 @@ export class ViewportScene {
 	private gizmoHistoryGroup = 'idle'
 	private gizmoSequence = 0
 	private syncingGizmo = false
-	private shiftPressed = false
+	private precisionModifierPressed = false
 	private alignmentGizmoEnabled = false
 	private alignmentGizmoHitTargets: Mesh[] = []
 	private alignmentGizmoMarkers: Mesh[] = []
@@ -79,6 +82,7 @@ export class ViewportScene {
 		this.renderer = setup.renderer
 		this.orbitControls = setup.controls
 		this.disposeSceneSetup = setup.dispose
+		this.fitShadowsToBounds = setup.fitShadowsToBounds
 
 		this.scene.add(this.transformTarget)
 		this.transformControls = new TransformControls(this.camera, canvas)
@@ -104,6 +108,9 @@ export class ViewportScene {
 			() => this.transformControls.dragging,
 			this.onAlignmentPointHover
 		)
+		this.cameraUpdateSubscription = setup.cameraUpdates.subscribe(() => {
+			this.updateCameraScaledWidgets()
+		})
 		this.resize()
 	}
 
@@ -145,12 +152,20 @@ export class ViewportScene {
 	): void {
 		syncSceneMetadata(this.scene, this.meshesById, metadata)
 		syncSceneMetadata(this.scene, this.ghostMeshesById, ghostMetadata, { ghost: true })
+		if (this.meshesById.size > 0) {
+			const bounds = this.getContentBounds()
+			this.fitShadowsToBounds(new Box3(
+				new Vector3(bounds.min.x, bounds.min.y, bounds.min.z),
+				new Vector3(bounds.max.x, bounds.max.y, bounds.max.z)
+			))
+		}
 		this.syncSelection(selectedMeshInstanceId)
 		this.syncGizmo(transformNode, arrayDistanceNode, transformMode)
 	}
 
 	public dispose(): void {
 		this.canvasEvents.dispose()
+		this.cameraUpdateSubscription.abort()
 		this.transformControls.removeEventListener('mouseDown', this.onTransformStart)
 		this.transformControls.removeEventListener('objectChange', this.onTransformChange)
 		this.transformControls.removeEventListener('mouseUp', this.onTransformEnd)
@@ -269,9 +284,12 @@ export class ViewportScene {
 					this.scene.add(marker, collider)
 					this.alignmentGizmoMarkers.push(marker)
 					this.alignmentGizmoHitTargets.push(collider)
+					this.cameraWidgetRadii.set(marker, markerRadius)
+					this.cameraWidgetRadii.set(collider, hitTargetRadius)
 				}
 			}
 		}
+		this.updateCameraScaledWidgets()
 	}
 
 	private removeAlignmentGizmo(): void {
@@ -283,9 +301,11 @@ export class ViewportScene {
 		const markerGeometry = this.alignmentGizmoMarkers[0].geometry
 		for (const marker of this.alignmentGizmoMarkers) {
 			this.scene.remove(marker)
+			this.cameraWidgetRadii.delete(marker)
 			const materials = Array.isArray(marker.material) ? marker.material : [marker.material]
 			for (const material of materials) material.dispose()
 		}
+		for (const hitTarget of this.alignmentGizmoHitTargets) this.cameraWidgetRadii.delete(hitTarget)
 		colliderGeometry.dispose()
 		markerGeometry.dispose()
 		if (Array.isArray(colliderMaterial)) {
@@ -295,6 +315,18 @@ export class ViewportScene {
 		}
 		this.alignmentGizmoHitTargets = []
 		this.alignmentGizmoMarkers = []
+	}
+
+	private updateCameraScaledWidgets(): void {
+		const viewportHeight = this.renderer.domElement.clientHeight
+		if (viewportHeight === 0) return
+		for (const [widget, radius] of this.cameraWidgetRadii) {
+			const pixelRadius = this.alignmentGizmoMarkers.includes(widget) ? 10 : 28
+			const distance = this.camera.position.distanceTo(widget.getWorldPosition(new Vector3()))
+			const worldRadius = 2 * distance * Math.tan(MathUtils.degToRad(this.camera.fov / 2))
+				* pixelRadius / viewportHeight
+			widget.scale.setScalar(worldRadius / radius)
+		}
 	}
 
 	private readonly onAlignmentPointHover = (hitTarget: Mesh | null) => {
@@ -350,9 +382,9 @@ export class ViewportScene {
 
 		this.transformControls.setMode('translate')
 		this.transformControls.setSpace('world')
-		this.transformControls.showX = node.getAxis() === 'x'
-		this.transformControls.showY = node.getAxis() === 'y'
-		this.transformControls.showZ = node.getAxis() === 'z'
+		this.transformControls.showX = true
+		this.transformControls.showY = false
+		this.transformControls.showZ = false
 		this.syncingGizmo = true
 		this.arrayDistanceAnchor = placement.anchor
 		this.arrayDistanceSteps = placement.steps
@@ -402,7 +434,7 @@ export class ViewportScene {
 		}
 
 		const target = anchor.clone()
-		target[node.getAxis()] += node.getOffset()
+		target.x += node.getOffset('x')
 		return { anchor, target, steps: 1 }
 	}
 
@@ -432,7 +464,7 @@ export class ViewportScene {
 		if (this.syncingGizmo) return
 		if (this.attachedTransformNodeId && this.transformStart) {
 			const after = this.getPrecisionTransformValues(this.readTargetValues())
-			if (this.shiftPressed) this.writeTargetValues(after)
+			if (this.precisionModifierPressed) this.writeTargetValues(after)
 			this.previewTransformDrag(after)
 			this.controller.applyTransform(
 				this.attachedTransformNodeId,
@@ -445,13 +477,13 @@ export class ViewportScene {
 		}
 		if (this.attachedArrayDistanceNodeId && this.arrayDistanceStart !== null) {
 			const distance = this.getPrecisionArrayDistance(this.readArrayDistance())
-			if (this.shiftPressed) this.writeArrayDistance(distance)
+			if (this.precisionModifierPressed) this.writeArrayDistance(distance)
 			this.previewArrayDistanceDrag(distance)
 			this.controller.applyArrayDistance(
 				this.attachedArrayDistanceNodeId,
 				distance,
 				this.gizmoHistoryGroup,
-				this.shiftPressed
+				this.precisionModifierPressed
 			)
 			this.arrayDistanceStart = distance
 		}
@@ -470,15 +502,19 @@ export class ViewportScene {
 	}
 
 	private readonly onKeyDown = (event: KeyboardEvent) => {
-		if (event.key === 'Shift') this.shiftPressed = true
+		if (event.key === 'Control' || event.key === 'Meta') {
+			this.precisionModifierPressed = true
+		}
 	}
 
 	private readonly onKeyUp = (event: KeyboardEvent) => {
-		if (event.key === 'Shift') this.shiftPressed = false
+		if (event.key === 'Control' || event.key === 'Meta') {
+			this.precisionModifierPressed = event.ctrlKey || event.metaKey
+		}
 	}
 
 	private readonly onWindowBlur = () => {
-		this.shiftPressed = false
+		this.precisionModifierPressed = false
 	}
 
 	private readTargetValues(): TransformNodeValues {
@@ -538,7 +574,7 @@ export class ViewportScene {
 	}
 
 	private getPrecisionTransformValues(values: TransformNodeValues): TransformNodeValues {
-		if (!this.shiftPressed || !this.visualTransformStart) return values
+		if (!this.precisionModifierPressed || !this.visualTransformStart) return values
 		return {
 			translation: interpolateVector(this.visualTransformStart.translation, values.translation, 0.1),
 			rotation: interpolateVector(this.visualTransformStart.rotation, values.rotation, 0.1),
@@ -547,7 +583,7 @@ export class ViewportScene {
 	}
 
 	private getPrecisionArrayDistance(value: number): number {
-		if (!this.shiftPressed || this.visualArrayDistanceStart === null) return value
+		if (!this.precisionModifierPressed || this.visualArrayDistanceStart === null) return value
 		return this.visualArrayDistanceStart + (value - this.visualArrayDistanceStart) / 10
 	}
 

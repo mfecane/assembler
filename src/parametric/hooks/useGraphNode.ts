@@ -1,6 +1,8 @@
 import { useCallback } from 'react'
 import { useEditorController } from '@/parametric/editor/react/EditorContext'
 import {
+	ChoiceToBooleanMapGraphNode,
+	type ChoiceBooleanMapping,
 	ChoiceToScalarMapGraphNode,
 	type ChoiceScalarMapping,
 	ChoiceToVector3MapGraphNode,
@@ -8,13 +10,12 @@ import {
 	type ChoiceMeshMapping,
 	ChoiceToMeshMapGraphNode,
 	GeometryToggleGraphNode,
-	MaterialGraphNode,
-	SelectorGraphNode,
 	SumGraphNode,
 	type TransformOrigin,
 	TransformGraphNode,
 } from '@/parametric/model/GraphNode'
 import type { Vector3Snapshot } from '@/parametric/model/Vector3Value'
+import { getMathExpressionVisibleInputIndexes } from '@/parametric/model/MathExpression'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
 
 export interface FieldBinding<T> {
@@ -48,28 +49,58 @@ export function useVectorNumericFields(nodeId: string, field: string, label: str
 	}
 }
 
-export interface SelectorNodeBinding {
-	options: string[]
-	setOptions: (options: string[]) => void
+export interface MathExpressionNodeBinding {
+	expression: FieldBinding<string>
+	inputIndexes: number[]
+	placeholderInputIndex: number | null
 }
 
-export function useSelectorNode(nodeId: string): SelectorNodeBinding | undefined {
-	const controller = useEditorController()
+export function useMathExpressionNode(nodeId: string): MathExpressionNodeBinding {
+	const expression = useField(nodeId, 'expression', '= $x')
 	const { model } = useGraphSnapshot()
-	const node = model.getNode(nodeId)
-	const setOptions = useCallback(
-		(options: string[]) => controller.setSelectorOptions(nodeId, options),
-		[controller, nodeId]
-	)
-
-	if (!(node instanceof SelectorGraphNode)) return undefined
-	return { options: node.getOptions(), setOptions }
+	const occupiedIndexes = model.getEdges().flatMap((edge) => {
+		if (edge.targetNodeId !== nodeId || edge.targetPort === null) return []
+		const index = Number(edge.targetPort)
+		return Number.isInteger(index) && index >= 0 ? [index] : []
+	})
+	const inputIndexes = getMathExpressionVisibleInputIndexes(occupiedIndexes)
+	const lastInputIndex = inputIndexes[inputIndexes.length - 1]
+	return {
+		expression,
+		inputIndexes,
+		placeholderInputIndex: lastInputIndex !== undefined && !occupiedIndexes.includes(lastInputIndex)
+			? lastInputIndex
+			: null,
+	}
 }
 
 export interface ChoiceToScalarMapNodeBinding {
 	mappings: ChoiceScalarMapping[]
 	availableEnumOptions: string[]
 	setMappings: (mappings: ChoiceScalarMapping[]) => void
+}
+
+export interface ChoiceToBooleanMapNodeBinding {
+	mappings: ChoiceBooleanMapping[]
+	availableEnumOptions: string[]
+	setMappings: (mappings: ChoiceBooleanMapping[]) => void
+}
+
+export function useChoiceToBooleanMapNode(nodeId: string): ChoiceToBooleanMapNodeBinding | undefined {
+	const controller = useEditorController()
+	const { model } = useGraphSnapshot()
+	const node = model.getNode(nodeId)
+	const setMappings = useCallback(
+		(mappings: ChoiceBooleanMapping[]) => controller.setChoiceBooleanMappings(nodeId, mappings),
+		[controller, nodeId]
+	)
+
+	if (!(node instanceof ChoiceToBooleanMapGraphNode)) return undefined
+	return {
+		mappings: node.getMappings(),
+		availableEnumOptions: model.getInputOptions(nodeId, 'enum'),
+		setMappings,
+	}
 }
 
 export function useChoiceToScalarMapNode(nodeId: string): ChoiceToScalarMapNodeBinding | undefined {
@@ -159,38 +190,6 @@ export function useGeometryToggleNode(nodeId: string): GeometryToggleNodeBinding
 		enabled: connectedEnabled ?? node.getEnabled(),
 		enabledConnected: connectedEnabled !== undefined,
 		setEnabled,
-	}
-}
-
-export interface MaterialNodeBinding {
-	color: string
-	colorConnected: boolean
-	setColor: (color: string) => void
-}
-
-export function useMaterialNode(nodeId: string): MaterialNodeBinding | undefined {
-	const controller = useEditorController()
-	const { activeGraphId, model } = useGraphSnapshot()
-	const node = model.getNode(nodeId)
-	const setColor = useCallback(
-		(color: string) => controller.setFieldValue(nodeId, 'color', color),
-		[controller, nodeId]
-	)
-
-	if (!(node instanceof MaterialGraphNode)) return undefined
-	const colorEdge = model.getEdges().find(
-		(edge) => edge.targetNodeId === nodeId && edge.targetPort === 'color'
-	)
-	const connectedValue = colorEdge?.sourcePort
-		? controller.evaluateOutput(activeGraphId, colorEdge.sourceNodeId, colorEdge.sourcePort)
-		: undefined
-	const connectedColor = connectedValue?.valueType === 'color' && typeof connectedValue.value === 'string'
-		? connectedValue.value
-		: undefined
-	return {
-		color: connectedColor ?? node.getColor(),
-		colorConnected: Boolean(connectedColor),
-		setColor,
 	}
 }
 
