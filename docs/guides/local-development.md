@@ -24,9 +24,6 @@ The project-header package download is named `project.zip` and contains `metadat
 `scripts/data/kitchen/metadata.json` and `scripts/data/kitchen/project.json` with those files before
 seeding.
 
-Connection pins are disabled by default. To enable creating a pin when an output connection is
-dropped on empty graph canvas, set `VITE_ENABLE_GRAPH_CONNECTION_PINS=true` for the frontend.
-
 Remove the containers and temporary database:
 
 ```bash

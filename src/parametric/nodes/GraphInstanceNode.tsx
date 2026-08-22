@@ -1,4 +1,4 @@
-import { Position, type NodeProps } from '@xyflow/react'
+import type { NodeProps } from '@xyflow/react'
 import { ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -11,13 +11,14 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { NumericInput } from '@/parametric/components/NumericInput'
-import { EmbeddedTransformSection } from '@/parametric/components/EmbeddedTransformSection'
+import { GraphInstanceTransformSection } from '@/parametric/components/GraphInstanceTransformSection'
 import { GeometryPreviewButton } from '@/parametric/components/GeometryPreviewButton'
-import { NodeHeader } from '@/parametric/components/NodeHeader'
-import { NumberArrayEditor } from '@/parametric/components/NumberArrayEditor'
+import { NodePortGroup } from '@/parametric/components/NodePortGroup'
+import { NodePortRow } from '@/parametric/components/NodePortRow'
+import { NodeSurface } from '@/parametric/components/NodeSurface'
+import { PrimitiveArrayEditor } from '@/parametric/components/PrimitiveArrayEditor'
 import { MaterialSelect } from '@/parametric/components/MaterialSelect'
 import { AxisLabel } from '@/parametric/components/AxisLabel'
-import { TypedHandle } from '@/parametric/components/TypedHandle'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 import { useEditorController } from '@/parametric/editor/react/EditorContext'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
@@ -43,13 +44,11 @@ export function GraphInstanceNode({ id }: NodeProps<ParametricFlowNode>) {
 	)
 
 	return (
-		<div
-			data-id={`graph-instance-node-${id}`}
-			className="min-w-60 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
-		>
-			<NodeHeader
-				nodeId={id}
-				actions={(
+		<NodeSurface
+			nodeId={id}
+			dataId={`graph-instance-node-${id}`}
+			className="min-w-60"
+			actions={(
 					<div className="flex items-center">
 						{graph.output.valueType === 'geometry' && (
 							<GeometryPreviewButton nodeId={id} />
@@ -67,12 +66,14 @@ export function GraphInstanceNode({ id }: NodeProps<ParametricFlowNode>) {
 						</Button>
 					</div>
 				)}
-			/>
-			<div className="flex flex-col gap-2">
-				{graph.inputs.length === 0 ? (
-					<div className="text-[11px] text-muted-foreground">No inputs</div>
-				) : graph.inputs.map((input) => (
-					<GraphInstanceInput
+		>
+			<NodePortGroup nodeId={id} portId={graph.output.id} valueType={graph.output.valueType}
+				dataId={`graph-instance-fields-${id}`} className="flex flex-col gap-2">
+				<div className="flex flex-col gap-2">
+					{graph.inputs.length === 0 ? (
+						<div className="text-[11px] text-muted-foreground">No inputs</div>
+					) : graph.inputs.map((input) => (
+						<GraphInstanceInput
 						key={input.id}
 						nodeId={id}
 						input={input}
@@ -84,17 +85,15 @@ export function GraphInstanceNode({ id }: NodeProps<ParametricFlowNode>) {
 							input.id,
 							value
 						)}
-					/>
-				))}
-			</div>
-			<EmbeddedTransformSection nodeId={id} />
-			<TypedHandle
-				id={graph.output.id}
-				type="source"
-				position={Position.Right}
-				valueType={graph.output.valueType}
-			/>
-		</div>
+						/>
+					))}
+				</div>
+				<GraphInstanceTransformSection
+					nodeId={id}
+					translationConnected={connectedInputIds.has('translation')}
+				/>
+			</NodePortGroup>
+		</NodeSurface>
 	)
 }
 
@@ -116,23 +115,24 @@ function GraphInstanceInput({
 	const controlId = `graph-instance-input-${nodeId}-${input.id}`
 
 	return (
-		<div
-			data-id={controlId}
-			className="relative grid min-h-8 grid-cols-[minmax(5rem,1fr)_9rem] items-center gap-2"
-			title={connected ? `${input.label} is controlled by a connection` : undefined}
-		>
-			<TypedHandle
-				id={input.id}
-				type="target"
-				position={Position.Left}
-				valueType={input.valueType}
-			/>
-			<Label
+		<NodePortRow
+			nodeId={nodeId}
+			portId={input.id}
+			valueType={input.valueType}
+			direction="input"
+			className="min-h-8"
+			label={<Label
 				htmlFor={controlId}
 				className="min-w-0 truncate text-[11px] text-muted-foreground"
 			>
 				{input.label}
-			</Label>
+			</Label>}
+		>
+			<div
+				data-id={controlId}
+				className="w-36"
+				title={connected ? `${input.label} is controlled by a connection` : undefined}
+			>
 			{input.valueType === 'number' ? (
 				<NumericInput
 					id={controlId}
@@ -143,10 +143,14 @@ function GraphInstanceInput({
 					step={0.1}
 					disabled={connected}
 				/>
-			) : input.valueType === 'numberArray' ? (
-				<NumberArrayEditor
+			) : input.valueType === 'primitiveArray' ? (
+				<PrimitiveArrayEditor
 					dataId={`${controlId}-control`}
-					values={Array.isArray(value) ? value : [0]}
+					elementType={getPrimitiveArrayElementType(value)}
+					options={options}
+					values={Array.isArray(value) ? value.filter((item): item is number | boolean => (
+						typeof item === 'number' || typeof item === 'boolean'
+					)) : []}
 					onChange={onValueChange}
 					disabled={connected}
 				/>
@@ -227,8 +231,16 @@ function GraphInstanceInput({
 			) : (
 				<span className="text-right text-[11px] text-muted-foreground">connection only</span>
 			)}
-		</div>
+			</div>
+		</NodePortRow>
 	)
+}
+
+function getPrimitiveArrayElementType(
+	value: GraphInputValue | undefined
+): 'number' | 'boolean' | 'enum' {
+	const firstValue = Array.isArray(value) ? value[0] : undefined
+	return typeof firstValue === 'boolean' ? 'boolean' : 'number'
 }
 
 function Vector3Input({

@@ -1,20 +1,25 @@
+import { SCENE_CONSTANTS } from '@/constants'
 import { CameraUpdateController } from '@/parametric/three/CameraUpdateController'
+import { TechnicalGrid } from '@/parametric/three/TechnicalGrid'
 import {
 	AmbientLight,
-	AxesHelper,
 	Box3,
 	Clock,
 	Color,
 	DirectionalLight,
-	GridHelper,
 	HemisphereLight,
+	MathUtils,
+	Mesh,
+	MeshBasicMaterial,
 	PCFSoftShadowMap,
 	PerspectiveCamera,
 	Scene,
+	SphereGeometry,
 	Vector3,
 	WebGLRenderer,
 } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { ViewHelper } from 'three/examples/jsm/helpers/ViewHelper.js'
 
 export interface SceneSetupResult {
 	scene: Scene
@@ -28,12 +33,8 @@ export interface SceneSetupResult {
 }
 
 type SceneRenderListener = (deltaSeconds: number) => void
-export type ScenePresentation = 'technical' | 'studio'
 
-export function createSceneSetup(
-	canvas: HTMLCanvasElement,
-	presentation: ScenePresentation = 'technical'
-): SceneSetupResult {
+export function createSceneSetup(canvas: HTMLCanvasElement): SceneSetupResult {
 	const scene = new Scene()
 	scene.background = new Color(0x1b1d21)
 
@@ -87,14 +88,6 @@ export function createSceneSetup(
 		shadowCamera.updateProjectionMatrix()
 	}
 
-	if (presentation === 'technical') {
-		const gridHelper = new GridHelper(10, 10)
-		scene.add(gridHelper)
-
-		const axesHelper = new AxesHelper(2)
-		scene.add(axesHelper)
-	}
-
 	const clock = new Clock()
 	const renderListeners = new Set<SceneRenderListener>()
 	const addRenderListener = (listener: SceneRenderListener): AbortController => {
@@ -130,5 +123,67 @@ export function createSceneSetup(
 		addRenderListener,
 		fitShadowsToBounds,
 		dispose,
+	}
+}
+
+export function createTechnicalSceneSetup(canvas: HTMLCanvasElement): SceneSetupResult {
+	const setup = createSceneSetup(canvas)
+	const grid = new TechnicalGrid()
+	setup.scene.add(grid)
+
+	const originMarker = new Mesh(
+		new SphereGeometry(SCENE_CONSTANTS.ORIGIN_MARKER.radius, 16, 12),
+		new MeshBasicMaterial({ color: 0xffffff, depthTest: false, depthWrite: false })
+	)
+	originMarker.renderOrder = 1
+	setup.scene.add(originMarker)
+
+	const originMarkerPosition = new Vector3()
+	const originMarkerCameraSubscription = setup.cameraUpdates.subscribe(() => {
+		const viewportHeight = setup.renderer.domElement.clientHeight
+		if (viewportHeight === 0) return
+		const distance = setup.camera.position.distanceTo(originMarker.getWorldPosition(originMarkerPosition))
+		const worldRadius =
+			(2 *
+				distance *
+				Math.tan(MathUtils.degToRad(setup.camera.fov / 2)) *
+				SCENE_CONSTANTS.ORIGIN_MARKER.pixelRadius) /
+			viewportHeight
+		originMarker.scale.setScalar(worldRadius / SCENE_CONSTANTS.ORIGIN_MARKER.radius)
+	})
+
+	const viewHelper = new ViewHelper(setup.camera, setup.renderer.domElement)
+	viewHelper.setLabels('x', 'y', 'z')
+	const handleViewHelperClick = (event: PointerEvent) => {
+		if (!viewHelper.handleClick(event)) return
+		event.preventDefault()
+		event.stopImmediatePropagation()
+	}
+	setup.renderer.domElement.addEventListener('pointerup', handleViewHelperClick)
+	const viewHelperRenderSubscription = setup.addRenderListener((deltaSeconds) => {
+		viewHelper.center.copy(setup.controls.target)
+		if (viewHelper.animating) viewHelper.update(deltaSeconds)
+		const autoClear = setup.renderer.autoClear
+		setup.renderer.autoClear = false
+		try {
+			viewHelper.render(setup.renderer)
+		} finally {
+			setup.renderer.autoClear = autoClear
+		}
+	})
+
+	const disposeSceneSetup = setup.dispose
+	return {
+		...setup,
+		dispose: () => {
+			originMarkerCameraSubscription.abort()
+			viewHelperRenderSubscription.abort()
+			setup.renderer.domElement.removeEventListener('pointerup', handleViewHelperClick)
+			viewHelper.dispose()
+			grid.dispose()
+			originMarker.geometry.dispose()
+			originMarker.material.dispose()
+			disposeSceneSetup()
+		},
 	}
 }

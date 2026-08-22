@@ -5,7 +5,8 @@ import type {
 } from '@/parametric/editor/EditorController'
 import type { ReactBridge } from '@/parametric/editor/ReactBridge'
 import type { SceneNodeInstanceReference } from '@/parametric/evaluation/SceneMetadata'
-import { ArrayGraphNode, isTransformableGraphNode } from '@/parametric/model/GraphNode'
+import type { Vector3Snapshot } from '@/parametric/model/Vector3Value'
+import { ArrayGraphNode, isTransformableGraphNode, RotateAnimationHintGraphNode } from '@/parametric/model/GraphNode'
 import {
 	InteractionHandlerRouter,
 	AlignmentPointInteractionHandler,
@@ -42,6 +43,10 @@ export class ViewportEditorController {
 			previewNodeId: nodeId,
 			transformNodeId: isTransformableGraphNode(node) ? nodeId : null,
 			arrayDistanceNodeId: node instanceof ArrayGraphNode ? nodeId : null,
+			rotateAnimationHintNodeId: node instanceof RotateAnimationHintGraphNode
+				&& !snapshot.model.getEdges().some((edge) => edge.targetNodeId === nodeId && edge.targetPort === 'offset')
+				? nodeId
+				: null,
 			selectedMeshInstanceId: null,
 			contextMenu: null,
 		})
@@ -53,6 +58,7 @@ export class ViewportEditorController {
 			previewNodeId: null,
 			transformNodeId: null,
 			arrayDistanceNodeId: null,
+			rotateAnimationHintNodeId: null,
 			selectedMeshInstanceId: null,
 			contextMenu: null,
 		})
@@ -66,7 +72,9 @@ export class ViewportEditorController {
 
 	public isGizmoActive(): boolean {
 		const snapshot = this.bridge.getSnapshot()
-		return snapshot.transformNodeId !== null || snapshot.arrayDistanceNodeId !== null
+		return snapshot.transformNodeId !== null
+			|| snapshot.arrayDistanceNodeId !== null
+			|| snapshot.rotateAnimationHintNodeId !== null
 	}
 
 	public selectMesh(
@@ -96,6 +104,7 @@ export class ViewportEditorController {
 			previewNodeId: null,
 			transformNodeId: null,
 			arrayDistanceNodeId: null,
+			rotateAnimationHintNodeId: null,
 			selectedMeshInstanceId: null,
 			contextMenu: null,
 			graphNodeFocusRequest: source,
@@ -134,6 +143,15 @@ export class ViewportEditorController {
 	): void {
 		const graphId = this.editorController.getSnapshot().activeGraphId
 		this.editorController.setArrayDistance(graphId, nodeId, value, historyGroup, precision)
+	}
+
+	public applyRotateAnimationHintOffset(
+		nodeId: string,
+		offset: Vector3Snapshot,
+		historyGroup: string
+	): void {
+		const graphId = this.editorController.getSnapshot().activeGraphId
+		this.editorController.setRotateAnimationHintOffset(graphId, nodeId, offset, historyGroup)
 	}
 
 	public alignTransform(
@@ -204,6 +222,7 @@ export class ViewportEditorController {
 				previewNodeId: null,
 				transformNodeId: null,
 				arrayDistanceNodeId: null,
+				rotateAnimationHintNodeId: null,
 				selectedMeshInstanceId: null,
 				contextMenu: null,
 			})
@@ -221,12 +240,21 @@ export class ViewportEditorController {
 		const arrayDistanceExists = bridgeSnapshot.arrayDistanceNodeId
 			? graphSnapshot.model.getNode(bridgeSnapshot.arrayDistanceNodeId) instanceof ArrayGraphNode
 			: true
-		if (!previewExists || !transformExists || !arrayDistanceExists) {
+		const rotateAnimationHintExists = bridgeSnapshot.rotateAnimationHintNodeId
+			? graphSnapshot.model.getNode(bridgeSnapshot.rotateAnimationHintNodeId) instanceof RotateAnimationHintGraphNode
+				&& !graphSnapshot.model.getEdges().some((edge) => (
+					edge.targetNodeId === bridgeSnapshot.rotateAnimationHintNodeId && edge.targetPort === 'offset'
+				))
+			: true
+		if (!previewExists || !transformExists || !arrayDistanceExists || !rotateAnimationHintExists) {
 			this.bridge.update({
 				previewNodeId: previewExists ? bridgeSnapshot.previewNodeId : null,
 				transformNodeId: transformExists ? bridgeSnapshot.transformNodeId : null,
 				arrayDistanceNodeId: arrayDistanceExists
 					? bridgeSnapshot.arrayDistanceNodeId
+					: null,
+				rotateAnimationHintNodeId: rotateAnimationHintExists
+					? bridgeSnapshot.rotateAnimationHintNodeId
 					: null,
 				selectedMeshInstanceId: null,
 				contextMenu: null,

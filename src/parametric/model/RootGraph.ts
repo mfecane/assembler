@@ -4,23 +4,17 @@ import type {
 	GraphInputValue,
 } from '@/parametric/model/GraphDocumentModel'
 import { Vector3Value } from '@/parametric/model/Vector3Value'
-import {
-	copyRootGraphLayoutMetadata,
-	type RootGraphLayoutMetadata,
-} from '@/layout/GraphLayoutMetadata'
 
 export class RootGraph {
 	private readonly inputValues = new Map<string, GraphInputValue>()
 	private configurationControls: ConfigurationPanelControl[]
 	private configurationTemplates: ConfigurationTemplate[]
-	private layoutMetadata: RootGraphLayoutMetadata | undefined
 
 	public constructor(
 		private readonly graphId: string,
 		inputValues: Record<string, GraphInputValue>,
 		configurationControls: ConfigurationPanelControl[],
-		configurationTemplates: ConfigurationTemplate[],
-		layoutMetadata?: RootGraphLayoutMetadata
+		configurationTemplates: ConfigurationTemplate[]
 	) {
 		if (!graphId.trim()) throw new Error('Root graph ID cannot be empty')
 		for (const [inputId, value] of Object.entries(inputValues)) {
@@ -28,7 +22,6 @@ export class RootGraph {
 		}
 		this.configurationControls = configurationControls.map(copyConfigurationControl)
 		this.configurationTemplates = configurationTemplates.map(copyConfigurationTemplate)
-		this.layoutMetadata = copyRootGraphLayoutMetadata(layoutMetadata)
 	}
 
 	public getGraphId(): string {
@@ -70,13 +63,6 @@ export class RootGraph {
 		this.configurationTemplates = templates.map(copyConfigurationTemplate)
 	}
 
-	public getLayoutMetadata(): RootGraphLayoutMetadata | undefined {
-		return copyRootGraphLayoutMetadata(this.layoutMetadata)
-	}
-
-	public setLayoutMetadata(metadata: RootGraphLayoutMetadata | undefined): void {
-		this.layoutMetadata = copyRootGraphLayoutMetadata(metadata)
-	}
 }
 
 function copyConfigurationTemplate(template: ConfigurationTemplate): ConfigurationTemplate {
@@ -88,10 +74,7 @@ function copyConfigurationTemplate(template: ConfigurationTemplate): Configurati
 	}
 }
 
-function copyConfigurationControl(
-	control: ConfigurationPanelControl
-): ConfigurationPanelControl {
-	if (control.type === 'numberArray') return { ...control, labels: [...control.labels] }
+function copyConfigurationControl(control: ConfigurationPanelControl): ConfigurationPanelControl {
 	return { ...control }
 }
 

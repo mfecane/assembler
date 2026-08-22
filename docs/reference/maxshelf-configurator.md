@@ -140,9 +140,8 @@ The second section is rotated 90 degrees, with its depth axis mirrored so its sh
 from the wall. Both sections are offset by one 1.26-unit shelf span from the corner origin. Section
 count and one `[big, small]` shelf-count array are forwarded to both wings. Each Wing Section uses
 470 mm shelves with matching brackets for the lower group and 300 mm shelves with matching brackets
-for the upper group. A Mesh Array preserves the two complete shelf/bracket bundles in size order.
-Multi Array pairs those bundles with the two counts and places every copy in one continuous
-0.2-unit vertical sequence.
+for the upper group. This retired configuration used ordered shelf bundles and paired count arrays;
+the active editor uses Repeat Zones for repetition instead.
 
 Wing Section also exposes `Mirror shelves and base`, a boolean authoring input that defaults to
 off. When enabled on a Wing Section instance, it adds a second set of both shelf groups, their

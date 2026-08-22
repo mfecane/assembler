@@ -1,7 +1,11 @@
-import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
-import { Plus } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { DoorClosed, DoorOpen, Pencil, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ButtonGroup } from '@/components/ui/button-group'
+import { Toggle } from '@/components/ui/toggle'
+import { ProductAnimationLabelDialog } from '@/layout/ProductAnimationLabelDialog'
 import { LayoutViewportEditor } from '@/layout/LayoutViewportEditor'
+import { DEFAULT_PRODUCT_ANIMATION_LABEL } from '@/layout/LayoutDocument'
 import { useEditor } from '@/parametric/editor/react/EditorContext'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
 import { cn } from '@/lib/utils'
@@ -9,6 +13,7 @@ import { cn } from '@/lib/utils'
 export function LayoutViewport() {
 	const canvasRef = useRef<HTMLCanvasElement>(null)
 	const containerRef = useRef<HTMLDivElement>(null)
+	const [renameOpen, setRenameOpen] = useState(false)
 	const editor = useEditor()
 	const viewport = useMemo(() => new LayoutViewportEditor(editor.controller), [editor])
 	const viewportSnapshot = useSyncExternalStore(
@@ -25,6 +30,7 @@ export function LayoutViewport() {
 			+ `${JSON.stringify(layoutData.products.map((item) => item.id))}.`
 		)
 	}
+	const animationLabel = product.animationLabel ?? DEFAULT_PRODUCT_ANIMATION_LABEL
 
 	useEffect(() => {
 		const canvas = canvasRef.current
@@ -41,6 +47,47 @@ export function LayoutViewport() {
 			className="relative h-full w-full overflow-hidden"
 		>
 			<canvas ref={canvasRef} data-id="product-editor-canvas" className="block h-full w-full" />
+			{viewportSnapshot.hasAnimation && (
+				<ButtonGroup
+					data-id="product-animation-controls"
+					className="absolute bottom-3 left-3 z-10 rounded-md shadow-md"
+				>
+					<Toggle
+						data-id="product-door-animation-toggle"
+						variant="outline"
+						pressed={viewportSnapshot.doorsOpen}
+						className={cn(
+							'h-9 min-w-44 justify-start bg-background px-3',
+							'data-[state=on]:border-primary data-[state=on]:bg-primary',
+							'data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90',
+						)}
+						aria-label={animationLabel}
+						title={animationLabel}
+						onPressedChange={(open) => viewport.setDoorsOpen(open)}
+					>
+						{viewportSnapshot.doorsOpen ? <DoorOpen /> : <DoorClosed />}
+						<span className="truncate">{animationLabel}</span>
+					</Toggle>
+					<Button
+						data-id="rename-product-door-animation"
+						type="button"
+						variant="outline"
+						size="icon"
+						className="bg-background"
+						aria-label="Edit animation button label"
+						title="Edit animation button label"
+						onClick={() => setRenameOpen(true)}
+					>
+						<Pencil />
+					</Button>
+				</ButtonGroup>
+			)}
+			<ProductAnimationLabelDialog
+				label={animationLabel}
+				open={renameOpen}
+				onOpenChange={setRenameOpen}
+				onSave={(label) => editor.controller.setProductAnimationLabel(product.id, label)}
+			/>
 			{viewportSnapshot.error && (
 				<div
 					data-id="product-editor-error"

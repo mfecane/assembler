@@ -1,5 +1,5 @@
 import type { BufferGeometry } from 'three'
-import type { Client } from '@/cosntants'
+import type { Client } from '@/constants'
 
 export interface MeshDescriptor {
 	id: string

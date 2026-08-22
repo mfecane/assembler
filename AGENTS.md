@@ -30,12 +30,20 @@ Do not use editor-architecture skill for already powered by react flow parts of 
 
 # Data folder
 
-- Notify user about no-backwards compatible changes in schema. Await for explicit permission before processing.
+- [Disabled] Notify user about no-backwards compatible changes in schema. Await for explicit permission before processing.
+
 - Keep graphs in /scripts/data folders up to date with current schema, just parse it and modify alongside schema modification, update seed script too seed new defaultGraph No automatic migration is needed, but this graphs shape should persist in the process of schema modification. It may not survive schema change 100% correctly, but maximum effort should be put to keep it as is.
+
 - Do not replace seeded data with synthesised trivial graphs.
 
 Stop leaking prompt spec details into the UI labels and text!
 
-Do not use tables in ansers.
+Do not use tables in answers.
 
-Keep json schemas permissive towards missing nodes/values, etc. Maximum tolerance to errors in input data.
+Keep JSON schemas permissive when it comes to missing nodes/values, etc. Be maximally tolerant of input data (data read from files or the DB). Be maximally strict about output data (including when writing to the DB). All fields should be optional, have defaults, or otherwise handle empty values. If the data in the DB is wrong, that's a problem with how it was written, not how it's read.
+
+Do not rely on node ids for description of intent, sice they are not user-editable, rely on labels/names
+
+# Temproray overrides
+
+- Do not maintain maxshelf for now

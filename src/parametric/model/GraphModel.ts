@@ -1,5 +1,12 @@
 import { GraphEdge, supportsVectorComponentInterop } from '@/parametric/model/GraphEdge'
-import type { GraphNode, GraphValueType } from '@/parametric/model/GraphNode'
+import {
+	GetNthElementGraphNode,
+	InputGraphNode,
+	RepeatInputGraphNode,
+	RepeatOutputGraphNode,
+	type GraphNode,
+	type GraphValueType,
+} from '@/parametric/model/GraphNode'
 import type { NodePortContext, NodeRegistry } from '@/parametric/model/NodeDefinition'
 
 export interface GraphModelReader {
@@ -83,9 +90,6 @@ export class GraphModel implements GraphModelReader {
 		if (!edge?.sourcePort) return []
 		const sourceNode = this.nodes.get(edge.sourceNodeId)
 		if (!sourceNode) return []
-		if (sourceNode.type === 'pin' && edge.sourcePort === 'value') {
-			return this.resolveInputOptions(sourceNode.id, 'value', visitedPorts)
-		}
 		return [
 			...(this.nodeRegistry.getOutputOptions(sourceNode, edge.sourcePort, this.portContext) ?? []),
 		]
@@ -109,9 +113,23 @@ export class GraphModel implements GraphModelReader {
 	public removeNode(nodeId: string): void {
 		const node = this.nodes.get(nodeId)
 		if (!node || this.nodeRegistry.isOutput(node)) return
-		this.nodes.delete(nodeId)
+		const removedNodeIds = new Set([nodeId])
+		if (node instanceof RepeatInputGraphNode) {
+			for (const candidate of this.nodes.values()) {
+				if (
+					candidate instanceof RepeatOutputGraphNode
+					&& candidate.getRepeatInputId() === node.id
+				) removedNodeIds.add(candidate.id)
+			}
+		} else if (node instanceof RepeatOutputGraphNode) {
+			removedNodeIds.add(node.getRepeatInputId())
+		}
+		for (const removedNodeId of removedNodeIds) this.nodes.delete(removedNodeId)
 		for (const edge of this.edges.values()) {
-			if (edge.sourceNodeId === nodeId || edge.targetNodeId === nodeId) {
+			if (
+				removedNodeIds.has(edge.sourceNodeId)
+				|| removedNodeIds.has(edge.targetNodeId)
+			) {
 				this.edges.delete(edge.id)
 			}
 		}
@@ -143,6 +161,24 @@ export class GraphModel implements GraphModelReader {
 			) this.edges.delete(existing.id)
 		}
 		this.edges.set(normalizedEdge.id, normalizedEdge)
+		this.synchronizeInferredTypes()
+	}
+
+	public synchronizeInferredTypes(): void {
+		for (const node of this.nodes.values()) {
+			if (!(node instanceof GetNthElementGraphNode)) continue
+			const valuesEdge = [...this.edges.values()].find((edge) => (
+				edge.targetNodeId === node.id && edge.targetPort === 'values'
+			))
+			const sourceNode = valuesEdge ? this.nodes.get(valuesEdge.sourceNodeId) : undefined
+			if (!(sourceNode instanceof InputGraphNode)) continue
+			const elementType = sourceNode.getPrimitiveArrayElementType()
+			if (!elementType || elementType === node.getElementType()) continue
+			node.setElementType(elementType)
+			for (const edge of [...this.edges.values()]) {
+				if (edge.sourceNodeId === node.id && !this.canConnect(edge)) this.edges.delete(edge.id)
+			}
+		}
 	}
 
 	public canConnect(edge: GraphEdge): boolean {

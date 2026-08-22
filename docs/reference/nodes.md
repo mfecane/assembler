@@ -5,9 +5,8 @@
 Ports are written as `port-id: value-type`. Built-in value types are:
 
 - `geometry` — a list of evaluated mesh instances.
-- `meshArray` — an ordered array of geometry bundles used by Mesh Array and Multi Array.
 - `number` — a JavaScript number.
-- `numberArray` — an ordered array of non-negative JavaScript numbers.
+- `primitiveArray` — an ordered array of numbers, choice indexes, or booleans.
 - `vector3` — an `{ x, y, z }` connection value for driving vector fields or graph inputs.
 - `enum` — a zero-based numeric index into a source node's ordered options.
 - `materialInstance` — a selected registered PBR material.
@@ -96,7 +95,9 @@ Emits one registered catalog mesh deformed with its model-editor stretch metadat
 Stores a graph-local value and optionally exports it through the containing graph interface.
 
 - Output: `value`, using the node's persisted `valueType`.
-- Data: `valueType`, local `value`, `exported`, and `enumId` for choices.
+- Data: `valueType`, local `value`, `exported`, and `enumId` for choices. Primitive Array inputs
+  additionally persist `elementType` (`number`, `enum`, or `boolean`) and only accept elements
+  of that selected primitive type.
 - Export off: evaluation uses the local value and the node is absent from `graph.inputs`.
 - Export on: a matching graph input with the node ID accepts supplied values and uses the local value
   as its default.
@@ -136,20 +137,6 @@ Combines three numeric values into an XYZ vector for vector inputs such as Trans
 - Evaluation: emits `{ x, y, z }` using connected finite numbers and zero for unconnected components.
 
 ## Value operations
-
-### Pin (`pin`)
-
-Routes one connection through a movable point and fans its value out to any number of destinations.
-
-- Creation: drag from any output handle and release on empty graph canvas.
-- Inputs: `value`, using the source output's persisted value type. Only one connection is accepted.
-- Outputs: `value`, using the same value type. The output can connect to multiple compatible inputs.
-- Data: `valueType`, copied from the source output when the pin is created.
-- Evaluation: passes the complete incoming value through unchanged.
-- Choice values: option labels are resolved through chained pins, so downstream choice mapping nodes
-  retain their editable options.
-- Editing: pins can be moved, selected, deleted, undone, and redone like regular nodes. Dropping a
-  connection from an existing pin on empty canvas creates another pin.
 
 ### Map to Scalar (`choiceToScalarMap`)
 
@@ -256,30 +243,12 @@ Repeats incoming geometry in a three-dimensional grid.
 - Data: integer counts of at least `1` and numeric offsets for each of the x, y, and z axes.
 - Default: every count is `1`; every offset is `0`.
 - Fallback: stored count and offset values are used while their corresponding ports are disconnected.
+- Editor: X, Y, and Z are separate optional capabilities. An axis whose count is the default `1`
+  is reduced to an Add action; adding it sets its count to `2`, while removing it resets the count
+  to `1`. Active axes keep their count and offset inputs open. Connected axis ports remain visible
+  and cannot be removed.
 - Evaluation: floors each effective count, clamps it to at least `1`, and emits the Cartesian
   product of the three counts at `(x × offsetX, y × offsetY, z × offsetZ)`.
-
-### Mesh Array (`meshArray`)
-
-Preserves multiple incoming geometry branches as an ordered array of bundles.
-
-- Inputs: one multi-connect `geometry: geometry` port.
-- Outputs: `meshes: meshArray`.
-- Data: empty object.
-- Evaluation: each incoming geometry value becomes one array item; meshes within a connected Group
-  remain in the same bundle.
-
-### Multi Array (`multiArray`)
-
-Repeats multiple geometry bundles using matching entries from a number array and one shared step.
-
-- Inputs: `meshes: meshArray`; `counts: numberArray`.
-- Outputs: `geometry: geometry`.
-- Data: `axis` (`x`, `y`, or `z`) and numeric `offset` step distance.
-- Default: x-axis, offset `1`.
-- Evaluation: the first bundle is copied by the first count, the second by the second count, and so
-  on. Placement indices continue across bundle boundaries. Count and bundle lengths must match;
-  counts are floored and clamped to zero.
 
 ### Group (`group`)
 
@@ -292,7 +261,64 @@ Combines any number of geometry values.
 
 Groups may be nested and may feed Transform, Material, Array, another Group, or Output.
 
+### Repeat Zone (`repeatInput`, `repeatOutput`)
+
+Evaluates one connected geometry branch repeatedly and combines the geometry produced by every
+iteration.
+
+- Creation: adding Repeat Zone creates a linked Repeat Input and Repeat Output with a tinted region
+  between them. Removing either boundary removes the complete pair and its boundary connections.
+- Repeat Input: `instances: number` input with a stored integer fallback, and
+  `iteration: number` output containing the current zero-based iteration.
+- Repeat Output: `geometry: geometry` input and `geometry: geometry` output.
+- Data: Repeat Input stores `instances`; Repeat Output stores the linked `repeatInputId`.
+- Default: one instance. Effective counts are floored and clamped to zero.
+- Evaluation: nodes spatially contained by the region use a fresh node cache for every iteration.
+  Connected dependencies outside the region are evaluated once in the enclosing scope and reused by
+  every iteration. Results are combined into one geometry value with iteration-scoped scene provenance
+  and instance IDs. An instance count of zero emits empty geometry.
+- Region: the graph-space backdrop spans the paired boundary nodes. A node belongs to the zone when
+  its visual center is between the boundary nodes horizontally and within the backdrop vertically.
+  Moving either boundary changes the region; moving another node across it changes that node's zone
+  membership and immediately re-evaluates the graph. Enclosed nodes receive an amber outline so
+  membership is visible independently of connections.
+
+Repeat zones may be nested. Connecting the Iteration output to numeric operations inside the zone
+allows each evaluation to produce different geometry or transforms.
+
+Connections may cross either zone boundary. Connectivity controls which values are demanded, while
+spatial containment controls which node evaluations repeat.
+
 ## Numeric operations
+
+### Number Aggregator (`numberAggregator`)
+
+Carries one numeric state forward between iterations of its containing Repeat Zone.
+
+- Validity: the node's visual center must be inside a Repeat Zone. An amber warning is shown while
+  it is outside; requesting Current Value outside its owning zone fails with graph, node, and zone
+  context. In nested regions, the smallest containing zone owns the node.
+- Inputs: `initialValue: number`; `addValue: number`.
+- Output: `currentValue: number`.
+- Data: stored finite `initialValue` and `addValue` fallbacks.
+- Defaults: both stored values are `0`.
+- Initialization: Initial Value resolves once before iteration 0. It may use the stored fallback or
+  a connection from outside the owning zone; an internal Initial Value connection is rejected because
+  the internal iteration has not started yet.
+- Iteration: Current Value emits the state before the current iteration's Add Value is applied. After
+  the zone's geometry has evaluated, Add Value resolves and advances the state for the next iteration.
+  For example, initial `10` and add `2` emit `10`, `12`, and `14` across three iterations.
+- Lifetime: state exists only during one Repeat Zone evaluation. It is preserved between that zone's
+  iterations but is not saved in the graph document or retained across later evaluations.
+
+### Get Nth Element (`getNthElement`)
+
+Reads one primitive element from an array of primitive values.
+
+- Inputs: `values: primitiveArray`; `index: number`.
+- Output: `value`, automatically using the connected primitive array's Number, Boolean, or Choice element type.
+- Data: non-negative integer `index` and the inferred `elementType`. Defaults: index `0`, Number when disconnected.
+- Evaluation: Index is floored and clamped to zero. An out-of-range index produces no value.
 
 ### Sum (`sum`)
 
@@ -345,11 +371,15 @@ main viewport; child graph results are returned through graph instances.
 Creates one independently evaluated instance of another graph definition in the same document.
 
 - Data: `graphId`, referencing a document-local graph definition, and an embedded `transform`.
-- Inputs: derived from the referenced definition's public inputs.
+- Inputs: derived from the referenced definition's public inputs, plus `translation: vector3`.
 - Output: derived from the referenced definition's geometry output.
 - Creation: choose a graph from the node menu.
 - Navigation: activate the instance to open its shared definition.
 - Evaluation: independently evaluates the referenced assembly, scopes its instance IDs, then applies
-  the embedded transform to the complete result.
+  the embedded transform to the complete result. A connected Translation value overrides the stored
+  translation; rotation, scale, and origin remain stored-only.
+
+The Transform controls are split into Translate, Rotate, Scale, and Origin capabilities. Translate
+is the first capability that accepts a graph connection.
 
 Instances may be nested. Recursive definition dependencies are rejected.

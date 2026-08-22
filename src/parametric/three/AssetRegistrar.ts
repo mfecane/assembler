@@ -1,7 +1,7 @@
 import { BufferGeometry, Mesh } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
-import { ASSET_SCALE_BY_CLIENT, type Client } from '@/cosntants'
+import { ASSET_CONSTANTS, type Client } from '@/constants'
 
 export interface AssetRegistration {
 	id: string
@@ -36,7 +36,7 @@ export class AssetRegistrar {
 	public async loadInto(target: AssetRegistrationTarget): Promise<void> {
 		const loadedAssets = await Promise.all(
 			[...this.assets.values()].map(async (asset) => {
-				const scale = ASSET_SCALE_BY_CLIENT[asset.client]
+				const scale = ASSET_CONSTANTS.SCALE_BY_CLIENT[asset.client]
 				if (!Number.isFinite(scale) || scale <= 0) {
 					throw new Error(
 						`Mesh asset "${asset.id}" for client "${asset.client}" has invalid scale ${scale}. `

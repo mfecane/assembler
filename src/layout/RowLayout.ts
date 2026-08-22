@@ -4,6 +4,14 @@ import type { SceneMetadata } from '@/parametric/evaluation/SceneMetadata'
 import type { Vector3Snapshot } from '@/parametric/model/Vector3Value'
 
 export class RowLayout implements ProductLayout {
+	public readonly id = 'row'
+	public readonly label = 'Row'
+	public readonly maximumInstances = 20
+
+	public canInstantiateGraph(graphId: string, rootGraphIds: readonly string[]): boolean {
+		return rootGraphIds.includes(graphId)
+	}
+
 	public getSlotPositions(items: readonly SceneMetadata[]): Vector3Snapshot[] {
 		const positions: Vector3Snapshot[] = []
 		let previousRight = 0

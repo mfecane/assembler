@@ -30,12 +30,12 @@ import upright2100Url from '../../../assets/maxshelf/upright/2100upright.glb?url
 import upright2400Url from '../../../assets/maxshelf/upright/2400upright (1).glb?url'
 import upright2600Url from '../../../assets/maxshelf/upright/2600upright.glb?url'
 import upright2800Url from '../../../assets/maxshelf/upright/2800upright.glb?url'
-import { Client, MAXSHELF_ASSET_IDS } from '@/cosntants'
+import { CLIENT, MAXSHELF_ASSET_IDS } from '@/constants'
 import type { AssetRegistrar, AssetRegistration } from '@/parametric/three/AssetRegistrar'
 
 export function registerMaxshelfAssets(registrar: AssetRegistrar): void {
 	const register = (asset: Omit<AssetRegistration, 'client'>) => {
-		registrar.register({ ...asset, client: Client.MAXSHELF })
+		registrar.register({ ...asset, client: CLIENT.MAXSHELF })
 	}
 
 	register({

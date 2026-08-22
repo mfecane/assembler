@@ -1,5 +1,6 @@
 import { Euler, Matrix4, Quaternion, Vector3 } from 'three'
 import type { Matrix4Snapshot, SceneAssetInstanceMetadata } from '@/parametric/evaluation/SceneMetadata'
+import { setSceneAssetInstanceTransform } from '@/parametric/evaluation/SceneBounds'
 import type { TransformField } from '@/parametric/model/fields/TransformField'
 import type { Vector3Snapshot } from '@/parametric/model/Vector3Value'
 
@@ -49,13 +50,12 @@ export function applyTransform(
 	instances: readonly SceneAssetInstanceMetadata[],
 	instanceId: (instance: SceneAssetInstanceMetadata) => string
 ): SceneAssetInstanceMetadata[] {
-	return instances.map((instance) => ({
-		...instance,
-		instanceId: instanceId(instance),
-		transform: matrixSnapshot(
+	return instances.map((instance) => {
+		const transform = matrixSnapshot(
 			new Matrix4()
 				.fromArray(createTransformMatrix(transformField, instance.size))
 				.multiply(new Matrix4().fromArray(instance.transform))
-		),
-	}))
+		)
+		return setSceneAssetInstanceTransform(instance, transform, instanceId(instance))
+	})
 }

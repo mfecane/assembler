@@ -27,8 +27,8 @@ preserve the relevant project ID, requested name, document version, underlying e
 in the details disclosure and console.
 
 If a persisted project cannot be opened because its graph document is invalid, the open error page
-offers **Download JSON**. This downloads the raw stored graph document so it can be manually repaired
-and imported again from the editor's graph file menu.
+offers **Download project package**. This uses the same package export as the project header, including
+the raw stored graph document and the registered-model metadata needed to inspect or repair it.
 
 ## Project rename
 

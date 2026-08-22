@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import type { Client } from '@/cosntants'
+import type { Client } from '@/constants'
 import type { ModelCatalogItem } from '@/models/ModelCatalogItem'
 import { createModelMetadataDocument } from '@/models/ModelMetadataDocument'
 import type { ModelMetadataRepository } from '@/models/ModelMetadataRepository'

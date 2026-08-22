@@ -16,6 +16,7 @@ import {
 	type GraphInputValue,
 } from '@/parametric/model/GraphDocumentModel'
 import { GraphModel } from '@/parametric/model/GraphModel'
+import { idGenerator } from '@/parametric/model/IdGenerator'
 import {
 	ArrayGraphNode,
 	ChoiceToBooleanMapGraphNode,
@@ -32,7 +33,9 @@ import {
 	MeshAssetGraphNode,
 	StretchableAssetGraphNode,
 	OutputGraphNode,
-	PinGraphNode,
+	RepeatInputGraphNode,
+	RepeatOutputGraphNode,
+	RotateAnimationHintGraphNode,
 	TransformGraphNode,
 	type Axis,
 	type GraphNode,
@@ -49,8 +52,11 @@ import type { MaterialCatalog } from '@/parametric/model/MaterialCatalog'
 import type { CreatableNodeDefinition, NodeRegistry } from '@/parametric/model/NodeDefinition'
 import { StretchableAssetMetadata } from '@/parametric/model/StretchableAssetMetadata'
 import { LayoutEvaluator } from '@/layout/LayoutEvaluator'
-import type { LayoutInstanceBoundsDocument, LayoutRangeDocument } from '@/layout/LayoutDocument'
-import type { LayoutAxisRole, RootGraphAxisBinding } from '@/layout/GraphLayoutMetadata'
+import type {
+	LayoutInstanceBoundsDocument,
+	LayoutRangeDocument,
+	ProductConfigurationDocument,
+} from '@/layout/LayoutDocument'
 
 export type EditorControllerSnapshot = GraphStateSnapshot
 
@@ -110,6 +116,9 @@ export class EditorController {
 	public setNodePositions(updates: readonly NodePositionUpdate[]): void {
 		if (updates.length === 0) return
 		const nodeIds = [...new Set(updates.map((update) => update.nodeId))].sort()
+		const affectsEvaluation = this.activeModel.getNodes().some(
+			(node) => node instanceof RepeatOutputGraphNode
+		)
 		this.execute(
 			nodeIds.length === 1
 				? `Move node "${nodeIds[0]}"`
@@ -120,7 +129,7 @@ export class EditorController {
 				}
 			},
 			`node-positions:${this.activeGraphId}:${nodeIds.join(',')}`,
-			false
+			affectsEvaluation
 		)
 	}
 
@@ -141,7 +150,22 @@ export class EditorController {
 
 	public addNode(type: string, position: GraphPoint, selectedEdgeId?: string): void {
 		this.execute(`Add ${type} node`, () => {
-			const id = this.createNodeId(type)
+			if (type === 'repeatInput') {
+				const repeatInputId = this.createNodeId()
+				const repeatOutputId = this.createNodeId()
+				const repeatInput = new RepeatInputGraphNode(repeatInputId, position, 1)
+				const repeatOutput = new RepeatOutputGraphNode(
+					repeatOutputId,
+					{ x: position.x + 560, y: position.y },
+					repeatInputId
+				)
+				repeatInput.setName('Repeat Input')
+				repeatOutput.setName('Repeat Output')
+				this.activeModel.addNode(repeatInput)
+				this.activeModel.addNode(repeatOutput)
+				return
+			}
+			const id = this.createNodeId()
 			const node = this.nodeRegistry.create(type, id, position, {
 				meshCatalog: this.meshCatalog,
 				materialCatalog: this.materialCatalog,
@@ -163,7 +187,7 @@ export class EditorController {
 			)
 		}
 		this.execute(`Add mesh asset "${meshId}"`, () => {
-			const id = this.createNodeId('meshAsset')
+			const id = this.createNodeId()
 			const node = new MeshAssetGraphNode(id, position, mesh.id)
 			node.setName('Mesh Asset')
 			this.activeModel.addNode(node)
@@ -176,7 +200,7 @@ export class EditorController {
 			`add Stretchable Asset node to graph "${this.activeGraphId}"`
 		)
 		this.execute(`Add stretchable asset "${meshId}"`, () => {
-			const id = this.createNodeId('stretchableAsset')
+			const id = this.createNodeId()
 			const node = new StretchableAssetGraphNode(id, position, meshId, metadata.naturalSize)
 			node.setName('Stretchable Asset')
 			this.activeModel.addNode(node)
@@ -212,7 +236,7 @@ export class EditorController {
 		if (!this.document.getGraph(graphId) || graphId === this.activeGraphId) return
 		if (this.wouldCreateReferenceCycle(graphId)) return
 		this.execute(`Add instance of graph "${graphId}"`, () => {
-			const id = this.createNodeId('graphInstance')
+			const id = this.createNodeId()
 			const node = new GraphInstanceGraphNode(id, position, graphId)
 			node.setName(this.document.requireGraph(graphId).label)
 			if (selectedEdgeId && this.insertNodeOnEdge(node, selectedEdgeId)) return
@@ -320,9 +344,10 @@ export class EditorController {
 			const id = this.createGraphId()
 			const outputNode = new OutputGraphNode(`${id}-output`, { x: 500, y: 120 })
 			outputNode.setName('Assembly Output')
+			const nodes: GraphNode[] = [outputNode]
 			const model = new GraphModel(
 				this.nodeRegistry,
-				[outputNode]
+				nodes
 			)
 			this.document.addGraph({
 				id,
@@ -359,6 +384,7 @@ export class EditorController {
 			if (wasRoot === root) return
 			if (root) {
 				this.document.addRootGraph(graphId)
+				for (const input of graph.inputs) this.addDefaultConfigurationControl(graphId, input)
 				this.state.openGraph(graphId, graphId)
 				return
 			}
@@ -402,13 +428,13 @@ export class EditorController {
 	): void {
 		const displayedType = valueType === 'enum'
 			? 'choice'
-			: valueType === 'numberArray'
-				? 'number array'
+			: valueType === 'primitiveArray'
+					? 'array'
 				: valueType === 'vector3'
 					? 'vector 3'
 					: valueType
 		this.execute(`Add ${displayedType} input`, () => {
-			const inputId = this.createNodeId('input')
+			const inputId = this.createNodeId()
 			const enumId = valueType === 'enum' ? this.createEnumDefinition() : undefined
 			const input = createInputDefinition(inputId, valueType, enumId)
 			const node = new InputGraphNode(
@@ -417,7 +443,8 @@ export class EditorController {
 				valueType,
 				input.defaultValue,
 				false,
-				enumId
+				enumId,
+				valueType === 'primitiveArray' ? 'number' : undefined
 			)
 			node.setName(input.label)
 			this.activeModel.addNode(node)
@@ -437,7 +464,7 @@ export class EditorController {
 			)
 		}
 		this.execute(`Add input reference "${inputId}"`, () => {
-			const node = new InputReferenceGraphNode(this.createNodeId('inputReference'), position, inputId)
+			const node = new InputReferenceGraphNode(this.createNodeId(), position, inputId)
 			node.setName(input.label)
 			this.activeModel.addNode(node)
 		})
@@ -480,37 +507,74 @@ export class EditorController {
 
 	public setGraphInputEnum(inputId: string, enumId: string): void {
 		const node = this.activeModel.getNode(inputId)
-		if (!(node instanceof InputGraphNode) || node.getValueType() !== 'enum' || node.getEnumId() === enumId) return
+		if (
+			!(node instanceof InputGraphNode)
+			|| !['enum', 'primitiveArray'].includes(node.getValueType())
+			|| node.getEnumId() === enumId
+		) return
 		this.execute(`Use choice set "${enumId}" for graph input "${inputId}"`, () => {
 			const previousEnumId = node.getEnumId()
 			node.setEnumId(enumId)
 			const value = node.getValue()
-			if (typeof value !== 'number' || value >= this.document.getEnumOptions(enumId).length) {
-				node.setValue(0)
-			}
+			if (node.getValueType() === 'enum') {
+				if (typeof value !== 'number' || value >= this.document.getEnumOptions(enumId).length) node.setValue(0)
+			} else node.setValue([0])
 			if (node.isExported()) {
 				this.document.setInputEnum(this.activeGraphId, inputId, enumId)
 				this.reconcileGraphInstanceInputValues(this.activeGraphId, inputId)
 			}
-			this.reconcileEnumMappingsForInput(this.activeGraphId, inputId)
+			if (node.getValueType() === 'enum') this.reconcileEnumMappingsForInput(this.activeGraphId, inputId)
 			if (previousEnumId) this.document.removeEnumIfUnused(previousEnumId)
 		})
 	}
 
 	public createEnumForGraphInput(inputId: string): void {
 		const node = this.activeModel.getNode(inputId)
-		if (!(node instanceof InputGraphNode) || node.getValueType() !== 'enum') return
+		if (
+			!(node instanceof InputGraphNode)
+			|| !['enum', 'primitiveArray'].includes(node.getValueType())
+		) return
 		this.execute(`Create choice set for graph input "${inputId}"`, () => {
 			const previousEnumId = node.getEnumId()
 			const enumId = this.createEnumDefinition()
 			node.setEnumId(enumId)
-			node.setValue(0)
+			node.setValue(node.getValueType() === 'enum' ? 0 : [0])
 			if (node.isExported()) {
 				this.document.setInputEnum(this.activeGraphId, inputId, enumId)
 				this.reconcileGraphInstanceInputValues(this.activeGraphId, inputId)
 			}
-			this.reconcileEnumMappingsForInput(this.activeGraphId, inputId)
+			if (node.getValueType() === 'enum') this.reconcileEnumMappingsForInput(this.activeGraphId, inputId)
 			if (previousEnumId) this.document.removeEnumIfUnused(previousEnumId)
+		})
+	}
+
+	public deleteEnumForGraphInput(inputId: string): void {
+		const node = this.activeModel.getNode(inputId)
+		const enumId = node instanceof InputGraphNode ? node.getEnumId() : undefined
+		if (!enumId) return
+		const replacement = this.document.getEnumDefinitions().find((definition) => definition.id !== enumId)
+		if (!replacement || this.document.getEnumUsageCount(enumId) > 1) return
+		this.setGraphInputEnum(inputId, replacement.id)
+	}
+
+	public setPrimitiveArrayElementType(
+		inputId: string,
+		elementType: import('@/parametric/model/GraphNode').PrimitiveArrayElementType
+	): void {
+		const node = this.activeModel.getNode(inputId)
+		if (!(node instanceof InputGraphNode) || node.getValueType() !== 'primitiveArray') return
+		this.execute(`Set array input "${inputId}" value type to "${elementType}"`, () => {
+			node.setPrimitiveArrayElementType(elementType)
+			this.activeModel.synchronizeInferredTypes()
+			if (elementType === 'enum' && !node.getEnumId()) node.setEnumId(this.createEnumDefinition())
+			const defaultValue = elementType === 'boolean' ? [false] : [0]
+			node.setValue(defaultValue)
+			if (node.isExported()) {
+				this.document.updateInput(this.activeGraphId, inputId, { defaultValue })
+				if (elementType === 'enum') this.document.setInputEnum(
+					this.activeGraphId, inputId, node.getEnumId() as string
+				)
+			}
 		})
 	}
 
@@ -526,6 +590,7 @@ export class EditorController {
 					throw new Error(`Cannot export input node "${nodeId}": graph input ID already exists.`)
 				}
 				node.setExported(true)
+				this.addDefaultConfigurationControl(this.activeGraphId, definition)
 				return
 			}
 			this.removeGraphInputFromGraph(this.activeGraphId, nodeId)
@@ -675,6 +740,8 @@ export class EditorController {
 		return Boolean(
 			node
 			&& !(node instanceof InputGraphNode)
+			&& !(node instanceof RepeatInputGraphNode)
+			&& !(node instanceof RepeatOutputGraphNode)
 			&& !this.nodeRegistry.isOutput(node)
 		)
 	}
@@ -687,7 +754,7 @@ export class EditorController {
 			const sourcePosition = source.getPosition()
 			const copy = this.nodeRegistry.deserialize(
 				source.type,
-				this.createNodeId(source.type),
+				this.createNodeId(),
 				{ x: sourcePosition.x + 32, y: sourcePosition.y + 32 },
 				this.nodeRegistry.serialize(source)
 			)
@@ -736,7 +803,7 @@ export class EditorController {
 		component?: VectorComponent
 	): void {
 		this.execute(`Connect "${sourceNodeId}" to "${targetNodeId}"`, () => {
-			const id = this.createEdgeId(sourceNodeId, targetNodeId, sourcePort, targetPort)
+			const id = this.createEdgeId()
 			this.activeModel.connect(
 				new GraphEdge(id, sourceNodeId, targetNodeId, sourcePort, targetPort, component)
 			)
@@ -750,48 +817,6 @@ export class EditorController {
 					)
 				}
 			}
-		})
-	}
-
-	public addConnectionPin(
-		sourceNodeId: string,
-		sourcePortId: string,
-		position: GraphPoint
-	): void {
-		this.execute(`Add pin from "${sourceNodeId}.${sourcePortId}"`, () => {
-			const sourceNode = this.activeModel.getNode(sourceNodeId)
-			const sourcePort = sourceNode
-				? this.nodeRegistry.getOutputPorts(
-					sourceNode,
-					this.createPortContext(this.activeGraphId)
-				).find((port) => port.id === sourcePortId)
-				: undefined
-			if (!sourceNode || !sourcePort) {
-				throw new Error(
-					`Cannot add a connection pin in graph "${this.activeGraphId}" from `
-					+ `"${sourceNodeId}.${sourcePortId}": the source node or output port does not exist. `
-					+ `Available output ports: ${JSON.stringify(
-						sourceNode
-							? this.nodeRegistry.getOutputPorts(
-								sourceNode,
-								this.createPortContext(this.activeGraphId)
-							).map((port) => port.id)
-							: []
-					)}.`
-				)
-			}
-
-			const pinId = this.createNodeId('pin')
-			const pin = new PinGraphNode(pinId, position, sourcePort.valueType)
-			pin.setName('Pin')
-			this.activeModel.addNode(pin)
-			this.activeModel.connect(new GraphEdge(
-				this.createEdgeId(sourceNodeId, pinId, sourcePortId, 'value'),
-				sourceNodeId,
-				pinId,
-				sourcePortId,
-				'value'
-			))
 		})
 	}
 
@@ -851,7 +876,7 @@ export class EditorController {
 	public addProduct(layoutId: string, label?: string): void {
 		const layout = this.document.getLayout()
 		const number = layout.products.length + 1
-		const productId = `product-${crypto.randomUUID()}`
+		const productId = idGenerator.create('product')
 		const productLabel = label?.trim() || `Product ${number}`
 		this.execute(
 			`Add product "${productLabel}"`,
@@ -873,6 +898,14 @@ export class EditorController {
 		)
 	}
 
+	public setProductAnimationLabel(productId: string, label: string): void {
+		this.execute(
+			`Set animation label on product "${productId}"`,
+			() => this.document.setProductAnimationLabel(productId, label),
+			`product-animation-label:${productId}`
+		)
+	}
+
 	public removeProduct(productId: string): void {
 		this.execute(`Delete product "${productId}"`, () => this.document.removeProduct(productId))
 	}
@@ -884,11 +917,10 @@ export class EditorController {
 		)
 	}
 
-	public setLayoutConfigurationHeader(layoutId: string, header: string): void {
+	public setProductConfiguration(productId: string, configuration: ProductConfigurationDocument): void {
 		this.execute(
-			`Set customer panel heading on product layout "${layoutId}"`,
-			() => this.document.setLayoutConfigurationHeader(layoutId, header),
-			`layout-configuration-header:${layoutId}`
+			`Set configuration on product "${productId}"`,
+			() => this.document.setProductConfiguration(productId, configuration)
 		)
 	}
 
@@ -900,7 +932,7 @@ export class EditorController {
 	}
 
 	public addDefaultProductInstance(productId: string): void {
-		const instanceId = `layout-instance-${crypto.randomUUID()}`
+		const instanceId = idGenerator.create('instance')
 		this.execute(
 			`Add product item "${instanceId}" to product "${productId}"`,
 			() => this.document.addDefaultProductInstance(productId, instanceId)
@@ -914,17 +946,6 @@ export class EditorController {
 		)
 	}
 
-	public setProductInstanceGraph(
-		productId: string,
-		instanceId: string,
-		graphId: string
-	): void {
-		this.execute(
-			`Set graph "${graphId}" on product item "${instanceId}" in product "${productId}"`,
-			() => this.document.setProductInstanceGraph(productId, instanceId, graphId)
-		)
-	}
-
 	public setProductInstanceInputValue(
 		productId: string,
 		instanceId: string,
@@ -935,6 +956,46 @@ export class EditorController {
 			`Set input "${inputId}" on product item "${instanceId}" in product "${productId}"`,
 			() => this.document.setProductInstanceInputValue(productId, instanceId, inputId, value),
 			`product-input:${productId}:${instanceId}:${inputId}`
+		)
+	}
+
+	public setProductConfigurationControlValue(
+		productId: string,
+		controlId: string,
+		value: GraphInputValue
+	): void {
+		this.execute(
+			`Set configuration control "${controlId}" on product "${productId}"`,
+			() => this.document.setProductConfigurationControlValue(productId, controlId, value),
+			`product-configuration:${productId}:${controlId}`
+		)
+	}
+
+	public setProductConfigurationSectionValue(
+		productId: string,
+		controlId: string,
+		fieldId: string,
+		index: number,
+		value: number
+	): void {
+		this.execute(
+			`Set section ${index + 1} field "${fieldId}" on product "${productId}"`,
+			() => this.document.setProductConfigurationSectionValue(productId, controlId, fieldId, index, value),
+			`product-configuration-section:${productId}:${controlId}:${fieldId}:${index}`
+		)
+	}
+
+	public addProductConfigurationSection(productId: string, controlId: string): void {
+		this.execute(
+			`Add section to configuration control "${controlId}" on product "${productId}"`,
+			() => this.document.addProductConfigurationSection(productId, controlId)
+		)
+	}
+
+	public removeProductConfigurationSection(productId: string, controlId: string, index: number): void {
+		this.execute(
+			`Remove section ${index + 1} from configuration control "${controlId}" on product "${productId}"`,
+			() => this.document.removeProductConfigurationSection(productId, controlId, index)
 		)
 	}
 
@@ -954,7 +1015,7 @@ export class EditorController {
 	}
 
 	public addLayoutSlot(label: string): string {
-		const slotId = `product-type-${crypto.randomUUID()}`
+		const slotId = idGenerator.create('slot')
 		this.execute(
 			`Add slot "${slotId}"`,
 			() => this.document.addLayoutSlot({
@@ -989,29 +1050,6 @@ export class EditorController {
 		this.execute(
 			`Set instance bounds on layout slot definition "${slotId}"`,
 			() => this.document.setLayoutSlotInstanceBounds(slotId, instanceBounds)
-		)
-	}
-
-	public setProductInstanceLayoutAxisBinding(
-		productId: string,
-		instanceId: string,
-		role: LayoutAxisRole,
-		path: string | null
-	): void {
-		this.execute(
-			`Set layout ${role} axis binding on product item "${instanceId}"`,
-			() => this.document.setProductInstanceLayoutAxisBinding(productId, instanceId, role, path)
-		)
-	}
-
-	public setRootGraphLayoutAxisBinding(
-		graphId: string,
-		role: LayoutAxisRole,
-		binding: RootGraphAxisBinding | null
-	): void {
-		this.execute(
-			`Set layout ${role} axis binding on root graph "${graphId}"`,
-			() => this.document.setRootGraphLayoutAxisBinding(graphId, role, binding)
 		)
 	}
 
@@ -1133,6 +1171,21 @@ export class EditorController {
 		)
 	}
 
+	public setRotateAnimationHintOffset(
+		graphId: string,
+		nodeId: string,
+		offset: Vector3Snapshot,
+		historyGroup: string
+	): void {
+		const node = this.document.getGraph(graphId)?.model.getNode(nodeId)
+		if (!(node instanceof RotateAnimationHintGraphNode) || !Vector3Value.isSnapshot(offset)) return
+		this.execute(
+			`Set rotation pivot offset on node "${nodeId}" in 3D editor`,
+			() => node.setOffset(Vector3Value.from(offset)),
+			`viewport-rotate-animation-hint-offset:${graphId}:${nodeId}:${historyGroup}`
+		)
+	}
+
 	private updateNode<TNode extends GraphNode>(
 		nodeId: string,
 		expectedType: string,
@@ -1168,6 +1221,7 @@ export class EditorController {
 		)
 	}
 
+
 	public setConfigurationControls(
 		rootGraphId: string,
 		controls: ConfigurationPanelControl[]
@@ -1175,6 +1229,30 @@ export class EditorController {
 		this.execute(`Update configuration panel for root graph "${rootGraphId}"`, () => {
 			this.document.setConfigurationControls(rootGraphId, controls)
 		})
+	}
+
+	private addDefaultConfigurationControl(
+		rootGraphId: string,
+		input: GraphInputDefinition
+	): void {
+		if (!this.document.isRootGraph(rootGraphId)) return
+		const controls = this.document.getConfigurationControls(rootGraphId)
+		if (controls.some((control) => control.inputId === input.id)) return
+		const base = {
+			id: createConfigurationControlId(input.id, controls),
+			inputId: input.id,
+			label: input.label || input.id,
+		}
+		const control = input.valueType === 'number'
+			? { ...base, type: 'number' as const, step: 0.1 }
+			: input.valueType === 'enum' ? { ...base, type: 'select' as const }
+					: input.valueType === 'materialInstance' ? { ...base, type: 'material' as const }
+						: input.valueType === 'color' ? { ...base, type: 'color' as const }
+							: input.valueType === 'vector3' ? { ...base, type: 'vector3' as const, step: 0.1 }
+						: input.valueType === 'boolean' ? { ...base, type: 'switch' as const }
+							: input.valueType === 'primitiveArray' ? { ...base, type: 'primitiveArray' as const }
+							: undefined
+		if (control) this.document.setConfigurationControls(rootGraphId, [...controls, control])
 	}
 
 	public createConfigurationTemplate(rootGraphId: string, label: string): string {
@@ -1506,10 +1584,8 @@ export class EditorController {
 		this.bridge.update({ error })
 	}
 
-	private createNodeId(type: string): string {
-		let sequence = 1
-		while (this.activeModel.getNode(`${type}-${sequence}`)) sequence += 1
-		return `${type}-${sequence}`
+	private createNodeId(): string {
+		return idGenerator.create('node', (id) => !this.activeModel.getNode(id))
 	}
 
 	private insertNodeOnEdge(node: GraphNode, edgeId: string): boolean {
@@ -1544,7 +1620,7 @@ export class EditorController {
 		})
 		this.activeModel.addNode(node)
 		this.activeModel.connect(new GraphEdge(
-			this.createEdgeId(edge.sourceNodeId, node.id, edge.sourcePort, inputPort.id),
+			this.createEdgeId(),
 			edge.sourceNodeId,
 			node.id,
 			edge.sourcePort,
@@ -1552,7 +1628,7 @@ export class EditorController {
 		))
 		this.activeModel.removeEdge(edge.id)
 		this.activeModel.connect(new GraphEdge(
-			this.createEdgeId(node.id, edge.targetNodeId, outputPort.id, edge.targetPort),
+			this.createEdgeId(),
 			node.id,
 			edge.targetNodeId,
 			outputPort.id,
@@ -1561,19 +1637,12 @@ export class EditorController {
 		return true
 	}
 
-	private createEdgeId(
-		sourceNodeId: string,
-		targetNodeId: string,
-		sourcePort: string | null,
-		targetPort: string | null
-	): string {
-		return `${sourceNodeId}:${sourcePort ?? 'output'}->${targetNodeId}:${targetPort ?? 'input'}`
+	private createEdgeId(): string {
+		return idGenerator.create('edge', (id) => !this.activeModel.getEdges().some((edge) => edge.id === id))
 	}
 
 	private createGraphId(): string {
-		let sequence = 1
-		while (this.document.getGraph(`graph-${sequence}`)) sequence += 1
-		return `graph-${sequence}`
+		return idGenerator.create('graph', (id) => !this.document.getGraph(id))
 	}
 
 	private createGraphCopyLabel(sourceLabel: string): string {
@@ -1586,12 +1655,10 @@ export class EditorController {
 	}
 
 	private createEnumDefinition(): string {
-		let sequence = 1
-		while (this.document.getEnumDefinition(`enum-${sequence}`)) sequence += 1
-		const enumId = `enum-${sequence}`
+		const enumId = idGenerator.create('enum', (id) => !this.document.getEnumDefinition(id))
 		this.document.addEnumDefinition({
 			id: enumId,
-			name: `Choice ${sequence}`,
+			name: `Choice ${this.document.getEnumDefinitions().length + 1}`,
 			options: ['Option'],
 		})
 		return enumId
@@ -1621,8 +1688,14 @@ function createInputDefinition(
 	if (valueType === 'number') {
 		return { id, label: 'Number', valueType, defaultValue: 1 }
 	}
-	if (valueType === 'numberArray') {
-		return { id, label: 'Number array', valueType, defaultValue: [1, 1] }
+	if (valueType === 'primitiveArray') {
+		return {
+			id,
+			label: 'Array',
+			valueType,
+			...(enumId ? { enumId } : {}),
+			defaultValue: [1],
+		}
 	}
 	if (valueType === 'vector3') {
 		return { id, label: 'Vector 3', valueType, defaultValue: { x: 0, y: 0, z: 0 } }
@@ -1647,6 +1720,17 @@ function createInputDefinition(
 		return { id, label: 'Boolean', valueType, defaultValue: false }
 	}
 	return { id, label: 'Geometry', valueType: 'geometry' }
+}
+
+function createConfigurationControlId(
+	inputId: string,
+	controls: readonly ConfigurationPanelControl[]
+): string {
+	const base = `${inputId}-control`
+	if (!controls.some((control) => control.id === base)) return base
+	let sequence = 2
+	while (controls.some((control) => control.id === `${base}-${sequence}`)) sequence += 1
+	return `${base}-${sequence}`
 }
 
 function normalizeUniformScale(

@@ -4,6 +4,7 @@ import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { MaterialSelect } from '@/parametric/components/MaterialSelect'
 import { NumericInput } from '@/parametric/components/NumericInput'
+import { PrimitiveArrayEditor } from '@/parametric/components/PrimitiveArrayEditor'
 import { COLOR_PALETTE } from '@/parametric/model/ColorPalette'
 import type { ConfigurationField, GraphInputValue } from '@/parametric/model/GraphDocumentModel'
 
@@ -27,11 +28,13 @@ export function ConfigurationFields({
 					>
 						{field.label}
 					</Label>
-					{field.type === 'numberArray' ? (
-						<NumberArrayField
-							field={field}
-							idPrefix={idPrefix}
-							onValueChange={onValueChange}
+					{field.type === 'primitiveArray' ? (
+						<PrimitiveArrayEditor
+							dataId={`${idPrefix}-primitive-array-${field.id}`}
+							elementType={field.elementType}
+							values={field.value}
+							options={field.options}
+							onChange={(next) => onValueChange(field.id, next)}
 						/>
 					) : field.type === 'number' ? (
 						<NumericInput
@@ -39,6 +42,8 @@ export function ConfigurationFields({
 							data-id={`${idPrefix}-number-${field.id}`}
 							className="h-8 w-full px-2 text-xs tabular-nums"
 							value={field.value}
+							min={field.min}
+							max={field.max}
 							step={field.step}
 							onValueChange={(next) => onValueChange(field.id, next)}
 						/>
@@ -132,61 +137,6 @@ export function ConfigurationFields({
 					)}
 				</div>
 			))}
-		</div>
-	)
-}
-
-function NumberArrayField({
-	field,
-	idPrefix,
-	onValueChange,
-}: {
-	field: Extract<ConfigurationField, { type: 'numberArray' }>
-	idPrefix: string
-	onValueChange: (inputId: string, value: GraphInputValue) => void
-}) {
-	const setItem = (index: number, value: number) => {
-		const next = field.value.map((item, candidateIndex) => (
-			candidateIndex === index ? Math.max(0, value) : item
-		))
-		if (field.total !== undefined) {
-			const otherTotal = field.value.reduce(
-				(total, item, candidateIndex) => total + (candidateIndex === index ? 0 : item),
-				0
-			)
-			next[index] = Math.min(next[index] ?? 0, Math.max(0, field.total - otherTotal))
-		}
-		onValueChange(field.id, next)
-	}
-
-	return (
-		<div data-id={`${idPrefix}-number-array-${field.id}`} className="space-y-2">
-			{field.value.map((item, index) => (
-				<div key={index} className="grid grid-cols-[1fr_4rem] items-center gap-2">
-					<Label
-						htmlFor={`${idPrefix}-${field.id}-${index}`}
-						className="truncate text-[11px] text-muted-foreground"
-						title={field.labels[index]}
-					>
-						{field.labels[index]}
-					</Label>
-					<NumericInput
-						id={`${idPrefix}-${field.id}-${index}`}
-						data-id={`${idPrefix}-number-array-${field.id}-${index}`}
-						className="h-8 px-2 text-xs tabular-nums"
-						value={item}
-						min={0}
-						step={field.step}
-						roundStep={field.step}
-						onValueChange={(next) => setItem(index, next)}
-					/>
-				</div>
-			))}
-			{field.total !== undefined && (
-				<div className="text-right text-[10px] text-muted-foreground">
-					{field.value.reduce((total, item) => total + item, 0)} / {field.total} total
-				</div>
-			)}
 		</div>
 	)
 }

@@ -1,7 +1,8 @@
-import { Position, type NodeProps } from '@xyflow/react'
+import type { NodeProps } from '@xyflow/react'
 import { NumericInput } from '@/parametric/components/NumericInput'
-import { NodeHeader } from '@/parametric/components/NodeHeader'
-import { TypedHandle } from '@/parametric/components/TypedHandle'
+import { NodePortGroup } from '@/parametric/components/NodePortGroup'
+import { NodePortRow } from '@/parametric/components/NodePortRow'
+import { NodeSurface } from '@/parametric/components/NodeSurface'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 import { useChoiceToVector3MapNode } from '@/parametric/hooks/useGraphNode'
 import type { Vector3Snapshot } from '@/parametric/model/Vector3Value'
@@ -26,13 +27,15 @@ export function ChoiceToVector3MapNode({ id }: NodeProps<ParametricFlowNode>) {
 	}
 
 	return (
-		<div
-			data-id={`choice-to-vector3-map-node-${id}`}
-			className="min-w-72 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
-		>
-			<TypedHandle id="enum" type="target" position={Position.Left} valueType="enum" />
-			<NodeHeader nodeId={id} />
-			<div className="flex flex-col gap-1.5">
+		<NodeSurface nodeId={id} dataId={`choice-to-vector3-map-node-${id}`} className="min-w-72">
+			<NodePortRow nodeId={id} portId="enum" valueType="enum" direction="input" label="Choice" />
+			<NodePortGroup
+				nodeId={id}
+				portId="vector3"
+				valueType="vector3"
+				dataId={`choice-to-vector3-map-options-${id}`}
+				className="flex flex-col gap-1.5"
+			>
 				{binding.availableEnumOptions.map((option, enumIndex) => {
 					const value = binding.mappings.find(
 						(mapping) => mapping.enumIndex === enumIndex
@@ -59,8 +62,7 @@ export function ChoiceToVector3MapNode({ id }: NodeProps<ParametricFlowNode>) {
 						Connect a choice output to configure mappings.
 					</div>
 				)}
-			</div>
-			<TypedHandle id="vector3" type="source" position={Position.Right} valueType="vector3" />
-		</div>
+			</NodePortGroup>
+		</NodeSurface>
 	)
 }

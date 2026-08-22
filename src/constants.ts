@@ -1,17 +1,49 @@
-export enum Client {
-	MAXSHELF = 'maxshelf',
-	KITCHEN = 'kitchen',
-}
+export const CLIENT = {
+	MAXSHELF: 'maxshelf',
+	KITCHEN: 'kitchen',
+} as const
 
-export const ASSET_SCALE_BY_CLIENT: Record<Client, number> = {
-	[Client.MAXSHELF]: 0.05,
-	[Client.KITCHEN]: 1,
-}
-export const ASSET_METADATA_FILE_NAME = 'maxshelf-asset-metadata.json'
-export const ASSET_METADATA_FORMAT = 'maxshelf-asset-metadata'
-export const ASSET_METADATA_FORMAT_VERSION = 1
-export const MAXSHELF_ASSET_ID_PREFIX = 'asset:maxshelf:'
-export const KITCHEN_ASSET_ID_PREFIX = 'asset:kitchen:'
+export type Client = (typeof CLIENT)[keyof typeof CLIENT]
+
+// Client-specific asset loading and exported metadata document identifiers.
+
+export const ASSET_CONSTANTS = {
+	SCALE_BY_CLIENT: {
+		[CLIENT.MAXSHELF]: 0.05,
+		[CLIENT.KITCHEN]: 1,
+	} satisfies Record<Client, number>,
+	METADATA_FORMAT: 'maxshelf-asset-metadata',
+	METADATA_FORMAT_VERSION: 1,
+} as const
+
+// Shared measurements and rendering settings for Three.js scenes.
+
+export const SCENE_CONSTANTS = {
+	TECHNICAL_GRID: {
+		size: 10,
+		divisions: 10,
+		centerLineColor: 0x888888,
+		lineColor: 0x777777,
+		fadeStart: 0.5,
+	},
+	ORIGIN_MARKER: {
+		radius: 0.02,
+		pixelRadius: 2,
+	},
+	LAYOUT_FLOOR: {
+		size: 100,
+		fadeStart: 0.08,
+		fadeEnd: 0.32,
+	},
+	CAT_HEIGHT: 0.45,
+	CAT_ASPECT_RATIO: 5 / 6,
+	CAT_FRONT_OFFSET: 0.5,
+	ENVIRONMENT_BACKGROUND_BLURRINESS: 0.6,
+	ENVIRONMENT_BACKGROUND_INTENSITY: 1.8,
+	ENVIRONMENT_INTENSITY: 0.6,
+} as const
+
+// Asset-name lookup records; their keys describe assets rather than constants.
 
 export const MAXSHELF_ASSET_IDS = {
 	backpanel665x100: 'asset:maxshelf:backpanel:665x100-plain',
@@ -71,6 +103,8 @@ export const KITCHEN_ASSET_IDS = {
 	topPanelSmall: 'asset:kitchen:top-panel-small',
 } as const
 
+// Compatibility records map historical IDs to registered assets.
+
 export const LEGACY_ASSET_ALIASES = [
 	{
 		id: 'asset:backplate-corner',
@@ -118,3 +152,72 @@ export const LEGACY_ASSET_ALIASES = [
 		sourceId: MAXSHELF_ASSET_IDS.shelf1000x370,
 	},
 ] as const
+
+// Project persistence filenames, storage keys, and UI timing.
+
+export const PROJECT_CONSTANTS = {
+	PACKAGE_FILE_NAME: 'project.zip',
+	METADATA_FILE_NAME: 'metadata.json',
+	PROJECT_FILE_NAME: 'project.json',
+	AUTOSAVE_DELAY_MS: 800,
+	SAVED_CONFIRMATION_MS: 2_000,
+	SELECTED_CLIENT_STORAGE_KEY: 'assembler.selected-client',
+} as const
+
+// Node graph geometry, interaction timing, and expression limits.
+
+const MATH_EXPRESSION_VARIABLE_NAMES = ['x', 'y', 'z', ...'abcdefghijklmnopqrstuvw'] as const
+
+export const NODE_EDITOR_CONSTANTS = {
+	NODE_CENTER_X: 96,
+	NODE_CENTER_Y: 64,
+	DEFAULT_NODE_WIDTH: 192,
+	DEFAULT_NODE_HEIGHT: 128,
+	PADDING: 32,
+	MINIMUM_WIDTH: 320,
+	MINIMUM_HEIGHT: 320,
+	MERGE_WINDOW_MS: 750,
+	DRAG_PIXELS_PER_STEP: 10,
+	MATH_EXPRESSION_AUTOMATIC_INPUT_LIMIT: MATH_EXPRESSION_VARIABLE_NAMES.length,
+} as const
+
+// Parametric model validation limits, defaults, and numeric precision.
+
+const STRETCH_BOX_DECIMAL_PLACES = 3
+
+export const PARAMETRIC_MODEL_CONSTANTS = {
+	ARRAY_DISTANCE_SNAP: 0.01,
+	DEFAULT_ROUND_STEP: 0.001,
+	SIZE_COMPARISON_TOLERANCE: 1e-6,
+	DEFAULT_ASSET_MATERIAL_ID: 'plastic',
+	DEFAULT_PRODUCT_ANIMATION_LABEL: 'Animate',
+	DEFAULT_SLOT_ID: 'root-graphs',
+	DEFAULT_CHECKER_TEXTURE_SCALE: 1,
+	MIN_CHECKER_TEXTURE_SCALE: 1,
+	MAX_CHECKER_TEXTURE_SCALE: 16,
+	MAX_STRETCH_AXES: 3,
+	DEFAULT_MIN_FRACTION: 0.05,
+	DEFAULT_MAX_FRACTION: 0.95,
+	STRETCH_BOX_DECIMAL_PLACES: STRETCH_BOX_DECIMAL_PLACES,
+	STRETCH_BOX_STEP: 10 ** -STRETCH_BOX_DECIMAL_PLACES,
+	MAX_STRETCH_SIZE_MULTIPLIER: 10,
+	SIZE_PRECISION: 6,
+	DEFAULT_MODEL_TEXEL_SIZE_RATIO: 1,
+	MIN_MODEL_TEXEL_SIZE_RATIO: 0.01,
+	MAX_MODEL_TEXEL_SIZE_RATIO: 10,
+	MODEL_TEXEL_SIZE_RATIO_STEP: 0.01,
+} as const
+
+// Model editor pointer behavior, highlighting, and interaction target identifiers.
+
+export const MODEL_EDITOR_CONSTANTS = {
+	DRAG_THRESHOLD_PX: 4,
+	CLICK_DELAY_MS: 250,
+	EDIT_OVERLAY_COLOR: 0xfacc15,
+	STRETCH_PLANE_PERPENDICULAR_MARGIN: 0.1,
+	MODEL_INTERACTION_TARGET: 'model',
+	STRETCH_AXIS_INTERACTION_TARGET: 'stretch-axis',
+	STRETCH_BOUNDARY_INTERACTION_TARGET: 'stretch-boundary',
+	PIVOT_INTERACTION_TARGET: 'pivot',
+	PIVOT_ANCHOR_INTERACTION_TARGET: 'pivot-anchor',
+} as const

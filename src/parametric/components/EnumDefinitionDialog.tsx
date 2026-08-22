@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { DndProvider } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
-import { GripVertical, Plus, Trash2 } from 'lucide-react'
+import { Ellipsis, GripVertical, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
 	Dialog,
@@ -12,11 +12,14 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { EnumDefinitionSnapshot } from '@/parametric/model/EnumDefinition'
 import { useSortableEnumOption } from '@/parametric/hooks/useSortableEnumOption'
 
 export function EnumDefinitionDialog({
 	definition,
+	definitions,
 	usageCount,
 	open,
 	onOpenChange,
@@ -25,8 +28,13 @@ export function EnumDefinitionDialog({
 	onRenameOption,
 	onRemoveOption,
 	onMoveOption,
+	onDefinitionChange,
+	onCreateDefinition,
+	onDeleteDefinition,
+	canDeleteDefinition,
 }: {
 	definition: EnumDefinitionSnapshot
+	definitions: readonly EnumDefinitionSnapshot[]
 	usageCount: number
 	open: boolean
 	onOpenChange: (open: boolean) => void
@@ -35,7 +43,12 @@ export function EnumDefinitionDialog({
 	onRenameOption: (index: number, option: string) => void
 	onRemoveOption: (index: number) => void
 	onMoveOption: (sourceIndex: number, targetIndex: number) => void
+	onDefinitionChange: (enumId: string) => void
+	onCreateDefinition: () => void
+	onDeleteDefinition: () => void
+	canDeleteDefinition: boolean
 }) {
+	const [actionsOpen, setActionsOpen] = useState(false)
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent
@@ -43,6 +56,25 @@ export function EnumDefinitionDialog({
 				className="sm:max-w-md"
 			>
 				<DialogHeader>
+					<div className="flex items-center gap-1">
+						<Select value={definition.id} onValueChange={onDefinitionChange}>
+							<SelectTrigger data-id={`enum-definition-select-${definition.id}`} className="h-8 min-w-0 flex-1 text-xs" aria-label="Choice set">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>{definitions.map((candidate) => (
+								<SelectItem key={candidate.id} value={candidate.id}>{candidate.name}</SelectItem>
+							))}</SelectContent>
+						</Select>
+						<Popover open={actionsOpen} onOpenChange={setActionsOpen}>
+							<PopoverTrigger asChild>
+								<Button data-id={`enum-definition-actions-${definition.id}`} type="button" variant="outline" size="icon" className="h-8 w-8 shrink-0" aria-label="Choice set actions"><Ellipsis /></Button>
+							</PopoverTrigger>
+							<PopoverContent data-id={`enum-definition-actions-menu-${definition.id}`} align="end" className="w-36 p-1">
+								<Button type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={() => { setActionsOpen(false); onCreateDefinition() }}><Plus />Add choice set</Button>
+								<Button type="button" variant="ghost" size="sm" className="w-full justify-start text-muted-foreground hover:text-destructive" disabled={!canDeleteDefinition} onClick={() => { setActionsOpen(false); onDeleteDefinition() }}><Trash2 />Delete choice set</Button>
+							</PopoverContent>
+						</Popover>
+					</div>
 					<DialogTitle>Edit choice set</DialogTitle>
 					<DialogDescription>
 						Changes apply to {usageCount} graph {usageCount === 1 ? 'input' : 'inputs'} using

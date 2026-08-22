@@ -11,12 +11,11 @@ available options are shared by every referencing input.
 
 ## Editing flow
 
-Adding a Choice Input creates a new definition with one `Option` value and binds the node to
-it. The Input node provides a choice-set selector, a create-and-bind action, a usage count,
-the input-specific default selector, and an Edit choices action. That action opens a focused dialog for
-the shared name and values. Editing from any referencing input updates the single document
-definition in one history command. Choice labels enter rename mode on double-click and can be
-reordered by their drag handles.
+Adding a Choice Input creates a new definition with one `Option` value and binds the node to it.
+Input and Choice Widget nodes use the same compact choice-set selector and edit button. Choice Inputs
+also show their local default selector. The editor action opens a focused dialog for the shared name
+and values. Editing from any referencing node updates the single document definition in one history
+command. Choice labels enter rename mode on double-click and can be reordered by their drag handles.
 
 Rebinding an input removes its previous definition when that definition has no remaining users.
 Removing an enum input or graph performs the same unused-definition cleanup.

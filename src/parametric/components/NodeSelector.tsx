@@ -40,7 +40,15 @@ import {
 	nodeViewPresentation,
 } from '@/parametric/nodes/nodeViewRegistry'
 
-const groupOrder: NodeMenuGroup[] = ['Inputs', 'Geometry', 'Appearance', 'Operations', 'Other']
+const groupOrder: NodeMenuGroup[] = [
+	'Values',
+	'Geometry',
+	'Transform',
+	'Arrays',
+	'Logic',
+	'Appearance',
+	'Interface',
+]
 
 const graphInputOptions: Array<{
 	valueType: GraphInputDefinition['valueType']
@@ -49,12 +57,7 @@ const graphInputOptions: Array<{
 	icon: LucideIcon
 }> = [
 	{ valueType: 'number', label: 'Number', description: 'Add a numeric value', icon: Hash },
-	{
-		valueType: 'numberArray',
-		label: 'Number array',
-		description: 'Add a numeric list value',
-		icon: ListPlus,
-	},
+	{ valueType: 'primitiveArray', label: 'Array', description: 'Add a list of primitive values', icon: ListPlus },
 	{ valueType: 'vector3', label: 'Vector 3', description: 'Add an XYZ vector value', icon: Move3d },
 	{ valueType: 'enum', label: 'Choice', description: 'Add a choice value', icon: ListFilter },
 	{
@@ -73,6 +76,7 @@ interface NodeSelectionOption {
 	group: string
 	label: string
 	description: string
+	aliases?: readonly string[]
 	icon: LucideIcon
 	select: () => void
 }
@@ -112,7 +116,7 @@ export function NodeSelector({ selectedEdges }: { selectedEdges: Edge[] }) {
 	const options: NodeSelectionOption[] = [
 		...graphInputOptions.map((option) => ({
 			id: `input:${option.valueType}`,
-			group: 'Inputs',
+			group: 'Values',
 			label: option.label,
 			description: option.description,
 			icon: option.icon,
@@ -123,7 +127,7 @@ export function NodeSelector({ selectedEdges }: { selectedEdges: Edge[] }) {
 		})),
 		...(documentGraphInputs.length > 0 ? [{
 			id: 'input-reference',
-			group: 'Inputs',
+			group: 'Interface',
 			label: 'Input Reference',
 			description: 'Use an existing graph input',
 			icon: Copy,
@@ -144,7 +148,7 @@ export function NodeSelector({ selectedEdges }: { selectedEdges: Edge[] }) {
 			},
 		})),
 		...groupOrder.flatMap((group) => nodeDefinitions
-			.filter((definition) => (nodeViewPresentation[definition.type]?.group ?? 'Other') === group)
+			.filter((definition) => nodeViewPresentation[definition.type]?.group === group)
 			.map((definition) => {
 				const presentation = nodeViewPresentation[definition.type]
 				return {
@@ -152,6 +156,7 @@ export function NodeSelector({ selectedEdges }: { selectedEdges: Edge[] }) {
 					group,
 					label: definition.label,
 					description: presentation?.description ?? 'Add node',
+					aliases: definition.aliases,
 					icon: presentation?.icon ?? Circle,
 					select: () => {
 						addNode(definition.type, getInsertPosition(), getSelectedEdgeId())
@@ -163,7 +168,7 @@ export function NodeSelector({ selectedEdges }: { selectedEdges: Edge[] }) {
 	const normalizedFilter = filter.trim().toLocaleLowerCase()
 	const filteredOptions = normalizedFilter
 		? options.filter((option) => (
-			`${option.label} ${option.description} ${option.group}`
+			`${option.label} ${option.description} ${option.group} ${option.aliases?.join(' ') ?? ''}`
 				.toLocaleLowerCase()
 				.includes(normalizedFilter)
 		))

@@ -1,4 +1,4 @@
-import type { Client } from '@/cosntants'
+import type { Client } from '@/constants'
 import { ModelCatalogItem } from '@/models/ModelCatalogItem'
 import { meshRepository } from '@/parametric/three/MeshRepository'
 

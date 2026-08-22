@@ -6,26 +6,24 @@ import {
 	type EnumDefinitionSnapshot,
 } from '@/parametric/model/EnumDefinition'
 import { RootGraph } from '@/parametric/model/RootGraph'
-import type { Client } from '@/cosntants'
+import type { Client } from '@/constants'
 import {
 	LayoutModel,
 	type LayoutDataDocument,
+	type ProductDataDocument,
+	createDefaultLayoutData,
 	type LayoutGraphInstanceDocument,
 	type LayoutInstanceBoundsDocument,
 	type LayoutRangeDocument,
 	type LayoutSlotDocument,
+	type ProductConfigurationControl,
+	type ProductConfigurationDocument,
 	type ProductDocument,
 } from '@/layout/LayoutDocument'
-import {
-	assertLayoutInstanceMetadata,
-	type LayoutAxisRole,
-	assertRootGraphLayoutMetadata,
-	type RootGraphAxisBinding,
-	type RootGraphLayoutMetadata,
-} from '@/layout/GraphLayoutMetadata'
+import { productLayoutRegistry } from '@/layout/ProductLayoutRegistry'
 
-export type GraphInputValue = number | number[] | Vector3Snapshot | string | boolean
-export type GraphInputValueType = Exclude<GraphValueType, 'meshArray'>
+export type GraphInputValue = number | number[] | Array<number | boolean> | Vector3Snapshot | string | boolean
+export type GraphInputValueType = GraphValueType
 
 export interface GraphInputDefinition {
 	id: string
@@ -77,12 +75,9 @@ export type ConfigurationPanelControl =
 	| (ConfigurationPanelControlBase & { type: 'select' })
 	| (ConfigurationPanelControlBase & { type: 'material' })
 	| (ConfigurationPanelControlBase & { type: 'switch' })
-	| (ConfigurationPanelControlBase & {
-		type: 'numberArray'
-		labels: string[]
-		total: number
-		step: number
-	})
+	| (ConfigurationPanelControlBase & { type: 'color' })
+	| (ConfigurationPanelControlBase & { type: 'vector3'; step: number })
+	| (ConfigurationPanelControlBase & { type: 'primitiveArray' })
 
 export interface ConfigurationTemplate {
 	id: string
@@ -91,7 +86,7 @@ export interface ConfigurationTemplate {
 }
 
 export type ConfigurationField =
-	| { id: string; type: 'number'; label: string; value: number; step: number }
+	| { id: string; type: 'number'; label: string; value: number; step: number; min?: number; max?: number }
 	| {
 		id: string
 		type: 'slider'
@@ -101,25 +96,23 @@ export type ConfigurationField =
 		max: number
 		step: number
 	}
-	| {
-		id: string
-		type: 'numberArray'
-		label: string
-		value: number[]
-		labels: string[]
-		total?: number
-		step: number
-	}
 	| { id: string; type: 'enum'; label: string; value: number; options: string[] }
 	| { id: string; type: 'material'; label: string; value: string }
 	| { id: string; type: 'color'; label: string; value: string }
 	| { id: string; type: 'vector3'; label: string; value: Vector3Snapshot; step: number }
 	| { id: string; type: 'boolean'; label: string; value: boolean }
+	| {
+		id: string
+		type: 'primitiveArray'
+		label: string
+		value: Array<number | boolean>
+		elementType: 'number' | 'boolean' | 'enum'
+		options: string[]
+	}
 
 export interface GraphDocumentReader {
 	getLayout(): LayoutDataDocument
 	getRootGraphs(): RootGraphReader[]
-	getRootGraphLayoutMetadata(graphId: string): RootGraphLayoutMetadata | undefined
 	isRootGraph(graphId: string): boolean
 	getEnumDefinitions(): EnumDefinitionSnapshot[]
 	requireEnumDefinition(enumId: string): EnumDefinitionSnapshot
@@ -144,7 +137,7 @@ export class GraphDocumentModel implements GraphDocumentReader {
 		rootGraphs: RootGraph[],
 		enumDefinitions: EnumDefinitionSnapshot[],
 		graphs: GraphDefinition[],
-		layout: LayoutDataDocument
+		productData: ProductDataDocument
 	) {
 		for (const definition of enumDefinitions) {
 			if (this.enumDefinitions.has(definition.id)) {
@@ -159,40 +152,31 @@ export class GraphDocumentModel implements GraphDocumentReader {
 			if (this.graphs.has(graph.id)) throw new Error(`Duplicate graph ID "${graph.id}"`)
 			this.graphs.set(graph.id, graph)
 		}
-		for (const product of layout.products) {
-			for (const instance of product.instances) {
-				assertLayoutInstanceMetadata(this.requireGraph(instance.graphId), instance.layoutMetadata)
-			}
-		}
 		if (rootGraphs.length === 0) throw new Error('Graph document requires at least one root graph')
 		for (const root of rootGraphs) {
 			const graphId = root.getGraphId()
 			if (this.rootGraphs.has(graphId)) throw new Error(`Duplicate root graph "${graphId}"`)
 			const graph = this.graphs.get(graphId)
 			if (!graph) throw new Error(`Root references unknown graph "${graphId}"`)
-			for (const [inputId, value] of Object.entries(root.getInputValues())) {
-				const input = graph.inputs.find((candidate) => candidate.id === inputId)
-				if (!input || !this.isInputValueCompatible(input, value)) {
-					throw new Error(
-						`Root graph "${graphId}" has invalid value ${JSON.stringify(value)} ` +
-							`for input "${inputId}"`
-					)
-				}
-			}
-			for (const control of root.getConfigurationControls()) assertConfigurationControl(control)
-			assertRootGraphLayoutMetadata(graph, root.getLayoutMetadata())
 			this.rootGraphs.set(graphId, root)
 		}
 		for (const root of this.rootGraphs.values()) {
 			this.validateReferences(root)
-			this.validateConfigurationValues(root)
 			this.reconcileConfigurationTemplates(root)
 		}
-		this.layout = this.createLayoutModel(layout)
+		this.layout = this.createLayoutModel(productData)
 	}
 
 	public getLayout(): LayoutDataDocument {
-		return this.layout.toDocument()
+		return this.createLayoutModel(this.getProductData()).toDocument()
+	}
+
+	public getProductData(): ProductDataDocument {
+		const layout = this.layout.toDocument()
+		return {
+			activeProductId: layout.activeProductId,
+			products: layout.products,
+		}
 	}
 
 	public setActiveProduct(productId: string): void {
@@ -207,6 +191,10 @@ export class GraphDocumentModel implements GraphDocumentReader {
 		this.layout.setProductLabel(productId, label)
 	}
 
+	public setProductAnimationLabel(productId: string, label: string): void {
+		this.layout.setProductAnimationLabel(productId, label)
+	}
+
 	public removeProduct(productId: string): void {
 		this.layout.removeProduct(productId)
 	}
@@ -215,8 +203,10 @@ export class GraphDocumentModel implements GraphDocumentReader {
 		this.layout.setProductLayout(productId, layoutId)
 	}
 
-	public setLayoutConfigurationHeader(layoutId: string, header: string): void {
-		this.layout.setConfigurationHeader(layoutId, header)
+
+	public setProductConfiguration(productId: string, configuration: ProductConfigurationDocument): void {
+		this.assertProductConfigurationBindings(productId, configuration)
+		this.layout.setProductConfiguration(productId, configuration)
 	}
 
 	public setLayoutSlot(layoutId: string, slotId: string): void {
@@ -225,13 +215,13 @@ export class GraphDocumentModel implements GraphDocumentReader {
 
 	public addDefaultProductInstance(productId: string, instanceId: string): void {
 		const product = this.layout.requireProduct(productId)
-		const layout = this.layout.requireLayout(product.layoutId)
-		const slot = this.layout.requireSlot(layout.slotId)
-		const graphId = slot.graphs[0]
+		const layout = productLayoutRegistry.require(product.layoutId)
+		const rootGraphIds = [...this.rootGraphs.keys()]
+		const graphId = rootGraphIds.find((candidate) => layout.canInstantiateGraph(candidate, rootGraphIds))
 		if (!graphId) {
 			throw new Error(
-				`Cannot add an item to product "${productId}" because slot `
-				+ `"${slot.id}" allows no root graphs.`
+				`Cannot add an item to product "${productId}" with layout "${layout.id}": `
+				+ `none of the root graphs ${JSON.stringify(rootGraphIds)} satisfy its instantiation rules.`
 			)
 		}
 		this.layout.addInstance(productId, {
@@ -243,25 +233,6 @@ export class GraphDocumentModel implements GraphDocumentReader {
 
 	public removeProductInstance(productId: string, instanceId: string): void {
 		this.layout.removeInstance(productId, instanceId)
-	}
-
-	public setProductInstanceGraph(productId: string, instanceId: string, graphId: string): void {
-		const product = this.layout.requireProduct(productId)
-		const layout = this.layout.requireLayout(product.layoutId)
-		const slot = this.layout.requireSlot(layout.slotId)
-		if (!slot.graphs.includes(graphId)) {
-			throw new Error(
-				`Cannot put graph "${graphId}" in item "${instanceId}" of product "${productId}": `
-				+ `slot definition "${slot.id}" allows ${JSON.stringify(slot.graphs)}.`
-			)
-		}
-		this.requireRootGraph(graphId)
-		this.layout.setInstanceGraph(
-			productId,
-			instanceId,
-			graphId,
-			this.getInitialLayoutInputValues(graphId)
-		)
 	}
 
 	public setProductInstanceInputValue(
@@ -281,8 +252,85 @@ export class GraphDocumentModel implements GraphDocumentReader {
 				+ 'compatible public input with that ID.'
 			)
 		}
-		this.assertConfigurationValue(instance.graphId, inputId, value, instanceId)
 		this.layout.setInstanceInputValue(productId, instanceId, inputId, value)
+	}
+
+	public setProductConfigurationControlValue(
+		productId: string,
+		controlId: string,
+		value: GraphInputValue
+	): void {
+		const control = this.requireProductConfigurationControl(productId, controlId)
+		if (control.type === 'sectionList') {
+			throw new Error(`Configuration control "${controlId}" on product "${productId}" is a section list.`)
+		}
+		if (
+			(control.type === 'number' || control.type === 'slider')
+			&& typeof value === 'number'
+			&& ((control.min !== undefined && value < control.min) || (control.max !== undefined && value > control.max))
+		) {
+			throw new Error(`Value ${value} is outside bounds for configuration control "${controlId}".`)
+		}
+		this.setProductInstanceInputValue(productId, control.target.instanceId, control.target.inputId, value)
+	}
+
+	public setProductConfigurationSectionValue(
+		productId: string,
+		controlId: string,
+		fieldId: string,
+		index: number,
+		value: number
+	): void {
+		const control = this.requireSectionListControl(productId, controlId)
+		const field = control.fields.find((candidate) => candidate.id === fieldId)
+		if (!field || !Number.isInteger(index) || index < 0 || !Number.isFinite(value)) {
+			throw new Error(`Cannot update section "${index}" field "${fieldId}" on product "${productId}".`)
+		}
+		const values = this.getSectionListValues(productId, control)
+		if (index >= values.length) {
+			throw new Error(`Section "${index}" does not exist in configuration control "${controlId}".`)
+		}
+		const input = this.requireInput(productId, field.target.instanceId, field.target.inputId)
+		if (input.enumId) {
+			const options = this.getInputOptions(input)
+			if (!isEnumIndex(value, options)) {
+				throw new Error(
+					`Cannot set section ${index + 1} field "${field.label}" ("${field.id}") on product `
+					+ `"${productId}" configuration control "${control.label}" ("${control.id}") to choice `
+					+ `index ${value}: target input "${input.id}" uses choice set "${input.enumId}" with `
+					+ `${options.length} options ${JSON.stringify(options)}. Expected an integer index from 0 to `
+					+ `${options.length - 1}.`
+				)
+			}
+		}
+		if (
+			(field.widget === 'number' || field.widget === 'slider')
+			&& ((field.min !== undefined && value < field.min) || (field.max !== undefined && value > field.max))
+		) {
+			throw new Error(`Value ${value} is outside bounds for section field "${field.id}".`)
+		}
+		values[index][fieldId] = value
+		this.writeSectionListValues(productId, control, values)
+	}
+
+	public addProductConfigurationSection(productId: string, controlId: string): void {
+		const control = this.requireSectionListControl(productId, controlId)
+		const values = this.getSectionListValues(productId, control)
+		values.push(Object.fromEntries(control.fields.map((field) => {
+			const input = this.requireInput(productId, field.target.instanceId, field.target.inputId)
+			return [field.id, this.getSectionFieldDefaultValue(productId, control, field, input)]
+		})))
+		this.writeSectionListValues(productId, control, values)
+	}
+
+	public removeProductConfigurationSection(productId: string, controlId: string, index: number): void {
+		const control = this.requireSectionListControl(productId, controlId)
+		const values = this.getSectionListValues(productId, control)
+		if (!Number.isInteger(index) || index < 0 || index >= values.length) {
+			throw new Error(`Cannot remove missing section "${index}" from configuration control "${controlId}".`)
+		}
+		values.splice(index, 1)
+		this.writeSectionListValues(productId, control, values)
 	}
 
 	public setLayoutSlotGraphs(slotId: string, graphIds: string[]): void {
@@ -327,36 +375,6 @@ export class GraphDocumentModel implements GraphDocumentReader {
 		this.layout.setSlotInstanceBounds(slotId, instanceBounds)
 	}
 
-	public setProductInstanceLayoutAxisBinding(
-		productId: string,
-		instanceId: string,
-		role: LayoutAxisRole,
-		path: string | null
-	): void {
-		const instance = this.requireProductInstance(productId, instanceId)
-		const graph = this.requireGraph(instance.graphId)
-		const axisBinding = { ...instance.layoutMetadata?.axisBinding }
-		if (path) axisBinding[role] = path
-		else delete axisBinding[role]
-		const metadata = Object.keys(axisBinding).length > 0 ? { axisBinding } : undefined
-		assertLayoutInstanceMetadata(graph, metadata)
-		this.layout.setInstanceLayoutMetadata(productId, instanceId, metadata)
-	}
-
-	public setRootGraphLayoutAxisBinding(
-		graphId: string,
-		role: LayoutAxisRole,
-		binding: RootGraphAxisBinding | null
-	): void {
-		const root = this.requireRootGraph(graphId)
-		const axisBinding = { ...root.getLayoutMetadata()?.axisBinding }
-		if (binding) axisBinding[role] = { ...binding }
-		else delete axisBinding[role]
-		const metadata = Object.keys(axisBinding).length > 0 ? { axisBinding } : undefined
-		assertRootGraphLayoutMetadata(this.requireGraph(graphId), metadata)
-		root.setLayoutMetadata(metadata)
-	}
-
 	public getClient(): Client {
 		return this.client
 	}
@@ -369,10 +387,6 @@ export class GraphDocumentModel implements GraphDocumentReader {
 
 	public getRootGraphs(): RootGraph[] {
 		return [...this.rootGraphs.values()]
-	}
-
-	public getRootGraphLayoutMetadata(graphId: string): RootGraphLayoutMetadata | undefined {
-		return this.requireRootGraph(graphId).getLayoutMetadata()
 	}
 
 	public getRootGraph(graphId: string): RootGraph | undefined {
@@ -408,7 +422,7 @@ export class GraphDocumentModel implements GraphDocumentReader {
 	}
 
 	public getInputOptions(input: GraphInputDefinition): string[] {
-		if (input.valueType === 'enum') return this.getEnumOptions(input.enumId ?? '')
+		if (input.enumId) return this.getEnumOptions(input.enumId)
 		return []
 	}
 
@@ -475,7 +489,7 @@ export class GraphDocumentModel implements GraphDocumentReader {
 	public setInputEnum(graphId: string, inputId: string, enumId: string): string | undefined {
 		this.requireEnumEntity(enumId)
 		const input = this.graphs.get(graphId)?.inputs.find((candidate) => candidate.id === inputId)
-		if (input?.valueType !== 'enum') return undefined
+		if (!input || !['enum', 'primitiveArray'].includes(input.valueType)) return undefined
 		const previousEnumId = input.enumId
 		input.enumId = enumId
 		if (!this.isInputValueCompatible(input, input.defaultValue ?? -1)) {
@@ -590,7 +604,6 @@ export class GraphDocumentModel implements GraphDocumentReader {
 				}
 			}
 			this.validateReferences(root)
-			this.validateConfigurationValues(root)
 			this.reconcileConfigurationTemplates(root)
 		}
 		this.reconcileLayoutInstances(graphId)
@@ -603,7 +616,6 @@ export class GraphDocumentModel implements GraphDocumentReader {
 		const index = graph.inputs.findIndex((input) => input.id === inputId)
 		if (index < 0) return false
 		const [removedInput] = graph.inputs.splice(index, 1)
-		this.reconcileLayoutInstanceMetadata(graphId, inputId)
 		const root = this.rootGraphs.get(graphId)
 		if (root) {
 			root.removeInputValue(inputId)
@@ -611,7 +623,6 @@ export class GraphDocumentModel implements GraphDocumentReader {
 				(control) => control.inputId !== inputId
 			))
 			this.reconcileConfigurationTemplates(root)
-			this.reconcileRootGraphLayoutMetadata(graphId, inputId)
 		}
 		this.reconcileLayoutInstances(graphId)
 		if (removedInput?.enumId) this.removeEnumIfUnused(removedInput.enumId)
@@ -629,17 +640,6 @@ export class GraphDocumentModel implements GraphDocumentReader {
 		const root = this.requireRootGraph(graphId)
 		const input = this.requireGraph(graphId).inputs.find((candidate) => candidate.id === inputId)
 		if (!input || !this.isInputValueCompatible(input, value)) return false
-		const numberArrayControl = root.getConfigurationControls().find(
-			(control) => control.type === 'numberArray' && control.inputId === inputId
-		)
-		if (
-			numberArrayControl?.type === 'numberArray'
-			&& (
-				!Array.isArray(value)
-				|| value.length !== numberArrayControl.labels.length
-				|| value.reduce((total, item) => total + item, 0) > numberArrayControl.total
-			)
-		) return false
 		root.setInputValue(inputId, value)
 		return true
 	}
@@ -661,8 +661,6 @@ export class GraphDocumentModel implements GraphDocumentReader {
 		controls: ConfigurationPanelControl[]
 	): void {
 		const root = this.requireRootGraph(graphId)
-		const previousControls = root.getConfigurationControls()
-		for (const control of controls) assertConfigurationControl(control)
 		const rootInputs = new Map(this.requireGraph(graphId).inputs.map((input) => [input.id, input]))
 		const controlIds = new Set<string>()
 		const controlledInputs = new Set<string>()
@@ -682,24 +680,6 @@ export class GraphDocumentModel implements GraphDocumentReader {
 			return [copyConfigurationControl(control)]
 		})
 		root.setConfigurationControls(configurationControls)
-		for (const control of configurationControls) {
-			const value = this.getRootInputValue(graphId, control.inputId)
-			if (control.type === 'numberArray') {
-				const current = Array.isArray(value) ? value : []
-				const previous = previousControls.find((candidate) => (
-					candidate.id === control.id && candidate.type === 'numberArray'
-				))
-				root.setInputValue(
-					control.inputId,
-					reconcileNumberArray(
-						current,
-						control.labels,
-						control.total,
-						previous?.type === 'numberArray' ? previous.labels : undefined
-					)
-				)
-			}
-		}
 		this.validateReferences(root)
 		this.reconcileConfigurationTemplates(root)
 		this.reconcileLayoutInstances(graphId)
@@ -807,7 +787,6 @@ export class GraphDocumentModel implements GraphDocumentReader {
 					+ `root input "${control.inputId}" of type "${input.valueType}" on graph "${graphId}"`
 				)
 			}
-			assertConfigurationControl(control)
 			if (controlIds.has(control.id)) {
 				throw new Error(`Duplicate configuration control ID "${control.id}"`)
 			}
@@ -819,25 +798,6 @@ export class GraphDocumentModel implements GraphDocumentReader {
 			}
 			controlIds.add(control.id)
 			controlledInputs.add(control.inputId)
-		}
-	}
-
-	private validateConfigurationValues(root: RootGraph): void {
-		const graphId = root.getGraphId()
-		for (const control of root.getConfigurationControls()) {
-			if (control.type !== 'numberArray') continue
-			const value = this.getRootInputValue(graphId, control.inputId)
-			if (
-				!Array.isArray(value)
-				|| value.length !== control.labels.length
-				|| value.reduce((total, item) => total + item, 0) > control.total
-			) {
-				throw new Error(
-					`Number-array configuration control "${control.id}" on root graph "${graphId}" `
-					+ `requires ${control.labels.length} values totaling at most ${control.total}. `
-					+ `Received ${JSON.stringify(value)}.`
-				)
-			}
 		}
 	}
 
@@ -871,29 +831,21 @@ export class GraphDocumentModel implements GraphDocumentReader {
 
 	private isTemplateValueCompatible(
 		input: GraphInputDefinition,
-		control: ConfigurationPanelControl,
+		_control: ConfigurationPanelControl,
 		value: GraphInputValue | undefined
 	): boolean {
 		if (value === undefined || !this.isInputValueCompatible(input, value)) return false
-		return control.type !== 'numberArray'
-			|| (Array.isArray(value)
-				&& value.length === control.labels.length
-				&& value.reduce((total, item) => total + item, 0) <= control.total)
+		return true
 	}
 
 	private getDefaultConfigurationValue(
 		input: GraphInputDefinition,
-		control: ConfigurationPanelControl
+		_control: ConfigurationPanelControl
 	): GraphInputValue {
 		if (input.defaultValue === undefined) {
 			throw new Error(`Configuration input "${input.id}" has no default value.`)
 		}
-		if (control.type !== 'numberArray') return copyInputValue(input.defaultValue)
-		return reconcileNumberArray(
-			Array.isArray(input.defaultValue) ? input.defaultValue : [],
-			control.labels,
-			control.total
-		)
+		return copyInputValue(input.defaultValue)
 	}
 
 	private createConfigurationTemplateId(templates: ConfigurationTemplate[]): string {
@@ -967,13 +919,8 @@ export class GraphDocumentModel implements GraphDocumentReader {
 	}
 
 	private reconcileLayoutInstances(graphId: string): void {
-		const document = this.layout.toDocument()
+		const document = this.getProductData()
 		const graph = this.requireGraph(graphId)
-		const controls = new Map(
-			(this.rootGraphs.get(graphId)?.getConfigurationControls() ?? []).map(
-				(control) => [control.inputId, control]
-			)
-		)
 		for (const product of document.products) {
 			for (const instance of product.instances) {
 				if (instance.graphId !== graphId) continue
@@ -983,50 +930,10 @@ export class GraphDocumentModel implements GraphDocumentReader {
 						delete instance.inputValues[inputId]
 						continue
 					}
-					const control = controls.get(inputId)
-					if (
-						control?.type === 'numberArray'
-						&& (
-							!Array.isArray(value)
-							|| value.length !== control.labels.length
-							|| value.reduce((total, item) => total + item, 0) > control.total
-						)
-					) {
-						instance.inputValues[inputId] = this.getDefaultConfigurationValue(input, control)
-					}
 				}
 			}
 		}
 		this.layout = this.createLayoutModel(document)
-	}
-
-	private reconcileLayoutInstanceMetadata(graphId: string, inputId: string): void {
-		const document = this.layout.toDocument()
-		for (const product of document.products) {
-			for (const instance of product.instances) {
-				if (instance.graphId !== graphId || !instance.layoutMetadata) continue
-				for (const role of Object.keys(instance.layoutMetadata.axisBinding) as LayoutAxisRole[]) {
-					const path = instance.layoutMetadata.axisBinding[role]
-					if (path === inputId || path?.startsWith(`${inputId}.`)) {
-						delete instance.layoutMetadata.axisBinding[role]
-					}
-				}
-				if (Object.keys(instance.layoutMetadata.axisBinding).length === 0) {
-					instance.layoutMetadata = undefined
-				}
-			}
-		}
-		this.layout = this.createLayoutModel(document)
-	}
-
-	private reconcileRootGraphLayoutMetadata(graphId: string, inputId: string): void {
-		const root = this.rootGraphs.get(graphId)
-		const metadata = root?.getLayoutMetadata()
-		if (!root || !metadata) return
-		for (const role of Object.keys(metadata.axisBinding) as LayoutAxisRole[]) {
-			if (metadata.axisBinding[role]?.inputId === inputId) delete metadata.axisBinding[role]
-		}
-		root.setLayoutMetadata(Object.keys(metadata.axisBinding).length > 0 ? metadata : undefined)
 	}
 
 	private remapLayoutInstanceInputValues(
@@ -1034,7 +941,7 @@ export class GraphDocumentModel implements GraphDocumentReader {
 		inputId: string,
 		remap: (value: number) => number
 	): void {
-		const document = this.layout.toDocument()
+		const document = this.getProductData()
 		for (const product of document.products) {
 			for (const instance of product.instances) {
 				if (instance.graphId !== graphId || typeof instance.inputValues[inputId] !== 'number') continue
@@ -1044,9 +951,23 @@ export class GraphDocumentModel implements GraphDocumentReader {
 		this.layout = this.createLayoutModel(document)
 	}
 
-	private createLayoutModel(document: LayoutDataDocument): LayoutModel {
+	private createLayoutModel(productData: ProductDataDocument): LayoutModel {
+		const rootGraphIds = [...this.rootGraphs.keys()]
+		const document = createDefaultLayoutData(productData, rootGraphIds)
 		const model = new LayoutModel(document)
 		const snapshot = model.toDocument()
+		for (const product of snapshot.products) {
+			const layout = productLayoutRegistry.require(product.layoutId)
+			for (const instance of product.instances) {
+				if (!layout.canInstantiateGraph(instance.graphId, rootGraphIds)) {
+					throw new Error(
+						`Product "${product.id}" layout "${layout.id}" cannot instantiate graph `
+						+ `"${instance.graphId}" for item "${instance.id}". Available root graphs: `
+						+ `${JSON.stringify(rootGraphIds)}.`
+					)
+				}
+			}
+		}
 		for (const slot of snapshot.slots) {
 			for (const graphId of slot.graphs) {
 				if (!this.rootGraphs.has(graphId)) {
@@ -1058,27 +979,7 @@ export class GraphDocumentModel implements GraphDocumentReader {
 				}
 			}
 		}
-		for (const product of snapshot.products) {
-			for (const instance of product.instances) this.validateLayoutInstance(product.id, instance)
-		}
 		return model
-	}
-
-	private validateLayoutInstance(
-		productId: string,
-		instance: LayoutGraphInstanceDocument
-	): void {
-		const graph = this.requireGraph(instance.graphId)
-		for (const [inputId, value] of Object.entries(instance.inputValues)) {
-			const input = graph.inputs.find((candidate) => candidate.id === inputId)
-			if (!input || !this.isInputValueCompatible(input, value)) {
-				throw new Error(
-					`Product item "${instance.id}" in product "${productId}" has invalid value `
-					+ `${JSON.stringify(value)} for input "${inputId}" on graph "${graph.id}".`
-				)
-			}
-			this.assertConfigurationValue(graph.id, inputId, value, instance.id)
-		}
 	}
 
 	private requireProductInstance(
@@ -1094,34 +995,178 @@ export class GraphDocumentModel implements GraphDocumentReader {
 		return instance
 	}
 
-	private getInitialLayoutInputValues(graphId: string): Record<string, GraphInputValue> {
-		const template = this.getConfigurationTemplates(graphId)[0]
-		return template ? template.values : {}
+	private assertProductConfigurationBindings(
+		productId: string,
+		configuration: ProductConfigurationDocument
+	): void {
+		const targets = new Set<string>()
+		for (const control of configuration.controls) {
+			if (control.type === 'sectionList') {
+				const countInput = this.requireInput(productId, control.countTarget.instanceId, control.countTarget.inputId)
+				if (countInput.valueType !== 'number') {
+					throw new Error(`Section-list "${control.id}" count target must be a number input.`)
+				}
+				this.assertUniqueConfigurationTarget(targets, control.countTarget, control.id)
+				for (const field of control.fields) {
+					if (field.target.instanceId !== control.countTarget.instanceId) {
+						throw new Error(`Section-list "${control.id}" cannot bind fields from different product items.`)
+					}
+					const input = this.requireInput(productId, field.target.instanceId, field.target.inputId)
+				if (input.valueType !== 'primitiveArray' || !Array.isArray(input.defaultValue)
+						|| !input.defaultValue.every((item) => typeof item === 'number')) {
+						throw new Error(`Section-list field "${field.id}" must target a numeric or choice primitive-array input.`)
+					}
+					const widget = field.widget ?? (input.enumId ? 'select' : 'number')
+					if (
+						(input.enumId && widget !== 'select')
+						|| (!input.enumId && widget === 'select')
+						|| (widget === 'slider' && (!isValidRange(field.min, field.max) || !isValidStep(field.step)))
+						|| (widget === 'number' && field.step !== undefined && !isValidStep(field.step))
+					) {
+						throw new Error(`Section-list field "${field.id}" has incompatible widget or bounds.`)
+					}
+					this.assertUniqueConfigurationTarget(targets, field.target, control.id)
+				}
+				continue
+			}
+			const input = this.requireInput(productId, control.target.instanceId, control.target.inputId)
+			if (!isProductControlCompatible(input, control)) {
+				throw new Error(`Configuration control "${control.id}" is incompatible with input "${input.id}".`)
+			}
+			this.assertUniqueConfigurationTarget(targets, control.target, control.id)
+		}
 	}
 
-	private assertConfigurationValue(
-		graphId: string,
-		inputId: string,
-		value: GraphInputValue,
-		instanceId: string
+	private assertUniqueConfigurationTarget(
+		targets: Set<string>,
+		target: { instanceId: string; inputId: string },
+		controlId: string
 	): void {
-		const control = this.getConfigurationControls(graphId).find(
-			(candidate) => candidate.inputId === inputId
-		)
-		if (
-			control?.type === 'numberArray'
-			&& (
-				!Array.isArray(value)
-				|| value.length !== control.labels.length
-				|| value.reduce((total, item) => total + item, 0) > control.total
+		const key = `${target.instanceId}:${target.inputId}`
+		if (targets.has(key)) throw new Error(`Configuration control "${controlId}" duplicates target "${key}".`)
+		targets.add(key)
+	}
+
+	private requireProductConfigurationControl(productId: string, controlId: string): ProductConfigurationControl {
+		const configuration = this.layout.requireProduct(productId).configuration
+		const control = configuration?.controls.find((candidate) => candidate.id === controlId)
+		if (!control) throw new Error(`Product "${productId}" has no configuration control "${controlId}".`)
+		return control
+	}
+
+	private requireSectionListControl(
+		productId: string,
+		controlId: string
+	): Extract<ProductConfigurationControl, { type: 'sectionList' }> {
+		const control = this.requireProductConfigurationControl(productId, controlId)
+		if (control.type !== 'sectionList') throw new Error(`Configuration control "${controlId}" is not a section list.`)
+		return control
+	}
+
+	private requireInput(productId: string, instanceId: string, inputId: string): GraphInputDefinition {
+		const instance = this.requireProductInstance(productId, instanceId)
+		const input = this.requireGraph(instance.graphId).inputs.find((candidate) => candidate.id === inputId)
+		if (!input) throw new Error(`Product item "${instanceId}" has no public input "${inputId}".`)
+		return input
+	}
+
+	private getSectionListValues(
+		productId: string,
+		control: Extract<ProductConfigurationControl, { type: 'sectionList' }>
+	): Array<Record<string, number>> {
+		const arrays = control.fields.map((field) => {
+			const instance = this.requireProductInstance(productId, field.target.instanceId)
+			const input = this.requireInput(productId, field.target.instanceId, field.target.inputId)
+			const value = instance.inputValues[field.target.inputId] ?? input.defaultValue
+			const defaultValue = this.getSectionFieldDefaultValue(productId, control, field, input)
+			if (!Array.isArray(value)) {
+				console.warn(
+					`Section-list "${control.id}" field "${field.id}" on product "${productId}" expected `
+					+ `an array at input "${input.id}" but received ${JSON.stringify(value)}. `
+					+ 'Treating it as an empty array so the section action can continue.'
+				)
+				return { field, input, value: [] as number[] }
+			}
+			const normalized = value.map((item) => typeof item === 'number' && Number.isFinite(item)
+				? item
+				: defaultValue
 			)
+			if (normalized.some((item, index) => item !== value[index])) {
+				console.warn(
+					`Section-list "${control.id}" field "${field.id}" on product "${productId}" normalized `
+					+ `non-numeric values from ${JSON.stringify(value)} to ${JSON.stringify(normalized)} before editing.`
+				)
+			}
+			return { field, input, value: normalized }
+		})
+		const length = Math.max(0, ...arrays.map((item) => item.value.length))
+		return Array.from({ length }, (_, index) => Object.fromEntries(arrays.map(({ field, input, value }) => [
+			field.id,
+			value[index] ?? this.getSectionFieldDefaultValue(productId, control, field, input),
+		])) as Record<string, number>)
+	}
+
+	private writeSectionListValues(
+		productId: string,
+		control: Extract<ProductConfigurationControl, { type: 'sectionList' }>,
+		values: Array<Record<string, number>>
+	): void {
+		for (const field of control.fields) {
+			const input = this.requireInput(productId, field.target.instanceId, field.target.inputId)
+			const defaultValue = this.getSectionFieldDefaultValue(productId, control, field, input)
+			const next = values.map((item) => Number.isFinite(item[field.id]) ? item[field.id] : defaultValue)
+			if (next.some((item, index) => item !== values[index]?.[field.id])) {
+				console.warn(
+					`Section-list "${control.id}" field "${field.id}" on product "${productId}" replaced `
+					+ `non-finite output values with default ${defaultValue} before writing input "${input.id}".`
+				)
+			}
+			this.layout.setInstanceInputValue(productId, field.target.instanceId, field.target.inputId, next)
+		}
+		this.layout.setInstanceInputValue(
+			productId,
+			control.countTarget.instanceId,
+			control.countTarget.inputId,
+			values.length
+		)
+	}
+
+	private getSectionFieldDefaultValue(
+		productId: string,
+		control: Extract<ProductConfigurationControl, { type: 'sectionList' }>,
+		field: Extract<ProductConfigurationControl, { type: 'sectionList' }>['fields'][number],
+		input: GraphInputDefinition
+	): number {
+		if (input.enumId) {
+			const options = this.getInputOptions(input)
+			if (options.length === 0) {
+				console.warn(
+					`Section-list "${control.id}" field "${field.id}" on product "${productId}" targets `
+					+ `input "${input.id}" with empty choice set "${input.enumId}". Using index 0 so the `
+					+ 'section action can continue.'
+				)
+			}
+			return 0
+		}
+		const minimum = Number.isFinite(field.min) ? field.min as number : 0
+		const maximum = Number.isFinite(field.max) ? field.max as number : undefined
+		if (
+			(field.min !== undefined && !Number.isFinite(field.min))
+			|| (field.max !== undefined && !Number.isFinite(field.max))
+			|| (maximum !== undefined && minimum > maximum)
 		) {
-			throw new Error(
-				`Layout graph instance "${instanceId}" input "${inputId}" must contain `
-				+ `${control.labels.length} non-negative values totaling at most ${control.total}. `
-				+ `Received ${JSON.stringify(value)}.`
+			console.warn(
+				`Section-list "${control.id}" field "${field.id}" on product "${productId}" has unusable `
+				+ `numeric bounds min=${JSON.stringify(field.min)}, max=${JSON.stringify(field.max)} for `
+				+ `input "${input.id}". Using the nearest finite value so the section action can continue.`
 			)
 		}
+		return maximum === undefined ? minimum : Math.min(minimum, maximum)
+	}
+
+	private getInitialLayoutInputValues(graphId: string): Record<string, GraphInputValue> {
+		this.requireGraph(graphId)
+		return {}
 	}
 
 	public removeEnumIfUnused(enumId: string): void {
@@ -1149,8 +1194,29 @@ function isControlCompatible(
 	if (input.valueType === 'enum') return control.type === 'select'
 	if (input.valueType === 'materialInstance') return control.type === 'material'
 	if (input.valueType === 'boolean') return control.type === 'switch'
-	if (input.valueType === 'numberArray') return control.type === 'numberArray'
+	if (input.valueType === 'primitiveArray') return control.type === 'primitiveArray'
 	return false
+}
+
+function isProductControlCompatible(
+	input: GraphInputDefinition,
+	control: Exclude<ProductConfigurationControl, { type: 'sectionList' }>
+): boolean {
+	return ((control.type === 'number' || control.type === 'slider') && input.valueType === 'number'
+		&& (control.type !== 'slider' || (isValidRange(control.min, control.max) && isValidStep(control.step))))
+		|| (control.type === 'select' && input.valueType === 'enum')
+		|| (control.type === 'material' && input.valueType === 'materialInstance')
+		|| (control.type === 'switch' && input.valueType === 'boolean')
+		|| (control.type === 'color' && input.valueType === 'color')
+		|| (control.type === 'vector3' && input.valueType === 'vector3')
+}
+
+function isValidRange(min: number | undefined, max: number | undefined): boolean {
+	return Number.isFinite(min) && Number.isFinite(max) && (min as number) < (max as number)
+}
+
+function isValidStep(step: number | undefined): boolean {
+	return Number.isFinite(step) && (step as number) > 0
 }
 
 function copyGraphInput(input: GraphInputDefinition): GraphInputDefinition {
@@ -1163,30 +1229,9 @@ function copyGraphInput(input: GraphInputDefinition): GraphInputDefinition {
 function copyConfigurationControl(
 	control: ConfigurationPanelControl
 ): ConfigurationPanelControl {
-	if (control.type === 'numberArray') return { ...control, labels: [...control.labels] }
 	return { ...control }
 }
 
-function assertConfigurationControl(control: ConfigurationPanelControl): void {
-	if (control.type === 'numberArray') {
-		if (
-			control.labels.length === 0
-			|| control.labels.some((label) => typeof label !== 'string' || !label.trim())
-			|| !Number.isFinite(control.total)
-			|| control.total < 0
-			|| !Number.isFinite(control.step)
-			|| control.step <= 0
-		) {
-			throw new Error(
-				`Number-array configuration control "${control.id}" for root input `
-				+ `"${control.inputId}" requires non-empty labels, a non-negative finite total, and `
-				+ `a positive finite step. Received labels ${JSON.stringify(control.labels)}, total `
-				+ `${JSON.stringify(control.total)}, step ${JSON.stringify(control.step)}.`
-			)
-		}
-		return
-	}
-}
 
 export function isInputValueCompatible(
 	input: GraphInputDefinition,
@@ -1195,17 +1240,20 @@ export function isInputValueCompatible(
 ): boolean {
 	if (input.valueType === 'number') return typeof value === 'number' && Number.isFinite(value)
 	if (input.valueType === 'vector3') return isVector3Snapshot(value)
-	if (input.valueType === 'numberArray') {
-		return Array.isArray(value)
-			&& value.every((item) => Number.isFinite(item) && item >= 0)
+	if (input.valueType === 'primitiveArray') {
+		return Array.isArray(value) && value.every((item) => (
+			typeof item === 'boolean' || (typeof item === 'number' && Number.isFinite(item))
+		))
 	}
-	if (input.valueType === 'enum') {
-		return Number.isInteger(value) && (value as number) >= 0 && (value as number) < options.length
-	}
+	if (input.valueType === 'enum') return isEnumIndex(value, options)
 	if (input.valueType === 'materialInstance') return typeof value === 'string' && value.trim().length > 0
 	if (input.valueType === 'color') return typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value)
 	if (input.valueType === 'boolean') return typeof value === 'boolean'
 	return false
+}
+
+function isEnumIndex(value: unknown, options: readonly string[]): value is number {
+	return Number.isInteger(value) && (value as number) >= 0 && (value as number) < options.length
 }
 
 function isVector3Snapshot(value: unknown): value is Vector3Snapshot {
@@ -1225,26 +1273,4 @@ export function remapMovedIndex(value: number, sourceIndex: number, targetIndex:
 	if (sourceIndex < targetIndex && value > sourceIndex && value <= targetIndex) return value - 1
 	if (sourceIndex > targetIndex && value >= targetIndex && value < sourceIndex) return value + 1
 	return value
-}
-
-function reconcileNumberArray(
-	values: number[],
-	labels: string[],
-	total: number,
-	previousLabels?: string[]
-): number[] {
-	const alignedValues = [...values]
-	if (previousLabels && labels.length < previousLabels.length) {
-		const removedIndex = previousLabels.findIndex((label, index) => label !== labels[index])
-		alignedValues.splice(removedIndex < 0 ? labels.length : removedIndex, 1)
-	} else if (previousLabels && labels.length > previousLabels.length) {
-		const addedIndex = labels.findIndex((label, index) => label !== previousLabels[index])
-		alignedValues.splice(addedIndex < 0 ? previousLabels.length : addedIndex, 0, 0)
-	}
-	let remaining = total
-	return Array.from({ length: labels.length }, (_, index) => {
-		const value = Math.min(alignedValues[index] ?? 0, remaining)
-		remaining -= value
-		return value
-	})
 }

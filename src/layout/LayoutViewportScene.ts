@@ -1,4 +1,6 @@
+import { SCENE_CONSTANTS } from '@/constants'
 import type { LayoutWorldSlot } from '@/layout/LayoutEvaluator'
+import { LayoutFloor } from '@/layout/LayoutFloor'
 import type { SceneMetadata } from '@/parametric/evaluation/SceneMetadata'
 import { emptySceneMetadata } from '@/parametric/evaluation/SceneMetadata'
 import { createSceneSetup } from '@/parametric/three/SceneSetup'
@@ -6,6 +8,7 @@ import { syncSceneMetadata } from '@/parametric/three/syncMeshes'
 import {
 	Box3,
 	EquirectangularReflectionMapping,
+	Matrix4,
 	Mesh,
 	PlaneGeometry,
 	SRGBColorSpace,
@@ -32,20 +35,17 @@ export interface LayoutSlotScreenPosition {
 
 type SlotPositionListener = (slots: LayoutSlotScreenPosition[]) => void
 
-const CAT_HEIGHT = 0.45
-const CAT_ASPECT_RATIO = 5 / 6
-const CAT_FRONT_OFFSET = 0.5
-
 export class LayoutViewportScene {
 	private readonly scene: Scene
 	private readonly meshesById = new Map<string, Mesh>()
 	private readonly disposeSetup: () => void
 	private readonly cameraUpdateSubscription: AbortController
+	private readonly animationRenderSubscription: AbortController
 	private readonly fitShadowsToBounds: (bounds: Box3) => void
 	private readonly camera: PerspectiveCamera
 	private readonly renderer: WebGLRenderer
 	private readonly listeners = new Set<SlotPositionListener>()
-	private readonly floor: Mesh<PlaneGeometry, ShaderMaterial>
+	private readonly floor: LayoutFloor
 	private readonly floorShadow: Mesh<PlaneGeometry, ShadowMaterial>
 	private readonly cat: Mesh<PlaneGeometry, ShaderMaterial>
 	private readonly catTexture: Texture
@@ -54,12 +54,14 @@ export class LayoutViewportScene {
 	private disposed = false
 	private addSlot: LayoutWorldSlot | null = null
 	private screenSlots: LayoutSlotScreenPosition[] = []
+	private doorAnimationProgress = 0
+	private doorAnimationTarget = 0
 
 	public constructor(
 		canvas: HTMLCanvasElement,
 		private readonly container: HTMLElement
 	) {
-		const setup = createSceneSetup(canvas, 'studio')
+		const setup = createSceneSetup(canvas)
 		this.scene = setup.scene
 		this.disposeSetup = setup.dispose
 		this.fitShadowsToBounds = setup.fitShadowsToBounds
@@ -68,30 +70,12 @@ export class LayoutViewportScene {
 		})
 		this.camera = setup.camera
 		this.renderer = setup.renderer
+		this.animationRenderSubscription = setup.addRenderListener((deltaSeconds) => {
+			this.updateDoorAnimation(deltaSeconds)
+		})
 		setup.controls.maxPolarAngle = Math.PI / 2 - 0.05
-		this.floor = new Mesh(
-			new PlaneGeometry(100, 100),
-			new ShaderMaterial({
-				transparent: true,
-				depthWrite: false,
-				vertexShader: `
-					varying vec2 vUv;
-					void main() {
-						vUv = uv;
-						gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-					}
-				`,
-				fragmentShader: `
-					varying vec2 vUv;
-					void main() {
-						float radius = length(vUv - vec2(0.5)) * 2.0;
-						float opacity = (1.0 - smoothstep(0.08, 0.32, radius));
-						gl_FragColor = vec4(vec3(0.72, 0.72, 0.7), opacity);
-					}
-				`,
-			})
-		)
-		this.floor.rotation.x = -Math.PI / 2
+
+		this.floor = new LayoutFloor()
 		this.floorShadow = new Mesh(
 			new PlaneGeometry(100, 100),
 			new ShadowMaterial({ opacity: 0.18, transparent: true })
@@ -132,10 +116,11 @@ export class LayoutViewportScene {
 				}
 			`,
 		})
+		// TODO reduce texture size
 		this.cat = new Mesh(new PlaneGeometry(1, 1), catMaterial)
 		this.cat.renderOrder = 1
 		this.cat.visible = false
-		this.cat.scale.set(CAT_HEIGHT * CAT_ASPECT_RATIO, CAT_HEIGHT, 1)
+		this.cat.scale.set(SCENE_CONSTANTS.CAT_HEIGHT * SCENE_CONSTANTS.CAT_ASPECT_RATIO, SCENE_CONSTANTS.CAT_HEIGHT, 1)
 		this.catTexture = new TextureLoader().load(
 			catUrl,
 			(texture) => {
@@ -151,7 +136,7 @@ export class LayoutViewportScene {
 		)
 		this.catTexture.colorSpace = SRGBColorSpace
 		catMaterial.uniforms.map.value = this.catTexture
-		this.scene.add(this.floor)
+		this.scene.add(this.floor.mesh)
 		this.scene.add(this.floorShadow)
 		this.scene.add(this.cat)
 		this.environmentLoader = new KTX2Loader().detectSupport(this.renderer)
@@ -165,9 +150,11 @@ export class LayoutViewportScene {
 				texture.mapping = EquirectangularReflectionMapping
 				this.environment = texture
 				this.scene.background = texture
-				this.scene.backgroundBlurriness = 0.4
+				// TODO can we visually lighten it?
+				this.scene.backgroundBlurriness = SCENE_CONSTANTS.ENVIRONMENT_BACKGROUND_BLURRINESS
+				this.scene.backgroundIntensity = SCENE_CONSTANTS.ENVIRONMENT_BACKGROUND_INTENSITY
 				this.scene.environment = texture
-				this.scene.environmentIntensity = 0.5
+				this.scene.environmentIntensity = SCENE_CONSTANTS.ENVIRONMENT_INTENSITY
 			},
 			undefined,
 			(cause) =>
@@ -207,16 +194,20 @@ export class LayoutViewportScene {
 		this.updateScreenSlots(this.camera)
 	}
 
+	public setDoorsOpen(open: boolean): void {
+		this.doorAnimationTarget = open ? 1 : 0
+	}
+
 	public dispose(): void {
 		this.disposed = true
 		this.cameraUpdateSubscription.abort()
+		this.animationRenderSubscription.abort()
 		this.listeners.clear()
 		syncSceneMetadata(this.scene, this.meshesById, emptySceneMetadata())
-		this.scene.remove(this.floor)
+		this.scene.remove(this.floor.mesh)
 		this.scene.remove(this.floorShadow)
 		this.scene.remove(this.cat)
-		this.floor.geometry.dispose()
-		this.floor.material.dispose()
+		this.floor.dispose()
 		this.floorShadow.geometry.dispose()
 		this.floorShadow.material.dispose()
 		this.cat.geometry.dispose()
@@ -238,11 +229,49 @@ export class LayoutViewportScene {
 		this.cat.visible = !bounds.isEmpty()
 		if (bounds.isEmpty()) return
 		this.cat.position.set(
-			bounds.min.x + CAT_FRONT_OFFSET,
-			bounds.min.y + CAT_HEIGHT / 2,
-			bounds.max.z + CAT_FRONT_OFFSET
+			bounds.min.x,
+			bounds.min.y + SCENE_CONSTANTS.CAT_HEIGHT / 2,
+			bounds.max.z + SCENE_CONSTANTS.CAT_FRONT_OFFSET
 		)
 	}
+
+	private updateDoorAnimation(deltaSeconds: number): void {
+		const distance = this.doorAnimationTarget - this.doorAnimationProgress
+		if (distance !== 0) {
+			const step = deltaSeconds / 0.35
+			this.doorAnimationProgress += Math.sign(distance) * Math.min(Math.abs(distance), step)
+		}
+		for (const mesh of this.meshesById.values()) {
+			const metadata = mesh.userData.sceneInstance as SceneMetadata['assetInstances'][number]
+			const hint = metadata.rotateAnimationHint
+			if (!hint) continue
+			const angle = hint.angle * easeOutCubic(this.doorAnimationProgress)
+			mesh.matrix.copy(createRotateAnimationMatrix(metadata, hint.pivot, hint.axisDirection, angle))
+			mesh.updateMatrixWorld(true)
+		}
+	}
+}
+
+function createRotateAnimationMatrix(
+	metadata: SceneMetadata['assetInstances'][number],
+	pivot: { x: number; y: number; z: number },
+	axisDirection: { x: number; y: number; z: number },
+	angle: number
+): Matrix4 {
+	return new Matrix4()
+		.makeTranslation(pivot.x, pivot.y, pivot.z)
+		.multiply(
+			new Matrix4().makeRotationAxis(
+				new Vector3(axisDirection.x, axisDirection.y, axisDirection.z),
+				(angle * Math.PI) / 180
+			)
+		)
+		.multiply(new Matrix4().makeTranslation(-pivot.x, -pivot.y, -pivot.z))
+		.multiply(new Matrix4().fromArray(metadata.transform))
+}
+
+function easeOutCubic(value: number): number {
+	return 1 - (1 - value) ** 3
 }
 
 function projectSlot(

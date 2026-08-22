@@ -32,6 +32,22 @@ export interface SceneMaterialMetadata {
 	color?: string
 }
 
+export interface SceneAxisAlignedBoundsMetadata {
+	min: Vector3Snapshot
+	max: Vector3Snapshot
+}
+
+export interface SceneRotateAnimationHint {
+	angle: number
+	axisPosition: {
+		x: 'min' | 'middle' | 'max'
+		y: 'min' | 'middle' | 'max'
+		z: 'min' | 'middle' | 'max'
+	}
+	pivot: Vector3Snapshot
+	axisDirection: Vector3Snapshot
+}
+
 export interface SceneAssetInstanceMetadata {
 	instanceId: string
 	assetId: string
@@ -39,9 +55,11 @@ export interface SceneAssetInstanceMetadata {
 	size: Vector3Snapshot
 	boundsCenter: Vector3Snapshot
 	transform: Matrix4Snapshot
+	bounds: SceneAxisAlignedBoundsMetadata
 	originNode: SceneNodeInstanceReference
 	material?: SceneMaterialMetadata
 	deformation?: SceneStretchDeformationMetadata
+	rotateAnimationHint?: SceneRotateAnimationHint
 }
 
 export interface SceneMetadata {

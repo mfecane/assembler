@@ -1,9 +1,0 @@
-{
-	"layoutMetadata": {
-		"axisBinding": {
-			"primary": "facade-size.x", // width, references configuration
-			"secondary": "facade-size.z", // depth
-			"tertiary": "facade-size.y" // height
-		}
-	}
-}

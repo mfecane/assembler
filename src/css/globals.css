@@ -76,6 +76,11 @@ body {
 	font-family: var(--font-family-sans);
 }
 
+.react-flow .react-flow__handle {
+	width: 9px;
+	height: 9px;
+}
+
 .react-flow__handle.port-geometry {
 	background: #8b5cf6;
 	border-color: #ddd6fe;
@@ -86,14 +91,9 @@ body {
 	border-color: #fde68a;
 }
 
-.react-flow__handle.port-numberArray {
-	background: #f97316;
-	border-color: #fed7aa;
-}
-
-.react-flow__handle.port-meshArray {
-	background: #d946ef;
-	border-color: #f5d0fe;
+.react-flow__handle.port-primitiveArray {
+	background: #7c3aed;
+	border-color: #ddd6fe;
 }
 
 .react-flow__handle.port-vector3 {
@@ -119,6 +119,11 @@ body {
 .react-flow__handle.port-boolean {
 	background: #eab308;
 	border-color: #fef08a;
+}
+
+.react-flow__handle.port-json {
+	background: #64748b;
+	border-color: #cbd5e1;
 }
 
 .react-flow__handle[data-component='x'] {
@@ -158,24 +163,44 @@ body {
 	color: inherit;
 }
 
-.graph-node-header-input {
-	background-color: #9b83ad;
+.graph-node-header-localInput {
+	background-color: #94a3b8;
+}
+
+.graph-node-header-exportedInput {
+	background-color: #a78bfa;
+}
+
+.graph-node-header-reference {
+	background-color: #c4b5fd;
+}
+
+.graph-node-header-widget {
+	background-color: #d8b4fe;
 }
 
 .graph-node-header-geometry {
-	background-color: #7296b3;
+	background-color: #b6a3d9;
 }
 
 .graph-node-header-appearance {
-	background-color: #b77d86;
+	background-color: #f0ab9a;
 }
 
-.graph-node-header-operation {
-	background-color: #b79a59;
+.graph-node-header-transform {
+	background-color: #f3c969;
+}
+
+.graph-node-header-array {
+	background-color: #e9a46d;
+}
+
+.graph-node-header-logic {
+	background-color: #d6c56e;
 }
 
 .graph-node-header-output {
-	background-color: #6f9c83;
+	background-color: #9aa7c7;
 }
 
 @keyframes graph-node-focus-pulse {
@@ -191,6 +216,12 @@ body {
 
 .react-flow__node.graph-node-focus-pulse {
 	animation: graph-node-focus-pulse 700ms ease-in-out 2;
+}
+
+.react-flow__node.repeat-zone-member {
+	border-radius: var(--radius-md);
+	outline: 1px solid #fbbf24;
+	outline-offset: 4px;
 }
 
 @layer base {

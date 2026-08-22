@@ -4,15 +4,17 @@ import {
 	Grid3X3,
 	GitBranch,
 	Hash,
-	Layers3,
 	LogOut,
 	Network,
 	Copy,
 	ListFilter,
+	ListOrdered,
 	Move3d,
 	Package,
 	Scaling,
 	PaintBucket,
+	Repeat2,
+	Rotate3D,
 	Sigma,
 	SquareFunction,
 	ToggleLeft,
@@ -32,15 +34,18 @@ import { GraphInstanceNode } from '@/parametric/nodes/GraphInstanceNode'
 import { ChoiceToScalarMapNode } from '@/parametric/nodes/ChoiceToScalarMapNode'
 import { ChoiceToBooleanMapNode } from '@/parametric/nodes/ChoiceToBooleanMapNode'
 import { ChoiceToVector3MapNode } from '@/parametric/nodes/ChoiceToVector3MapNode'
-import { MeshArrayNode } from '@/parametric/nodes/MeshArrayNode'
-import { MultiArrayNode } from '@/parametric/nodes/MultiArrayNode'
 import { ChoiceToMeshMapNode } from '@/parametric/nodes/ChoiceToMeshMapNode'
 import { GeometryToggleNode } from '@/parametric/nodes/GeometryToggleNode'
 import { MathExpressionNode } from '@/parametric/nodes/MathExpressionNode'
 import { Vector3Node } from '@/parametric/nodes/Vector3Node'
 import { Vector3ComponentsNode } from '@/parametric/nodes/Vector3ComponentsNode'
 import { StretchableAssetNode } from '@/parametric/nodes/StretchableAssetNode'
-import { PinNode } from '@/parametric/nodes/PinNode'
+import { RepeatInputNode } from '@/parametric/nodes/RepeatInputNode'
+import { RepeatOutputNode } from '@/parametric/nodes/RepeatOutputNode'
+import { RepeatZoneRegionNode } from '@/parametric/nodes/RepeatZoneRegionNode'
+import { NumberAggregatorNode } from '@/parametric/nodes/NumberAggregatorNode'
+import { GetNthElementNode } from '@/parametric/nodes/GetNthElementNode'
+import { RotateAnimationHintNode } from '@/parametric/nodes/RotateAnimationHintNode'
 
 export const nodeViewTypes = {
 	primitive: PrimitiveNode,
@@ -48,7 +53,6 @@ export const nodeViewTypes = {
 	inputReference: InputReferenceNode,
 	vector3: Vector3Node,
 	vector3Components: Vector3ComponentsNode,
-	pin: PinNode,
 	choiceToScalarMap: ChoiceToScalarMapNode,
 	choiceToBooleanMap: ChoiceToBooleanMapNode,
 	choiceToVector3Map: ChoiceToVector3MapNode,
@@ -58,17 +62,28 @@ export const nodeViewTypes = {
 	stretchableAsset: StretchableAssetNode,
 	transform: TransformNode,
 	array: ArrayNode,
-	meshArray: MeshArrayNode,
-	multiArray: MultiArrayNode,
 	sum: SumNode,
 	mathExpression: MathExpressionNode,
 	applyMaterial: ApplyMaterialNode,
+	rotateAnimationHint: RotateAnimationHintNode,
 	parametricGroup: GroupNode,
 	parametricOutput: OutputNode,
 	graphInstance: GraphInstanceNode,
+	repeatInput: RepeatInputNode,
+	repeatOutput: RepeatOutputNode,
+	repeatZoneRegion: RepeatZoneRegionNode,
+	numberAggregator: NumberAggregatorNode,
+	getNthElement: GetNthElementNode,
 }
 
-export type NodeMenuGroup = 'Inputs' | 'Geometry' | 'Appearance' | 'Operations' | 'Other'
+export type NodeMenuGroup =
+	| 'Values'
+	| 'Geometry'
+	| 'Transform'
+	| 'Arrays'
+	| 'Logic'
+	| 'Appearance'
+	| 'Interface'
 
 export interface NodeViewPresentation {
 	group: NodeMenuGroup
@@ -78,47 +93,47 @@ export interface NodeViewPresentation {
 
 export const nodeViewPresentation: Record<string, NodeViewPresentation> = {
 	input: {
-		group: 'Inputs',
+		group: 'Values',
 		description: 'Emit a local or exported value',
 		icon: Hash,
 	},
 	inputReference: {
-		group: 'Inputs',
+		group: 'Interface',
 		description: 'Use an existing graph input',
 		icon: Copy,
 	},
 	vector3: {
-		group: 'Operations',
+		group: 'Logic',
 		description: 'Combine X, Y, and Z numbers into a vector',
 		icon: Move3d,
 	},
 	vector3Components: {
-		group: 'Operations',
+		group: 'Logic',
 		description: 'Split a vector into X, Y, and Z numbers',
 		icon: Move3d,
 	},
 	choiceToScalarMap: {
-		group: 'Operations',
+		group: 'Logic',
 		description: 'Map choices to numbers',
 		icon: ListFilter,
 	},
 	choiceToBooleanMap: {
-		group: 'Operations',
+		group: 'Logic',
 		description: 'Map choices to boolean values',
 		icon: ToggleLeft,
 	},
 	choiceToVector3Map: {
-		group: 'Operations',
+		group: 'Logic',
 		description: 'Map choices to XYZ vectors',
 		icon: Move3d,
 	},
 	choiceToMeshMap: {
-		group: 'Operations',
+		group: 'Logic',
 		description: 'Map choices to separate mesh inputs',
 		icon: GitBranch,
 	},
 	geometryToggle: {
-		group: 'Operations',
+		group: 'Transform',
 		description: 'Enable or disable a geometry branch',
 		icon: ToggleLeft,
 	},
@@ -142,48 +157,63 @@ export const nodeViewPresentation: Record<string, NodeViewPresentation> = {
 		description: 'Assign a material instance to geometry',
 		icon: PaintBucket,
 	},
+	rotateAnimationHint: {
+		group: 'Transform',
+		description: 'Mark geometry to rotate in the product preview',
+		icon: Rotate3D,
+	},
 	transform: {
-		group: 'Operations',
+		group: 'Transform',
 		description: 'Move, rotate, and scale',
 		icon: Move3d,
 	},
 	array: {
-		group: 'Operations',
+		group: 'Arrays',
 		description: 'Repeat geometry along an axis',
 		icon: Grid3X3,
 	},
-	meshArray: {
-		group: 'Operations',
-		description: 'Collect ordered mesh or geometry bundles',
-		icon: Layers3,
-	},
-	multiArray: {
-		group: 'Operations',
-		description: 'Repeat each mesh bundle by its matching count',
-		icon: Grid3X3,
-	},
 	sum: {
-		group: 'Operations',
+		group: 'Logic',
 		description: 'Add a constant and number inputs',
 		icon: Sigma,
 	},
 	mathExpression: {
-		group: 'Operations',
+		group: 'Logic',
 		description: 'Calculate a numeric expression from indexed inputs',
 		icon: SquareFunction,
 	},
 	group: {
-		group: 'Operations',
+		group: 'Geometry',
 		description: 'Combine geometry branches',
 		icon: Combine,
 	},
+	repeatInput: {
+		group: 'Logic',
+		description: 'Evaluate a geometry branch once per instance',
+		icon: Repeat2,
+	},
+	repeatOutput: {
+		group: 'Interface',
+		description: 'Collect geometry produced by a repeat zone',
+		icon: Repeat2,
+	},
+	numberAggregator: {
+		group: 'Logic',
+		description: 'Carry a number between repeat-zone iterations',
+		icon: Sigma,
+	},
+	getNthElement: {
+		group: 'Logic',
+		description: 'Read one number from a numeric array by index',
+		icon: ListOrdered,
+	},
 	graphInstance: {
-		group: 'Geometry',
+		group: 'Interface',
 		description: 'Instantiate a graph from this document',
 		icon: Network,
 	},
 	graphOutput: {
-		group: 'Other',
+		group: 'Interface',
 		description: 'Define the assembly output',
 		icon: LogOut,
 	},

@@ -1,7 +1,7 @@
 import type { EditorController } from '@/parametric/editor/EditorController'
 import type { ReactBridge } from '@/parametric/editor/ReactBridge'
 import { emptySceneMetadata } from '@/parametric/evaluation/SceneMetadata'
-import { ArrayGraphNode, isTransformableGraphNode } from '@/parametric/model/GraphNode'
+import { ArrayGraphNode, isTransformableGraphNode, RotateAnimationHintGraphNode } from '@/parametric/model/GraphNode'
 import { ViewportEditorController } from '@/parametric/three/editor/ViewportEditorController'
 import { ViewportScene } from '@/parametric/three/editor/ViewportScene'
 import {
@@ -136,19 +136,14 @@ export class ViewportEditor {
 					bridgeSnapshot.previewNodeId
 				)
 				: graphOutputMetadata
-			console.log(
-				`[node-chain-debug] stage=viewport graph="${graphSnapshot.activeGraphId}" `
-				+ `previewNode="${bridgeSnapshot.previewNodeId ?? 'assembly-output'}" `
-				+ `instanceCount=${metadata.assetInstances.length} `
-				+ `instances="${metadata.assetInstances.map((instance) => (
-					`${instance.instanceId}:(${instance.transform[12]},${instance.transform[13]},${instance.transform[14]})`
-				)).join(',')}"`
-			)
 			const transformNode = bridgeSnapshot.transformNodeId
 				? graphSnapshot.model.getNode(bridgeSnapshot.transformNodeId)
 				: null
 			const arrayDistanceNode = bridgeSnapshot.arrayDistanceNodeId
 				? graphSnapshot.model.getNode(bridgeSnapshot.arrayDistanceNodeId)
+				: null
+			const rotateAnimationHintNode = bridgeSnapshot.rotateAnimationHintNodeId
+				? graphSnapshot.model.getNode(bridgeSnapshot.rotateAnimationHintNodeId)
 				: null
 
 			await yieldToBrowser()
@@ -159,6 +154,9 @@ export class ViewportEditor {
 				bridgeSnapshot.selectedMeshInstanceId,
 				isTransformableGraphNode(transformNode) ? transformNode : null,
 				arrayDistanceNode instanceof ArrayGraphNode ? arrayDistanceNode : null,
+				rotateAnimationHintNode instanceof RotateAnimationHintGraphNode
+					? rotateAnimationHintNode
+					: null,
 				bridgeSnapshot.transformMode
 			)
 			if (this.bridge.getSnapshot().error) this.bridge.update({ error: null })
@@ -170,6 +168,7 @@ export class ViewportEditor {
 				`Preview node: "${bridgeSnapshot.previewNodeId ?? 'none'}".`,
 				`Transform node: "${bridgeSnapshot.transformNodeId ?? 'none'}".`,
 				`Array distance node: "${bridgeSnapshot.arrayDistanceNodeId ?? 'none'}".`,
+				`Rotate animation hint node: "${bridgeSnapshot.rotateAnimationHintNodeId ?? 'none'}".`,
 				describeError(cause),
 			].join(' ')
 			console.error(error, {
@@ -178,6 +177,7 @@ export class ViewportEditor {
 				previewNodeId: bridgeSnapshot.previewNodeId,
 				transformNodeId: bridgeSnapshot.transformNodeId,
 				arrayDistanceNodeId: bridgeSnapshot.arrayDistanceNodeId,
+				rotateAnimationHintNodeId: bridgeSnapshot.rotateAnimationHintNodeId,
 			})
 			this.bridge.update({ error })
 		}

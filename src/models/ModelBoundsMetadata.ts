@@ -1,4 +1,5 @@
 import { meshRepository } from '@/parametric/three/MeshRepository'
+import type { MeshBounds } from '@/parametric/model/MeshCatalog'
 
 export interface ModelBoundingBoxMetadata {
 	center: {
@@ -54,6 +55,22 @@ export function readStoredModelBoundingBox(
 	}
 }
 
+export function readStoredModelMeshBounds(
+	modelId: string,
+	metadata: Record<string, unknown>
+): MeshBounds {
+	const boundingBox = metadata.boundingBox
+	if (!isJsonObject(boundingBox)) {
+		throw new Error(
+			`Cannot evaluate geometry for model "${modelId}": metadata.boundingBox must be an object. `
+			+ `Received ${describe(boundingBox)}.`
+		)
+	}
+	const size = readRequiredVector(boundingBox.size, 'boundingBox.size', modelId, true)
+	const center = readRequiredVector(boundingBox.center, 'boundingBox.center', modelId, false)
+	return { x: size.x, y: size.y, z: size.z, center }
+}
+
 export function withModelBoundingBox(
 	metadata: Record<string, unknown>,
 	boundingBox: ModelBoundingBoxMetadata
@@ -87,6 +104,45 @@ function readOptionalVector(
 		y: readOptionalCoordinate(value, 'y', fallback.y, field, modelId),
 		z: readOptionalCoordinate(value, 'z', fallback.z, field, modelId),
 	}
+}
+
+function readRequiredVector(
+	value: unknown,
+	field: string,
+	modelId: string,
+	positive: boolean
+): ModelBoundingBoxMetadata['size'] {
+	if (!isJsonObject(value)) {
+		throw new Error(
+			`Cannot evaluate geometry for model "${modelId}": metadata.${field} must be an object. `
+			+ `Received ${describe(value)}.`
+		)
+	}
+	return {
+		x: readRequiredCoordinate(value.x, field, 'x', modelId, positive),
+		y: readRequiredCoordinate(value.y, field, 'y', modelId, positive),
+		z: readRequiredCoordinate(value.z, field, 'z', modelId, positive),
+	}
+}
+
+function readRequiredCoordinate(
+	value: unknown,
+	field: string,
+	axis: 'x' | 'y' | 'z',
+	modelId: string,
+	positive: boolean
+): number {
+	if (
+		typeof value !== 'number'
+		|| !Number.isFinite(value)
+		|| (positive && value <= 0)
+	) {
+		throw new Error(
+			`Cannot evaluate geometry for model "${modelId}": metadata.${field}.${axis} must be `
+			+ `a ${positive ? 'positive ' : ''}finite number. Received ${describe(value)}.`
+		)
+	}
+	return value
 }
 
 function readOptionalCoordinate(

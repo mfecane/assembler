@@ -15,15 +15,10 @@ first persisted root is the default opened after project load.
 
 ## Configuration
 
-Every root record owns three pieces of data:
-
-- `graphId`, referencing one graph definition in the same document;
-- `inputValues`, storing that root's current public-input values;
-- `configurationPanel`, storing its ordered controls and their type-specific settings.
-
-The configurator panel follows the active root context. Its heading includes the root label, and
-control changes mutate only that root's values. The configuration-panel editor is available when
-the root definition itself is open and edits only that root's controls.
+Root records no longer own configuration controls or public-input values. A root graph produces its
+configuration from the JSON UI connection on its dedicated UI Output node. UI Widget nodes own the current
+values and drive the matching root Input nodes directly; UI Group nodes arrange child widgets into
+cards. Reusable subgraphs can still export Input nodes, but root Input nodes cannot be exported.
 
 ## Persistence
 
@@ -34,8 +29,8 @@ content. The Supabase `projects.graph_document` constraint requires top-level `r
 and `graphs` arrays, matching the application serializer and rejecting the former shape.
 
 `main` remains the default MaxShelf root with the complete shelving UI. The retained `graph-5`
-assembly is also a root with an independent number slider, so the checked-in data exercises
-multi-root serialization and UI ownership directly.
+assembly is also a root with an independent widget schema, so the checked-in data exercises
+multi-root UI output ownership directly.
 
 ## Verification
 

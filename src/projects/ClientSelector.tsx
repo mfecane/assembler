@@ -5,7 +5,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/ui/select'
-import { Client } from '@/cosntants'
+import { CLIENT, type Client } from '@/constants'
 
 export function ClientSelector({
 	value,
@@ -22,8 +22,8 @@ export function ClientSelector({
 					<SelectValue />
 				</SelectTrigger>
 				<SelectContent data-id="client-selector-options">
-					<SelectItem value={Client.MAXSHELF}>MaxShelf</SelectItem>
-					<SelectItem value={Client.KITCHEN}>Kitchen</SelectItem>
+					<SelectItem value={CLIENT.MAXSHELF}>MaxShelf</SelectItem>
+					<SelectItem value={CLIENT.KITCHEN}>Kitchen</SelectItem>
 				</SelectContent>
 			</Select>
 		</div>

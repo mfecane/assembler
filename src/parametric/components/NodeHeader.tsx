@@ -24,7 +24,7 @@ export function NodeHeader({
 	const Icon = presentation?.icon ?? Circle
 
 	if (!node) return null
-	const colorCategory = getNodeColorCategory(node.type)
+	const colorCategory = getNodeColorCategory(node)
 	const nodeTypeLabel = model.getNodeTypeLabel(nodeId)
 
 	return (
@@ -32,7 +32,7 @@ export function NodeHeader({
 			data-id={`node-header-${nodeId}`}
 			className={cn(
 				'graph-node-header -mx-3 -mt-2 mb-2 flex min-w-0 items-center justify-between gap-2',
-				'rounded-t-sm px-3 py-2 text-gray-900',
+				'rounded-t-sm px-2 py-1 text-gray-900',
 				`graph-node-header-${colorCategory}`
 			)}
 		>

@@ -38,18 +38,20 @@ behavior; only files under **Planned work** are pending.
 - [Scene metadata](./implementation/scene-metadata.md) — graph evaluation IR, asset instances,
   transforms, materials, provenance, and scene construction.
 - [Editor UI](./implementation/editor-ui.md) — graph toolbar and configuration-panel behavior.
+- [Root configuration controls](./implementation/ui-widget-schema.md) — configuration outside graphs,
+  groups, UI JSON output, and root input ownership.
 - [Project saving](./implementation/project-saving.md) — autosave, Save as, rename, and dirty state.
-- [Product layouts](./implementation/product-layouts.md) — row/single product composition, reusable
-  slot rules, graph instances, per-instance controls, and 3D slot actions.
+- [Product layouts](./implementation/product-layouts.md) — generic runtime row/single composition,
+  graph instances, per-instance controls, and 3D add actions.
 - [Model editor](./implementation/model-editor.md) — client-scoped model navigation, standalone 3D
   preview, editable stretch regions and gizmos, temporary deformation tests, and metadata saving.
 - [Mesh asset helper](./implementation/asset-helper.md) — asset browsing, previews, and insertion.
 - [Application shell](./implementation/application-shell.md) — routing, authenticated user menu,
   and shared component conventions.
 - [Node fields and capabilities](./implementation/node-field-capabilities.md) — generic scalar
-  fields, embedded transforms, multi-connect inputs, and node bypass behavior.
-- [Shelf array configuration](./implementation/shelf-arrays.md) — number-array inputs and widgets,
-  ordered mesh bundles, Multi Array placement, and the MaxShelf wiring.
+  fields, shared port-row visuals, capability controls, multi-connect inputs, and node bypass behavior.
+- [Repeat zones](./implementation/repeat-zones.md) — paired graph boundaries, graph-space region,
+  per-iteration evaluation, and combined geometry output.
 - [Kitchen cabinet assembly](./implementation/kitchen-cabinet.md) — reusable frame, facade, and
   tabletop graphs with explicit visibility mappings and root assembly wiring.
 
@@ -57,6 +59,8 @@ behavior; only files under **Planned work** are pending.
 
 - [Node graph model review](./reviews/node-graph-model-review.md) — architecture review of the
   node/registry/controller/hook layers against the goal of adding hundreds of node types cheaply.
+- [Node type relevance review](./reviews/node-type-relevance-review.md) — deletion review of
+  registered node types, current alternatives, and retained seed-graph cleanup candidates.
 
 ## Operations
 

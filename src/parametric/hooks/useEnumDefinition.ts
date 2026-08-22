@@ -25,6 +25,7 @@ export function useEnumDefinition(inputId: string) {
 		usageCount: document.getEnumUsageCount(definition.id),
 		setDefinition: (enumId: string) => controller.setGraphInputEnum(inputId, enumId),
 		createDefinition: () => controller.createEnumForGraphInput(inputId),
+		deleteDefinition: () => controller.deleteEnumForGraphInput(inputId),
 		renameDefinition: (name: string) => controller.renameEnum(definition.id, name),
 		addOption: () => controller.addEnumOption(definition.id),
 		renameOption: (index: number, option: string) => (

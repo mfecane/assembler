@@ -18,6 +18,11 @@ Graph evaluation supplies plain scene metadata to `ViewportScene`; its synchroni
 assets and builds the corresponding Three.js meshes.
 The scene uses the studio KTX2 texture for image-based lighting and reflections without assigning
 it as the scene background, preserving the Graph Editor's technical background and grid.
+`createTechnicalSceneSetup` composes an editor-only `TechnicalGrid`, Three.js interactive corner
+`ViewHelper`, and an always-visible white sphere at the world origin, scaled to a consistent
+viewport size. `TechnicalGrid` keeps Three.js's standard grid line layout and colors while fading
+to transparent at its outer boundary. `createSceneSetup` remains the shared renderer, camera,
+lighting, controls, and shadow-bounds factory for viewports that do not need those editor aids.
 
 Evaluation-triggering graph changes are debounced for 300 milliseconds. Preview evaluation runs as
 an asynchronous scheduled task with a monotonically increasing sequence; a newer request cancels a

@@ -1,5 +1,5 @@
 import type { User } from '@supabase/supabase-js'
-import type { Client } from '@/cosntants'
+import type { Client } from '@/constants'
 import { getSupabaseClient } from '@/lib/supabase'
 import type { GraphDocument } from '@/parametric/model/GraphSerialization'
 import type { Project, ProjectSummary } from '@/projects/projectTypes'

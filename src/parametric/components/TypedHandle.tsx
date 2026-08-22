@@ -1,5 +1,4 @@
 import { Handle, type Position, useConnection, useNodeId } from '@xyflow/react'
-import type { CSSProperties } from 'react'
 import {
 	Tooltip,
 	TooltipContent,
@@ -13,10 +12,9 @@ interface TypedHandleProps {
 	type: 'source' | 'target'
 	position: Position
 	valueType: GraphValueType
-	style?: CSSProperties
 }
 
-export function TypedHandle({ id, type, position, valueType, style }: TypedHandleProps) {
+export function TypedHandle({ id, type, position, valueType }: TypedHandleProps) {
 	const nodeId = useNodeId()
 	const connectionDragging = useConnection((connection) => connection.inProgress)
 	const { model } = useGraphSnapshot()
@@ -41,7 +39,6 @@ export function TypedHandle({ id, type, position, valueType, style }: TypedHandl
 					type={type}
 					position={position}
 					className={`port-${valueType}`}
-					style={style}
 				/>
 			</TooltipTrigger>
 			<TooltipContent

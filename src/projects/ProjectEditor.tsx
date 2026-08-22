@@ -13,7 +13,6 @@ import { getRegisteredModels } from '@/models/getRegisteredModels'
 import { meshRepository } from '@/parametric/three/MeshRepository'
 import { ProjectToolbar, type SaveState } from '@/projects/ProjectToolbar'
 import type { Project } from '@/projects/projectTypes'
-import type { GraphDocument } from '@/parametric/model/GraphSerialization'
 import type { ProjectEditorMode } from '@/projects/ProjectEditorTabs'
 import { downloadProjectPackage } from '@/projects/ProjectPackageDownload'
 
@@ -44,7 +43,7 @@ export function ProjectEditor({
 }) {
 	const [loaded, setLoaded] = useState<LoadedEditor | null>(null)
 	const [loadError, setLoadError] = useState<string | null>(null)
-	const [loadErrorDocument, setLoadErrorDocument] = useState<GraphDocument | null>(null)
+	const [loadErrorProject, setLoadErrorProject] = useState<Project | null>(null)
 	const [isLoading, setIsLoading] = useState(true)
 	const [documentVersion, setDocumentVersion] = useState(0)
 	const [savedDocumentVersion, setSavedDocumentVersion] = useState(0)
@@ -63,7 +62,7 @@ export function ProjectEditor({
 	const load = useCallback(async () => {
 		setIsLoading(true)
 		setLoadError(null)
-		setLoadErrorDocument(null)
+		setLoadErrorProject(null)
 		let project: Project | null = null
 		try {
 			project = await repository.get(projectId)
@@ -83,7 +82,7 @@ export function ProjectEditor({
 			setShowSavedConfirmation(false)
 		} catch (cause) {
 			if (project) {
-				setLoadErrorDocument(project.graphDocument)
+				setLoadErrorProject(project)
 			}
 			setLoadError(
 				cause instanceof Error
@@ -254,6 +253,30 @@ export function ProjectEditor({
 		}
 	}, [loaded, modelMetadataRepository])
 
+	const downloadLoadErrorPackage = useCallback(async () => {
+		if (!loadErrorProject) return
+		const { graphDocument, id, name } = loadErrorProject
+		const client = graphDocument.client
+		try {
+			const models = getRegisteredModels(client)
+			const metadataRecords = await modelMetadataRepository.listMetadata(
+				models.map((model) => model.id)
+			)
+			downloadProjectPackage(
+				createModelMetadataDocument(client, models, metadataRecords),
+				graphDocument
+			)
+		} catch (cause) {
+			const error = [
+				`Failed to download package for unopened project "${name}"`,
+				`(project ID: ${id}, client: ${client}).`,
+				describeError(cause),
+			].join(' ')
+			console.error(error, { cause, projectId: id, projectName: name, client })
+			window.alert(error)
+		}
+	}, [loadErrorProject, modelMetadataRepository])
+
 	useEffect(() => {
 		const handleSaveShortcut = (event: KeyboardEvent) => {
 			if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 's') return
@@ -296,16 +319,13 @@ export function ProjectEditor({
 				message={loadError ?? 'The project was not found.'}
 				actions={
 					<>
-						{loadErrorDocument && (
+						{loadErrorProject && (
 							<Button
-								data-id="download-project-json-button"
-								onClick={() => downloadJsonDocument(
-									loadErrorDocument,
-									'project.json',
-								)}
+								data-id="download-project-package-button"
+								onClick={() => void downloadLoadErrorPackage()}
 							>
 								<Download />
-								Download JSON
+								Download project package
 							</Button>
 						)}
 						<Button onClick={() => void load()}>Retry</Button>
@@ -387,14 +407,4 @@ function FullPageMessage({
 			</div>
 		</main>
 	)
-}
-
-function downloadJsonDocument(graphDocument: GraphDocument, fileName: string): void {
-	const blob = new Blob([JSON.stringify(graphDocument, null, 2)], { type: 'application/json' })
-	const url = URL.createObjectURL(blob)
-	const link = document.createElement('a')
-	link.href = url
-	link.download = fileName
-	link.click()
-	URL.revokeObjectURL(url)
 }

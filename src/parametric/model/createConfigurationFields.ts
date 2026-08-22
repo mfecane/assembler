@@ -10,62 +10,57 @@ export function createConfigurationFields(
 	inputValues: Record<string, GraphInputValue>
 ): ConfigurationField[] {
 	const graph = document.requireGraph(graphId)
-	return document.getConfigurationControls(graphId).reduce<ConfigurationField[]>((fields, control) => {
-		const input = graph.inputs.find((candidate) => candidate.id === control.inputId)
-		const value = inputValues[control.inputId] ?? input?.defaultValue
-		if (!input || value === undefined) return fields
-		if (input.valueType === 'number' && typeof value === 'number' && control.type === 'number') {
-			fields.push({ id: input.id, type: 'number', label: control.label, value, step: control.step })
+	return graph.inputs.flatMap((input): ConfigurationField[] => {
+		const value = inputValues[input.id] ?? input.defaultValue
+		if (value === undefined) return []
+		if (input.valueType === 'number' && typeof value === 'number') {
+			return [{ id: input.id, type: 'number', label: input.label, value, step: 0.1 }]
 		}
-		if (input.valueType === 'number' && typeof value === 'number' && control.type === 'slider') {
-			fields.push({
-				id: input.id,
-				type: 'slider',
-				label: control.label,
-				value,
-				min: control.min,
-				max: control.max,
-				step: control.step,
-			})
-		}
-		if (
-			input.valueType === 'numberArray'
-			&& Array.isArray(value)
-			&& control.type === 'numberArray'
-		) {
-			fields.push({
-				id: input.id,
-				type: 'numberArray',
-				label: control.label,
-				value,
-				labels: control.labels,
-				total: control.total,
-				step: control.step,
-			})
-		}
-		if (input.valueType === 'enum' && typeof value === 'number' && control.type === 'select') {
-			fields.push({
+		if (input.valueType === 'enum' && typeof value === 'number') {
+			return [{
 				id: input.id,
 				type: 'enum',
-				label: control.label,
+				label: input.label,
 				value,
 				options: document.getInputOptions(input),
-			})
+			}]
+		}
+		if (input.valueType === 'materialInstance' && typeof value === 'string') {
+			return [{ id: input.id, type: 'material', label: input.label, value }]
+		}
+		if (input.valueType === 'color' && typeof value === 'string') {
+			return [{ id: input.id, type: 'color', label: input.label, value }]
 		}
 		if (
-			input.valueType === 'materialInstance'
-			&& typeof value === 'string'
-			&& control.type === 'material'
+			input.valueType === 'vector3'
+			&& value !== null
+			&& typeof value === 'object'
+			&& !Array.isArray(value)
+			&& Number.isFinite(value.x)
+			&& Number.isFinite(value.y)
+			&& Number.isFinite(value.z)
 		) {
-			fields.push({ id: input.id, type: 'material', label: control.label, value })
+			return [{ id: input.id, type: 'vector3', label: input.label, value, step: 0.1 }]
+		}
+		if (input.valueType === 'boolean' && typeof value === 'boolean') {
+			return [{ id: input.id, type: 'boolean', label: input.label, value }]
 		}
 		if (
-			input.valueType === 'boolean'
-			&& typeof value === 'boolean'
-			&& control.type === 'switch'
+			input.valueType === 'primitiveArray'
+			&& Array.isArray(value)
+			&& value.every((item) => typeof item === 'number' || typeof item === 'boolean')
 		) {
-			fields.push({ id: input.id, type: 'boolean', label: control.label, value })
+			return [{
+				id: input.id,
+				type: 'primitiveArray',
+				label: input.label,
+				value,
+				elementType: input.enumId ? 'enum' : value.every((item) => typeof item === 'boolean')
+					? 'boolean'
+					: 'number',
+				options: input.enumId ? document.getInputOptions(input) : [],
+			}]
 		}
-		return fields
-	}, [])
+		return []
+	})
 }

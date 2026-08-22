@@ -1,13 +1,14 @@
 import { useState } from 'react'
-import { Position, type NodeProps } from '@xyflow/react'
+import type { NodeProps } from '@xyflow/react'
 import { GeometryNodeActions } from '@/parametric/components/GeometryNodeActions'
 import { EmbeddedTransformSection } from '@/parametric/components/EmbeddedTransformSection'
 import {
 	MeshAssetPickerDialog,
 	MeshAssetPickerTrigger,
 } from '@/parametric/components/MeshAssetPickerDialog'
-import { NodeHeader } from '@/parametric/components/NodeHeader'
-import { TypedHandle } from '@/parametric/components/TypedHandle'
+import { NodePortGroup } from '@/parametric/components/NodePortGroup'
+import { NodeSurface } from '@/parametric/components/NodeSurface'
+import { NodePortRow } from '@/parametric/components/NodePortRow'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 import { useField } from '@/parametric/hooks/useGraphNode'
 import { useEditorController } from '@/parametric/editor/react/EditorContext'
@@ -20,28 +21,21 @@ export function MeshAssetNode({ id }: NodeProps<ParametricFlowNode>) {
 
 	return (
 		<>
-			<div
-				data-id={`mesh-asset-node-${id}`}
-				className="min-w-52 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
-			>
-				<TypedHandle
-					id="material"
-					type="target"
-					position={Position.Left}
-					valueType="materialInstance"
-					style={{ top: '50%' }}
-				/>
-				<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} />} />
-				<MeshAssetPickerTrigger
-					dataId={`mesh-asset-picker-trigger-${id}`}
-					meshId={meshId.value}
-					meshLabel={selectedMesh?.label}
-					ariaLabel={`Select mesh for Mesh Asset node ${id}`}
-					onClick={() => setSelectingMesh(true)}
-				/>
-				<EmbeddedTransformSection nodeId={id} />
-				<TypedHandle id="geometry" type="source" position={Position.Right} valueType="geometry" />
-			</div>
+			<NodeSurface nodeId={id} dataId={`mesh-asset-node-${id}`}
+				actions={<GeometryNodeActions nodeId={id} />} className="min-w-52">
+				<NodePortRow nodeId={id} portId="material" valueType="materialInstance" direction="input" label="Material" />
+				<NodePortGroup nodeId={id} portId="geometry" valueType="geometry"
+					dataId={`mesh-asset-fields-${id}`} className="flex flex-col gap-1.5">
+					<MeshAssetPickerTrigger
+						dataId={`mesh-asset-picker-trigger-${id}`}
+						meshId={meshId.value}
+						meshLabel={selectedMesh?.label}
+						ariaLabel={`Select mesh for Mesh Asset node ${id}`}
+						onClick={() => setSelectingMesh(true)}
+					/>
+					<EmbeddedTransformSection nodeId={id} />
+				</NodePortGroup>
+			</NodeSurface>
 
 			<MeshAssetPickerDialog
 				open={selectingMesh}

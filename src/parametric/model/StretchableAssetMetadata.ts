@@ -11,6 +11,7 @@ import type { MeshBounds } from '@/parametric/model/MeshCatalog'
 import { Vector3Value, type Vector3Snapshot } from '@/parametric/model/Vector3Value'
 
 const GEOMETRY_AXES: ModelGeometryAxis[] = ['x', 'y', 'z']
+const SIZE_COMPARISON_TOLERANCE = 1e-6
 
 export class StretchableAssetMetadata {
 	public readonly naturalSize: Vector3Value
@@ -34,14 +35,23 @@ export class StretchableAssetMetadata {
 		for (const axis of GEOMETRY_AXES) {
 			const stretchAxis = this.stretchAxes.find((candidate) => candidate.axis === axis)
 			if (!stretchAxis) {
-				if (requested[axis] !== this.naturalSize[axis]) {
+				const naturalSize = this.naturalSize[axis]
+				const difference = Math.abs(requested[axis] - naturalSize)
+				const tolerance = SIZE_COMPARISON_TOLERANCE * Math.max(
+					1,
+					Math.abs(requested[axis]),
+					Math.abs(naturalSize)
+				)
+				if (difference > tolerance) {
 					throw new Error(
 						`Cannot stretch asset "${this.meshId}" on ${axis.toUpperCase()} to ${requested[axis]}: `
 						+ `model metadata does not enable ${axis.toUpperCase()} stretch boxes. `
-						+ `Natural size: ${this.naturalSize[axis]}. Configured stretch axes: `
+						+ `Natural size: ${naturalSize}. Difference: ${difference}. Allowed floating-point `
+						+ `tolerance: ${tolerance}. Configured stretch axes: `
 						+ `${this.stretchAxes.map((item) => item.axis.toUpperCase()).join(', ') || 'none'}.`
 					)
 				}
+				constrained[axis] = naturalSize
 				continue
 			}
 			constrained[axis] = createModelStretchSizeConstraint(

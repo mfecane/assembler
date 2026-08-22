@@ -1,4 +1,4 @@
-import type { Client } from '@/cosntants'
+import type { Client } from '@/constants'
 
 export class ModelCatalogItem {
 	public constructor(

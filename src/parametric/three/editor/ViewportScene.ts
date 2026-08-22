@@ -1,10 +1,18 @@
+import { SCENE_CONSTANTS } from '@/constants'
 import { ARRAY_DISTANCE_SNAP, type TransformNodeValues } from '@/parametric/editor/EditorController'
 import type { SceneMetadata } from '@/parametric/evaluation/SceneMetadata'
-import type { ArrayGraphNode, Axis, TransformOrigin, TransformableGraphNode } from '@/parametric/model/GraphNode'
+import type {
+	ArrayGraphNode,
+	Axis,
+	RotateAnimationHintGraphNode,
+	TransformOrigin,
+	TransformableGraphNode,
+} from '@/parametric/model/GraphNode'
+import type { Vector3Snapshot } from '@/parametric/model/Vector3Value'
 import { CanvasEventHandler } from '@/parametric/three/editor/InteractionSystem'
 import type { AlignmentMethod, ViewportBoundsSnapshot } from '@/parametric/three/editor/ViewportAlignment'
 import type { ViewportEditorController } from '@/parametric/three/editor/ViewportEditorController'
-import { createSceneSetup } from '@/parametric/three/SceneSetup'
+import { createTechnicalSceneSetup } from '@/parametric/three/SceneSetup'
 import { syncSceneMetadata } from '@/parametric/three/syncMeshes'
 import {
 	Box3,
@@ -49,11 +57,15 @@ export class ViewportScene {
 	private selectionHelper: BoxHelper | null = null
 	private attachedTransformNodeId: string | null = null
 	private attachedArrayDistanceNodeId: string | null = null
+	private attachedRotateAnimationHintNodeId: string | null = null
 	private transformStart: TransformNodeValues | null = null
 	private visualTransformStart: TransformNodeValues | null = null
 	private transformOrigin: TransformOrigin | null = null
 	private arrayDistanceStart: number | null = null
 	private visualArrayDistanceStart: number | null = null
+	private rotateAnimationHintOffset: Vector3Snapshot | null = null
+	private rotateAnimationHintOffsetStart: Vector3Snapshot | null = null
+	private rotateAnimationHintDragStart: Vector3 | null = null
 	private dragMeshMatrices = new Map<string, Matrix4>()
 	private arrayDistanceAnchor: Vector3 | null = null
 	private arrayDistanceSteps = 1
@@ -71,7 +83,7 @@ export class ViewportScene {
 		private readonly container: HTMLElement,
 		private readonly controller: ViewportEditorController
 	) {
-		const setup = createSceneSetup(canvas)
+		const setup = createTechnicalSceneSetup(canvas)
 		this.scene = setup.scene
 		this.camera = setup.camera
 		this.renderer = setup.renderer
@@ -89,7 +101,7 @@ export class ViewportScene {
 				texture.mapping = EquirectangularReflectionMapping
 				this.environment = texture
 				this.scene.environment = texture
-				this.scene.environmentIntensity = 0.4
+				this.scene.environmentIntensity = SCENE_CONSTANTS.ENVIRONMENT_INTENSITY
 			},
 			undefined,
 			(cause) =>
@@ -165,6 +177,7 @@ export class ViewportScene {
 		selectedMeshInstanceId: string | null,
 		transformNode: TransformableGraphNode | null,
 		arrayDistanceNode: ArrayGraphNode | null,
+		rotateAnimationHintNode: RotateAnimationHintGraphNode | null,
 		transformMode: TransformControlsMode
 	): void {
 		syncSceneMetadata(this.scene, this.meshesById, metadata)
@@ -179,7 +192,7 @@ export class ViewportScene {
 			)
 		}
 		this.syncSelection(selectedMeshInstanceId)
-		this.syncGizmo(transformNode, arrayDistanceNode, transformMode)
+		this.syncGizmo(transformNode, arrayDistanceNode, rotateAnimationHintNode, metadata, transformMode)
 	}
 
 	public dispose(): void {
@@ -242,6 +255,8 @@ export class ViewportScene {
 	private syncGizmo(
 		transformNode: TransformableGraphNode | null,
 		arrayDistanceNode: ArrayGraphNode | null,
+		rotateAnimationHintNode: RotateAnimationHintGraphNode | null,
+		metadata: SceneMetadata,
 		mode: TransformControlsMode
 	): void {
 		if (transformNode) {
@@ -256,12 +271,17 @@ export class ViewportScene {
 			this.syncArrayDistance(arrayDistanceNode)
 			return
 		}
+		if (rotateAnimationHintNode) {
+			this.syncRotateAnimationHint(rotateAnimationHintNode, metadata)
+			return
+		}
 		this.clearGizmo()
 	}
 
 	private syncAlignmentGizmo(nodeId: string): void {
 		this.attachedTransformNodeId = null
 		this.attachedArrayDistanceNodeId = null
+		this.attachedRotateAnimationHintNodeId = null
 		this.transformControls.detach()
 		this.removeAlignmentGizmo()
 		const bounds = this.getContentBounds()
@@ -389,9 +409,14 @@ export class ViewportScene {
 		this.transformTarget.updateMatrixWorld(true)
 		this.syncingGizmo = false
 
-		if (this.attachedTransformNodeId !== node.id || this.attachedArrayDistanceNodeId !== null) {
+		if (
+			this.attachedTransformNodeId !== node.id ||
+			this.attachedArrayDistanceNodeId !== null ||
+			this.attachedRotateAnimationHintNodeId !== null
+		) {
 			this.attachedTransformNodeId = node.id
 			this.attachedArrayDistanceNodeId = null
+			this.attachedRotateAnimationHintNodeId = null
 			this.transformControls.attach(this.transformTarget)
 		}
 	}
@@ -417,9 +442,46 @@ export class ViewportScene {
 		this.transformTarget.updateMatrixWorld(true)
 		this.syncingGizmo = false
 
-		if (this.attachedArrayDistanceNodeId !== node.id || this.attachedTransformNodeId !== null) {
+		if (
+			this.attachedArrayDistanceNodeId !== node.id ||
+			this.attachedTransformNodeId !== null ||
+			this.attachedRotateAnimationHintNodeId !== null
+		) {
 			this.attachedTransformNodeId = null
 			this.attachedArrayDistanceNodeId = node.id
+			this.attachedRotateAnimationHintNodeId = null
+			this.transformControls.attach(this.transformTarget)
+		}
+	}
+
+	private syncRotateAnimationHint(node: RotateAnimationHintGraphNode, metadata: SceneMetadata): void {
+		const hint = metadata.assetInstances.find((instance) => instance.rotateAnimationHint)?.rotateAnimationHint
+		if (!hint) {
+			this.clearGizmo()
+			return
+		}
+
+		this.transformControls.setMode('translate')
+		this.transformControls.setSpace('world')
+		this.transformControls.showX = true
+		this.transformControls.showY = true
+		this.transformControls.showZ = true
+		this.rotateAnimationHintOffset = node.getOffset().toSnapshot()
+		this.syncingGizmo = true
+		this.transformTarget.position.set(hint.pivot.x, hint.pivot.y, hint.pivot.z)
+		this.transformTarget.rotation.set(0, 0, 0)
+		this.transformTarget.scale.set(1, 1, 1)
+		this.transformTarget.updateMatrixWorld(true)
+		this.syncingGizmo = false
+
+		if (
+			this.attachedRotateAnimationHintNodeId !== node.id ||
+			this.attachedTransformNodeId !== null ||
+			this.attachedArrayDistanceNodeId !== null
+		) {
+			this.attachedTransformNodeId = null
+			this.attachedArrayDistanceNodeId = null
+			this.attachedRotateAnimationHintNodeId = node.id
 			this.transformControls.attach(this.transformTarget)
 		}
 	}
@@ -462,7 +524,11 @@ export class ViewportScene {
 	private clearGizmo(): void {
 		this.attachedTransformNodeId = null
 		this.attachedArrayDistanceNodeId = null
+		this.attachedRotateAnimationHintNodeId = null
 		this.arrayDistanceAnchor = null
+		this.rotateAnimationHintOffset = null
+		this.rotateAnimationHintOffsetStart = null
+		this.rotateAnimationHintDragStart = null
 		this.transformOrigin = null
 		this.transformControls.detach()
 	}
@@ -472,6 +538,12 @@ export class ViewportScene {
 		this.visualTransformStart = this.transformStart
 		this.arrayDistanceStart = this.attachedArrayDistanceNodeId ? this.readArrayDistance() : null
 		this.visualArrayDistanceStart = this.arrayDistanceStart
+		this.rotateAnimationHintOffsetStart = this.attachedRotateAnimationHintNodeId
+			? this.rotateAnimationHintOffset
+			: null
+		this.rotateAnimationHintDragStart = this.attachedRotateAnimationHintNodeId
+			? this.transformTarget.position.clone()
+			: null
 		this.dragMeshMatrices = new Map(
 			[...this.meshesById].map(([instanceId, mesh]) => [instanceId, mesh.matrix.clone()])
 		)
@@ -505,6 +577,32 @@ export class ViewportScene {
 				this.precisionModifierPressed
 			)
 			this.arrayDistanceStart = distance
+			return
+		}
+		if (
+			this.attachedRotateAnimationHintNodeId &&
+			this.rotateAnimationHintOffsetStart &&
+			this.rotateAnimationHintDragStart
+		) {
+			const offset = {
+				x:
+					this.rotateAnimationHintOffsetStart.x +
+					this.transformTarget.position.x -
+					this.rotateAnimationHintDragStart.x,
+				y:
+					this.rotateAnimationHintOffsetStart.y +
+					this.transformTarget.position.y -
+					this.rotateAnimationHintDragStart.y,
+				z:
+					this.rotateAnimationHintOffsetStart.z +
+					this.transformTarget.position.z -
+					this.rotateAnimationHintDragStart.z,
+			}
+			this.controller.applyRotateAnimationHintOffset(
+				this.attachedRotateAnimationHintNodeId,
+				offset,
+				this.gizmoHistoryGroup
+			)
 		}
 	}
 
@@ -513,6 +611,8 @@ export class ViewportScene {
 		this.visualTransformStart = null
 		this.arrayDistanceStart = null
 		this.visualArrayDistanceStart = null
+		this.rotateAnimationHintOffsetStart = null
+		this.rotateAnimationHintDragStart = null
 		this.dragMeshMatrices.clear()
 	}
 

@@ -18,12 +18,22 @@ import {
 } from '@/parametric/model/GraphDocumentModel'
 import {
 	GraphInstanceGraphNode,
+	NumberAggregatorGraphNode,
+	RepeatInputGraphNode,
+	RepeatOutputGraphNode,
 	type GraphNode,
 } from '@/parametric/model/GraphNode'
 import type { MeshCatalog } from '@/parametric/model/MeshCatalog'
 import type { NodeRegistry } from '@/parametric/model/NodeDefinition'
 import { MaterialInstance } from '@/parametric/model/MaterialInstance'
+import { RepeatZone } from '@/parametric/model/RepeatZone'
+import { TransformField } from '@/parametric/model/fields/TransformField'
 import { Vector3Value } from '@/parametric/model/Vector3Value'
+
+interface EvaluationCacheScope {
+	nodeIds?: ReadonlySet<string>
+	values: Map<string, EvaluatedNodeOutputs>
+}
 
 interface EvaluationFrame {
 	document: GraphDocumentModel
@@ -31,9 +41,11 @@ interface EvaluationFrame {
 	inputs: Map<string, GraphValue>
 	nodesById: Map<string, GraphNode>
 	incomingByTargetPort: Map<string, GraphEdge[]>
-	cache: Map<string, EvaluatedNodeOutputs>
+	cacheScopes: readonly EvaluationCacheScope[]
 	evaluating: Set<string>
 	graphInstancePath: readonly string[]
+	repeatIterations: ReadonlyMap<string, number>
+	numberAggregatorValues: ReadonlyMap<string, number>
 }
 
 export class GraphEvaluator {
@@ -143,14 +155,17 @@ export class GraphEvaluator {
 			inputs,
 			nodesById,
 			incomingByTargetPort,
-			cache: new Map(),
+			cacheScopes: [{ values: new Map() }],
 			evaluating: new Set(),
 			graphInstancePath,
+			repeatIterations: new Map(),
+			numberAggregatorValues: new Map(),
 		}
 	}
 
 	private evaluateNodeOutputs(frame: EvaluationFrame, nodeId: string): EvaluatedNodeOutputs {
-		const cached = frame.cache.get(nodeId)
+		const cache = this.getNodeCache(frame, nodeId)
+		const cached = cache.get(nodeId)
 		if (cached) return cached
 		if (frame.evaluating.has(nodeId)) return new Map()
 
@@ -161,21 +176,197 @@ export class GraphEvaluator {
 		let outputs: EvaluatedNodeOutputs
 		if (node instanceof GraphInstanceGraphNode) {
 			outputs = this.evaluateInstance(frame, node)
+		} else if (node instanceof RepeatOutputGraphNode) {
+			outputs = this.evaluateRepeatOutput(frame, node)
+		} else if (node instanceof NumberAggregatorGraphNode) {
+			outputs = this.evaluateNumberAggregator(frame, node)
 		} else {
 			outputs = this.nodeRegistry.evaluate(node, {
 				resolveInput: (targetNode, portId) => this.resolveInput(frame, targetNode, portId),
 				resolveInputs: (targetNode, portId) => this.resolveInputs(frame, targetNode, portId),
 				resolveGraphInput: (inputId) => frame.inputs.get(inputId),
-				getMeshBounds: (meshId) => this.meshCatalog.getBounds(meshId),
 				getMeshMetadata: (meshId) => this.meshCatalog.getMetadata(meshId),
 				getNodeInstanceReference: (sourceNodeId) =>
 					this.getNodeInstanceReference(frame, sourceNodeId),
+				getRepeatIteration: (repeatInputId) => frame.repeatIterations.get(repeatInputId),
 			})
 		}
 
 		frame.evaluating.delete(nodeId)
-		frame.cache.set(nodeId, outputs)
+		cache.set(nodeId, outputs)
 		return outputs
+	}
+
+	private evaluateRepeatOutput(
+		frame: EvaluationFrame,
+		node: RepeatOutputGraphNode
+	): EvaluatedNodeOutputs {
+		const repeatInput = frame.nodesById.get(node.getRepeatInputId())
+		if (!(repeatInput instanceof RepeatInputGraphNode)) {
+			throw new Error(
+				`Cannot evaluate Repeat Output node "${node.id}" in graph "${frame.graph.id}": `
+				+ `linked Repeat Input "${node.getRepeatInputId()}" is missing or has type `
+				+ `${JSON.stringify(repeatInput?.type)}.`
+			)
+		}
+		const instancesValue = this.resolveInput(frame, repeatInput, 'instances')
+		if (
+			instancesValue?.valueType !== 'number'
+			|| typeof instancesValue.value !== 'number'
+			|| !Number.isFinite(instancesValue.value)
+		) {
+			throw new Error(
+				`Cannot evaluate Repeat Zone "${repeatInput.id}" in graph "${frame.graph.id}": `
+				+ `Instances must resolve to a finite number, received ${JSON.stringify(instancesValue)}.`
+			)
+		}
+
+		const instanceCount = Math.max(0, Math.floor(instancesValue.value))
+		if (instanceCount === 0) {
+			return new Map([[
+				'geometry',
+				{ valueType: 'geometry', value: { assetInstances: [] } },
+			]])
+		}
+		const repeatZone = new RepeatZone(repeatInput, node)
+		const internalNodeIds = repeatZone.getInternalNodeIds(frame.nodesById.values())
+		const repeatedNodeIds = new Set([...internalNodeIds, repeatInput.id])
+		const aggregators = [...internalNodeIds].flatMap((nodeId) => {
+			const candidate = frame.nodesById.get(nodeId)
+			if (!(candidate instanceof NumberAggregatorGraphNode)) return []
+			const owner = RepeatZone.findOwner(candidate, frame.nodesById.values())
+			return owner?.output.id === node.id ? [candidate] : []
+		})
+		for (const edge of frame.graph.model.getEdges()) {
+			const entersZone = internalNodeIds.has(edge.targetNodeId)
+				|| edge.targetNodeId === node.id
+			if (entersZone && !repeatedNodeIds.has(edge.sourceNodeId)) {
+				this.evaluateNodeOutputs(frame, edge.sourceNodeId)
+			}
+		}
+		const aggregatorValues = new Map<string, number>()
+		for (const aggregator of aggregators) {
+			const initialEdges = frame.incomingByTargetPort.get(
+				this.portKey(aggregator.id, 'initialValue')
+			) ?? []
+			const internalInitialSource = initialEdges.find(
+				(edge) => repeatedNodeIds.has(edge.sourceNodeId)
+			)
+			if (internalInitialSource) {
+				throw new Error(
+					`Cannot initialize Number Aggregator node "${aggregator.id}" in Repeat Zone `
+					+ `"${repeatInput.id}" in graph "${frame.graph.id}": Initial Value is connected `
+					+ `from internal node "${internalInitialSource.sourceNodeId}" through edge `
+					+ `"${internalInitialSource.id}". Initial Value is resolved once before iteration 0 `
+					+ 'and must be stored on the aggregator or connected from outside this zone.'
+				)
+			}
+			const initialValue = this.resolveInput(frame, aggregator, 'initialValue')
+			if (
+				initialValue?.valueType !== 'number'
+				|| typeof initialValue.value !== 'number'
+				|| !Number.isFinite(initialValue.value)
+			) {
+				throw new Error(
+					`Cannot initialize Number Aggregator node "${aggregator.id}" in Repeat Zone `
+					+ `"${repeatInput.id}" in graph "${frame.graph.id}": Initial Value must resolve `
+					+ `to a finite number, received ${JSON.stringify(initialValue)}.`
+				)
+			}
+			aggregatorValues.set(aggregator.id, initialValue.value)
+		}
+
+		const assetInstances = []
+		for (let iteration = 0; iteration < instanceCount; iteration += 1) {
+			const iterationFrame: EvaluationFrame = {
+				...frame,
+				cacheScopes: [
+					{ nodeIds: repeatedNodeIds, values: new Map() },
+					...frame.cacheScopes,
+				],
+				evaluating: new Set(),
+				graphInstancePath: [
+					...frame.graphInstancePath,
+					`${repeatInput.id}:${iteration}`,
+				],
+				repeatIterations: new Map([
+					...frame.repeatIterations,
+					[repeatInput.id, iteration],
+				]),
+				numberAggregatorValues: new Map([
+					...frame.numberAggregatorValues,
+					...aggregatorValues,
+				]),
+			}
+			const iterationInstances = this.resolveInputs(iterationFrame, node, 'geometry').flatMap((value) => {
+				if (value.valueType !== 'geometry' || !isSceneMetadata(value.value)) return []
+				return value.value.assetInstances.map((instance) => ({
+					...instance,
+					instanceId: `${node.id}/${iteration}/${instance.instanceId}`,
+				}))
+			})
+			assetInstances.push(...iterationInstances)
+			for (const aggregator of aggregators) {
+				const addValue = this.resolveInput(iterationFrame, aggregator, 'addValue')
+				if (
+					addValue?.valueType !== 'number'
+					|| typeof addValue.value !== 'number'
+					|| !Number.isFinite(addValue.value)
+				) {
+					throw new Error(
+						`Cannot advance Number Aggregator node "${aggregator.id}" after iteration `
+						+ `${iteration} in Repeat Zone "${repeatInput.id}" in graph "${frame.graph.id}": `
+						+ `Add Value must resolve to a finite number, received ${JSON.stringify(addValue)}.`
+					)
+				}
+				aggregatorValues.set(
+					aggregator.id,
+					(aggregatorValues.get(aggregator.id) as number) + addValue.value
+				)
+			}
+		}
+		return new Map([[
+			'geometry',
+			{ valueType: 'geometry', value: { assetInstances } },
+		]])
+	}
+
+	private evaluateNumberAggregator(
+		frame: EvaluationFrame,
+		node: NumberAggregatorGraphNode
+	): EvaluatedNodeOutputs {
+		const currentValue = frame.numberAggregatorValues.get(node.id)
+		if (currentValue === undefined) {
+			const owner = RepeatZone.findOwner(node, frame.nodesById.values())
+			throw new Error(
+				`Cannot evaluate Number Aggregator node "${node.id}" in graph "${frame.graph.id}": `
+				+ 'the node has no active repeat-iteration state. '
+				+ (owner
+					? `It is positioned inside Repeat Zone "${owner.input.id}" but its Current Value `
+						+ 'was requested outside that zone evaluation.'
+					: 'It is outside every Repeat Zone. Move its visual center inside a Repeat Zone.')
+			)
+		}
+		return new Map([[
+			'currentValue',
+			{ valueType: 'number', value: currentValue },
+		]])
+	}
+
+	private getNodeCache(
+		frame: EvaluationFrame,
+		nodeId: string
+	): Map<string, EvaluatedNodeOutputs> {
+		const scope = frame.cacheScopes.find(
+			(candidate) => candidate.nodeIds === undefined || candidate.nodeIds.has(nodeId)
+		)
+		if (!scope) {
+			throw new Error(
+				`Cannot evaluate node "${nodeId}" in graph "${frame.graph.id}": `
+				+ `no evaluation cache scope accepts it. Cache scopes: ${frame.cacheScopes.length}.`
+			)
+		}
+		return scope.values
 	}
 
 	private evaluateInstance(
@@ -209,13 +400,22 @@ export class GraphEvaluator {
 			...instance,
 			instanceId: `${node.id}/${instance.instanceId}`,
 		}))
+		const translationInput = this.resolveInput(frame, node, 'translation')
+		const translation = translationInput?.valueType === 'vector3'
+			&& Vector3Value.isSnapshot(translationInput.value)
+			? translationInput.value
+			: node.getTransform().getTranslation().toSnapshot()
+		const transform = new TransformField({
+			...node.getTransform().serialize(),
+			translation,
+		})
 		return new Map([[
 			targetGraph.output.id,
 			{
 				valueType: 'geometry',
 				value: {
 					assetInstances: applyTransform(
-						node.getTransform(),
+						transform,
 						scopedInstances,
 						(instance) => instance.instanceId
 					),
@@ -257,13 +457,6 @@ export class GraphEvaluator {
 		portId: string
 	): GraphValue[] {
 		const edges = frame.incomingByTargetPort.get(this.portKey(node.id, portId)) ?? []
-		if (node.type === 'vector3') {
-			console.log(
-				`[node-chain-debug] stage=vector3-port graph="${frame.graph.id}" node="${node.id}" `
-				+ `port="${portId}" edgeCount=${edges.length} `
-				+ `sources="${edges.map((edge) => `${edge.sourceNodeId}:${edge.sourcePort ?? 'missing'}`).join(',')}"`
-			)
-		}
 		return edges.flatMap((edge) => {
 			if (!edge.sourcePort) return []
 			const value = this.evaluateNodeOutputs(frame, edge.sourceNodeId).get(edge.sourcePort)

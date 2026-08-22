@@ -4,12 +4,12 @@ The graph document contains everything required to edit and evaluate one product
 
 - `client` is either `maxshelf` or `kitchen`; it selects the client-specific mesh catalog.
 - `rootGraphs` identifies every independently configurable top-level graph. Each item owns the
-  saved `inputValues`, optional `layoutMetadata`, and `configurationPanel`, including its saved
-  configuration templates, for its referenced graph.
+  saved `inputValues` and `configurationPanel`, including its saved configuration templates, for
+  its referenced graph.
 - `enums` stores reusable document-level enum definitions.
 - `graphs` contains every graph definition available for instantiation.
-- `layout` stores the selected product-level row or single layout, reusable slot rules, and graph
-  instances with their instance-specific input values.
+- `products` stores active-product selection, product layout choice, graph instances, and customer
+  configuration. Layout definitions are generic runtime defaults.
 
 The first `rootGraphs` item is the default root opened after load and used by callers that request
 the document's default product result. Selecting another root in the editor evaluates that graph
@@ -43,11 +43,6 @@ Every persisted node has its own non-empty `name`, independent of graph-interfac
 configuration-control labels. Names are editable from node headers and do not affect evaluation or
 port identity.
 
-A `pin` node stores the value type of the output that created it. It has one same-typed input and
-output, passes evaluation through unchanged, and can fan that output out to multiple destinations.
-Pins use the existing node and edge document shape, so adding them does not change existing graph
-documents or require seed-data rewrites.
-
 An edge between `vector3` and `number` ports stores a `component` of `x`, `y`, or `z`. Vector-to-number
 evaluation extracts that component. Number-to-vector evaluation replaces that component on the
 target port's stored/default vector and preserves its other two components. Edges between matching
@@ -76,7 +71,11 @@ Number inputs omit `component`. Removing every binding removes `layoutMetadata` 
 Node data also stores overrides only for registered node defaults. This includes identity transform
 values: zero translation and rotation, unit scale, and middle origins are omitted independently;
 any changed transform component remains saved. Array nodes omit repeat counts of one and offsets of
-zero; Multi Array nodes omit its default x axis and offset of one.
+zero. Repeat Input nodes omit the default
+instance count of one. Repeat Output nodes persist the ID of their linked Repeat Input; the colored
+zone region is derived at runtime and is not serialized as a third node. Number Aggregator nodes
+persist only their disconnected Initial Value and Add Value fallbacks; their current iteration state
+is runtime-only.
 
 ## Enum definitions
 
@@ -110,19 +109,15 @@ Definitions may instantiate other definitions. The dependency graph must remain 
 
 ## Product layouts
 
-`layout.activeProductId` selects one persisted product. Each product selects a reusable layout with
-`layoutId` and owns the items that fill it. Each layout definition owns the customer configuration
-panel's `configurationHeader`. A row layout distributes items along the x axis and accepts up to
-its `slotsCount.max`; a single layout accepts one item. `slotId` explicitly assigns one product type
-to each layout. The Product Editor can create additional products and product types.
+`products.activeProductId` selects one persisted product. Each product selects the generic `row` or
+`single` layout with `layoutId` and owns the items that fill it. A row layout distributes items along
+the x axis and accepts up to 20 items; a single layout accepts one. The runtime slot permits every
+root graph in the document. The Product Editor can create additional products.
 
-A slot definition owns its label, the root graph IDs it permits, and width/depth/height bounds. Each
-layout item may persist `layoutMetadata.axisBinding` entries for `primary`, `secondary`, and
-`tertiary`; graph definitions carry none of this layout data. A binding points to a number input ID
-or a vector input component such as `size.x`. Row positioning does not require these bindings: it
+Row positioning does not require stored axis bindings: it
 derives each item's transformed bounds from its evaluated scene and places the next item's left
-bound against the preceding item's right bound. Each occupied slot is represented by a layout graph
-instance with a unique ID, an allowed root `graphId`, and instance-owned `inputValues`. Missing
+bound against the preceding item's right bound. Each occupied item is represented by a product graph
+instance with a unique ID, a root `graphId`, and instance-owned `inputValues`. Missing
 values use the graph input defaults. Creating an instance uses the first saved configuration
 template for the chosen graph when one exists, otherwise it starts with graph defaults.
 
@@ -155,7 +150,7 @@ Each root configuration panel can also store named templates. A template is a se
 by the root inputs currently exposed by that panel. Creating a template captures the current
 configuration. Applying it updates those values together. Templates are reconciled whenever the
 panel schema changes: values for removed controls are discarded, values for newly exposed controls
-use their graph-input defaults, and values that no longer fit an input or number-array control reset
+use their graph-input defaults, and values that no longer fit an input control reset
 to the applicable default. This keeps saved templates usable as the configuration panel evolves.
 
 Each control stores its rendered element type and only types compatible with its input are
@@ -163,32 +158,14 @@ valid:
 
 - Number inputs support `number` controls with `step`, or `slider` controls with `min`, `max`,
   and `step`.
-- Number-array inputs support `numberArray`. The control owns one display label per array item, a
-  positive `step`, and a non-negative `total` maximum shared by all items. Changing the label count
-  resizes the root value; lowering the total preserves earlier values and reduces later values.
 - Enum inputs support `select`.
 - Material inputs support `material`; the control uses the registered material catalog.
 - Boolean inputs support `switch`.
 - Geometry inputs cannot be mapped to the configuration panel.
 
-The number-array control stores related values and their total limit together:
-
-```json
-{
-  "id": "shelf-counts-control",
-  "inputId": "shelf-counts",
-  "label": "Shelves by size",
-  "type": "numberArray",
-  "labels": ["Big shelves", "Small shelves"],
-  "total": 6,
-  "step": 1
-}
-```
-
 The configuration-panel editor is available while any root graph is open. It presents that root's
 ordered control list and lets authors manually add a predefined compatible UI item, bind it to an
 unused root input, configure its presentation settings, drag it into display order, or remove it.
-Number-array items additionally edit their value labels, item count, step, and shared total.
 Input nodes own their local defaults. Their Export switch creates or removes the matching public
 graph input without deleting the local node. A material input stores a registered material ID.
 When a root material input is exposed to customers, its configuration control presents the
@@ -211,14 +188,10 @@ Application validation enforces rules that JSON Schema cannot express:
 9. Root and graph-instance values match their input declarations.
 10. Configuration controls target compatible inputs on their owning root only.
 11. Every material input and stored material value is a non-empty registered-material ID.
-12. Number-array controls have one or more labels and stored values of the same length whose sum
-    does not exceed the control total.
-13. Enum IDs are unique, every enum input resolves one definition, and its default belongs to that
+12. Enum IDs are unique, every enum input resolves one definition, and its default belongs to that
     definition.
-14. The active layout, layout slot references, allowed root graph IDs, unique instance IDs, maximum
-    slot counts, slot bounds, and every instance input override are valid.
-15. Every graph layout-axis binding resolves to an exported number input or vector component.
-16. Every root layout-axis binding resolves to a public number input or vector component.
+13. The active product, its generic layout choice, unique instance IDs, maximum item counts, and
+    every instance input override are valid.
 
 ## Import and export
 
@@ -226,13 +199,12 @@ Export writes the complete current document with two-space JSON formatting. Impo
 only the document shape described here and rebuilds every graph scope against the document's
 local graph interface index.
 
-Top-level `client`, `layout`, `rootGraphs`, `enums`, and `graphs`; root-level `inputValues`, optional
-`layoutMetadata`, and `configurationPanel`;
+Top-level `client`, `products`, `rootGraphs`, `enums`, and `graphs`; root-level `inputValues` and
+`configurationPanel`;
 enum-input `enumId` is required when its input type is `enum`.
 Documents from the former singular `entryGraphId` / `entryInputValues` shape, documents that store
-choice options on graph inputs, and documents using the earlier `layout.layouts[].slotIds` plus
-instance-like `layout.slots[]` shape are intentionally unsupported. No compatibility migration is
-provided.
+choice options on graph inputs, and documents containing persisted `layout` definitions are
+intentionally unsupported. No compatibility migration is provided.
 
 Choice to Mesh and Geometry Toggle add persisted `choiceToMeshMap` and `geometryToggle` node types.
 Choice to Mesh stores stable input IDs and matching enum indices; Toggle stores its disconnected boolean
@@ -248,9 +220,7 @@ are runtime data and are not serialized.
 for the New Project action. It contains one root graph with a box primitive connected to the graph
 output, and `createDefaultGraph` assigns the selected client before creation.
 
-The local seed uses the separate complete graphs at
-[`scripts/data/maxshelf/defaultGraph.json`](../../scripts/data/maxshelf/defaultGraph.json) and
-[`scripts/data/kitchen/defaultGraph.json`](../../scripts/data/kitchen/defaultGraph.json), creating one
-project per client for each seeded user. These files are copies of the corresponding fixtures under
-`projects/`. A project's client remains immutable while it is open; importing a graph for another
-client is rejected.
+The local seed creates the Kitchen project from
+[`scripts/data/kitchen/project.json`](../../scripts/data/kitchen/project.json) and loads Kitchen asset
+metadata. A project's client remains immutable while it is open; importing a graph for another client
+is rejected.

@@ -1,16 +1,13 @@
 import { Matrix4 } from 'three'
-import type { LayoutDocument } from '@/layout/LayoutDocument'
 import type { GraphEvaluator } from '@/parametric/evaluation/GraphEvaluator'
 import type {
-	Matrix4Snapshot,
 	SceneAssetInstanceMetadata,
 	SceneMetadata,
 } from '@/parametric/evaluation/SceneMetadata'
+import { setSceneAssetInstanceTransform } from '@/parametric/evaluation/SceneBounds'
 import type { GraphDocumentModel } from '@/parametric/model/GraphDocumentModel'
 import type { Vector3Snapshot } from '@/parametric/model/Vector3Value'
-import type { ProductLayout } from '@/layout/ProductLayout'
-import { RowLayout } from '@/layout/RowLayout'
-import { SingleItemLayout } from '@/layout/SingleItemLayout'
+import { productLayoutRegistry } from '@/layout/ProductLayoutRegistry'
 
 export interface LayoutWorldSlot {
 	id: string
@@ -36,13 +33,16 @@ export class LayoutEvaluator {
 				+ `${JSON.stringify(layoutData.products.map((item) => item.id))}.`
 			)
 		}
-		const layout = layoutData.layouts.find((item) => item.id === product.layoutId)
-		if (!layout) throw new Error(`Product "${product.id}" references unknown layout "${product.layoutId}".`)
-		const slot = layoutData.slots.find((item) => item.id === layout.slotId)
-		if (!slot) {
+		const productLayout = productLayoutRegistry.require(product.layoutId)
+		const rootGraphIds = document.getRootGraphs().map((root) => root.getGraphId())
+		const unsupported = product.instances.filter(
+			(instance) => !productLayout.canInstantiateGraph(instance.graphId, rootGraphIds)
+		)
+		if (unsupported.length > 0) {
 			throw new Error(
-				`Cannot evaluate layout "${layout.id}": slot definition "${layout.slotId}" is missing. `
-				+ `Available slot definitions: ${JSON.stringify(layoutData.slots.map((item) => item.id))}.`
+				`Product "${product.id}" layout "${product.layoutId}" cannot instantiate graph items `
+				+ `${JSON.stringify(unsupported.map((instance) => ({ id: instance.id, graphId: instance.graphId })))}. `
+				+ `Available root graphs: ${JSON.stringify(rootGraphIds)}.`
 			)
 		}
 
@@ -54,7 +54,6 @@ export class LayoutEvaluator {
 				instance.id
 			)
 		)
-		const productLayout = createProductLayout(layout)
 		const positions = productLayout.getSlotPositions(instanceMetadata)
 
 		return {
@@ -66,7 +65,7 @@ export class LayoutEvaluator {
 					)
 				}),
 			},
-			addSlot: product.instances.length < layout.slotsCount.max && slot.graphs.length > 0
+			addSlot: product.instances.length < productLayout.maximumInstances && rootGraphIds.length > 0
 				? {
 					id: `add-${product.id}-${product.instances.length}`,
 					index: product.instances.length,
@@ -74,15 +73,6 @@ export class LayoutEvaluator {
 				}
 				: null,
 		}
-	}
-}
-
-function createProductLayout(layout: LayoutDocument): ProductLayout {
-	switch (layout.type) {
-		case 'row':
-			return new RowLayout()
-		case 'single':
-			return new SingleItemLayout()
 	}
 }
 
@@ -95,13 +85,15 @@ function placeAsset(
 	const transform = new Matrix4()
 		.makeTranslation(position.x, position.y, position.z)
 		.multiply(new Matrix4().fromArray(asset.transform))
-	return {
-		...asset,
-		instanceId: `${layoutId}/${instanceId}/${asset.instanceId}`,
-		transform: transform.elements.slice() as unknown as Matrix4Snapshot,
-		originNode: {
-			...asset.originNode,
-			nodeInstanceId: `${layoutId}/${instanceId}/${asset.originNode.nodeInstanceId}`,
+	return setSceneAssetInstanceTransform(
+		{
+			...asset,
+			originNode: {
+				...asset.originNode,
+				nodeInstanceId: `${layoutId}/${instanceId}/${asset.originNode.nodeInstanceId}`,
+			},
 		},
-	}
+		transform.elements.slice() as unknown as SceneAssetInstanceMetadata['transform'],
+		`${layoutId}/${instanceId}/${asset.instanceId}`
+	)
 }

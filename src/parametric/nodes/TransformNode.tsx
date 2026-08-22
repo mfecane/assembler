@@ -1,56 +1,31 @@
-import { Position, type NodeProps } from '@xyflow/react'
-import { Plus } from 'lucide-react'
-import { useState } from 'react'
+import type { NodeProps } from '@xyflow/react'
 import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Switch } from '@/components/ui/switch'
 import { NumericInput } from '@/parametric/components/NumericInput'
-import { Vec3Field } from '@/parametric/components/Vec3Field'
-import { TransformOriginField } from '@/parametric/components/TransformOriginField'
+import { Vec3Inputs } from '@/parametric/components/Vec3Field'
+import { TransformOriginInputs } from '@/parametric/components/TransformOriginField'
 import { GeometryNodeActions } from '@/parametric/components/GeometryNodeActions'
-import { NodeHeader } from '@/parametric/components/NodeHeader'
-import { TypedHandle } from '@/parametric/components/TypedHandle'
+import { NodeCapability } from '@/parametric/components/NodeCapability'
+import { NodePortRow } from '@/parametric/components/NodePortRow'
+import { NodeSurface } from '@/parametric/components/NodeSurface'
 import { useTransformNode, useVectorNumericFields } from '@/parametric/hooks/useGraphNode'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 
-type OptionalTransformSection = 'rotation' | 'scale' | 'origin' | 'copy'
-
-const optionalTransformSections: ReadonlyArray<{ id: OptionalTransformSection; label: string }> = [
-	{ id: 'rotation', label: 'Rotation' },
-	{ id: 'scale', label: 'Scale' },
-	{ id: 'origin', label: 'Origin' },
-	{ id: 'copy', label: 'Clone Input' },
-]
-
 export function TransformNode({ id }: NodeProps<ParametricFlowNode>) {
 	const binding = useTransformNode(id)
-	const [visibleSections, setVisibleSections] = useState<Set<OptionalTransformSection>>(new Set())
 	const translation = useVectorNumericFields(id, 'translation', 'Position')
 	const rotation = useVectorNumericFields(id, 'rotation', 'Rotation')
 	const scale = useVectorNumericFields(id, 'scale', 'Scale')
 
 	if (!binding) return null
-	const toggleSection = (section: OptionalTransformSection) => {
-		setVisibleSections((current) => {
-			const next = new Set(current)
-			if (next.has(section)) next.delete(section)
-			else next.add(section)
-			return next
-		})
-	}
 
 	return (
-		<div
-			data-id={`transform-node-${id}`}
-			className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
-		>
-			<TypedHandle id="geometry" type="target" position={Position.Left} valueType="geometry" />
-			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} />} />
+		<NodeSurface nodeId={id} dataId={`transform-node-${id}`} actions={<GeometryNodeActions nodeId={id} />}>
+			<NodePortRow nodeId={id} portId="geometry" valueType="geometry" direction="both" label="Geometry" />
 			<div className="flex flex-col gap-2">
-				<div className="nodrag relative flex items-center justify-between gap-3">
-					<TypedHandle id="enabled" type="target" position={Position.Left} valueType="boolean" />
+				<NodePortRow nodeId={id} portId="enabled" valueType="boolean" direction="input" label={(
 					<Label htmlFor={`${id}-enabled`} className="text-xs text-muted-foreground">Enabled</Label>
+				)}>
 					<Switch
 						data-id="transform-enabled-switch"
 						id={`${id}-enabled`}
@@ -59,28 +34,24 @@ export function TransformNode({ id }: NodeProps<ParametricFlowNode>) {
 						onCheckedChange={binding.setEnabled}
 						aria-label="Enable transform"
 					/>
-				</div>
-				<div className="relative" data-id="transform-translation-input">
-					<TypedHandle
-						id="translation"
-						type="target"
-						position={Position.Left}
-						valueType="vector3"
-					/>
-					<Vec3Field label="Position" fields={translation} step={0.01} />
-					{binding.translationConnected && (
-						<span className="text-[10px] text-muted-foreground">Driven by connection</span>
-					)}
-				</div>
-				{visibleSections.has('rotation') && <Vec3Field label="Rotation" fields={rotation} step={1} />}
-				{visibleSections.has('scale') && (
+				</NodePortRow>
+				<NodePortRow
+					nodeId={id}
+					portId="translation"
+					valueType="vector3"
+					direction="input"
+					label="Position"
+				>
+					<Vec3Inputs fields={translation} step={0.01} disabled={binding.translationConnected} />
+				</NodePortRow>
+				<NodeCapability nodeId={id} label="Rotation">
+					<Vec3Inputs fields={rotation} step={1} />
+				</NodeCapability>
+				<NodeCapability nodeId={id} label="Scale">
 					<div className="nodrag flex flex-col gap-1 text-xs">
 						<div className="flex items-center justify-between gap-3">
-							<span className="text-muted-foreground">Scale</span>
+							<span className="text-muted-foreground">Uniform</span>
 							<div className="flex items-center gap-1.5">
-								<Label htmlFor={`${id}-uniform-scale`} className="text-xs text-muted-foreground">
-									Uniform
-								</Label>
 								<Switch
 									id={`${id}-uniform-scale`}
 									checked={binding.uniformScale}
@@ -106,11 +77,11 @@ export function TransformNode({ id }: NodeProps<ParametricFlowNode>) {
 							</div>
 						)}
 					</div>
-				)}
-				{visibleSections.has('copy') && (
+				</NodeCapability>
+				<NodeCapability nodeId={id} label="Clone Input">
 					<div className="nodrag flex items-center justify-between gap-3">
 						<Label htmlFor={`${id}-copy`} className="text-xs text-muted-foreground">
-							Clone input
+							Enabled
 						</Label>
 						<Switch
 							data-id="clone-input-switch"
@@ -120,45 +91,11 @@ export function TransformNode({ id }: NodeProps<ParametricFlowNode>) {
 							aria-label="Clone input"
 						/>
 					</div>
-				)}
-				{visibleSections.has('origin') && (
-					<TransformOriginField value={binding.origin} onChange={binding.setOrigin} />
-				)}
-				<Popover>
-					<PopoverTrigger asChild>
-						<Button
-							data-id="transform-add-section-button"
-							type="button"
-							variant="ghost"
-							size="sm"
-							className="nodrag h-7 w-full justify-start px-2 text-xs text-muted-foreground"
-							aria-label="Add transform section"
-						>
-							<Plus className="size-3.5" />
-							Add...
-						</Button>
-					</PopoverTrigger>
-					<PopoverContent className="w-44 p-1" align="start">
-						<div className="flex flex-col" role="menu" aria-label="Transform sections">
-							{optionalTransformSections.map((section) => (
-								<button
-									key={section.id}
-									data-id={`transform-section-option-${section.id}`}
-									type="button"
-									role="menuitemcheckbox"
-									aria-checked={visibleSections.has(section.id)}
-									className="flex items-center justify-between rounded-sm px-2 py-1.5 text-left text-xs hover:bg-accent"
-									onClick={() => toggleSection(section.id)}
-								>
-									{section.label}
-									{visibleSections.has(section.id) && <span aria-hidden="true">✓</span>}
-								</button>
-							))}
-						</div>
-					</PopoverContent>
-				</Popover>
+				</NodeCapability>
+				<NodeCapability nodeId={id} label="Origin">
+					<TransformOriginInputs value={binding.origin} onChange={binding.setOrigin} />
+				</NodeCapability>
 			</div>
-			<TypedHandle id="geometry" type="source" position={Position.Right} valueType="geometry" />
-		</div>
+		</NodeSurface>
 	)
 }

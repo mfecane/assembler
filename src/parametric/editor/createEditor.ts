@@ -1,4 +1,4 @@
-import { Client } from '@/cosntants'
+import type { Client } from '@/constants'
 import defaultGraphTemplate from '../../../scripts/data/defaultGraph.json'
 import { Editor } from '@/parametric/editor/Editor'
 import { deserializeGraph, type GraphDocument } from '@/parametric/model/GraphSerialization'

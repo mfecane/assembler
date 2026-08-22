@@ -7,6 +7,8 @@ import {
 export interface LayoutViewportSnapshot {
 	error: string | null
 	addSlots: LayoutSlotScreenPosition[]
+	doorsOpen: boolean
+	hasAnimation: boolean
 }
 
 type LayoutViewportListener = () => void
@@ -21,7 +23,12 @@ export class LayoutViewportEditor {
 	private evaluationSequence = 0
 	private disposalSequence = 0
 	private disposed = false
-	private snapshot: LayoutViewportSnapshot = { error: null, addSlots: [] }
+	private snapshot: LayoutViewportSnapshot = {
+		error: null,
+		addSlots: [],
+		doorsOpen: false,
+		hasAnimation: false,
+	}
 
 	public constructor(private readonly controller: EditorController) {
 		this.evaluationRevision = controller.getSnapshot().evaluationRevision
@@ -66,7 +73,12 @@ export class LayoutViewportEditor {
 		this.slotPositionSubscription = null
 		this.scene?.dispose()
 		this.scene = null
-		this.publish({ ...this.snapshot, addSlots: [] })
+		this.publish({ ...this.snapshot, addSlots: [], hasAnimation: false })
+	}
+
+	public setDoorsOpen(open: boolean): void {
+		this.scene?.setDoorsOpen(open)
+		this.publish({ ...this.snapshot, doorsOpen: open })
 	}
 
 	public dispose(): void {
@@ -92,7 +104,13 @@ export class LayoutViewportEditor {
 			const evaluated = this.controller.evaluateActiveLayout()
 			if (!this.scene || sequence !== this.evaluationSequence) return
 			this.scene.sync(evaluated.metadata, evaluated.addSlot)
-			if (this.snapshot.error) this.publish({ ...this.snapshot, error: null })
+			this.publish({
+				...this.snapshot,
+				error: null,
+				hasAnimation: evaluated.metadata.assetInstances.some(
+					(instance) => instance.rotateAnimationHint !== undefined
+				),
+			})
 		} catch (cause) {
 			this.reportError('evaluate and render the active product layout', cause)
 		}
@@ -123,6 +141,8 @@ export class LayoutViewportEditor {
 		if (
 			snapshot.error === this.snapshot.error
 			&& JSON.stringify(snapshot.addSlots) === JSON.stringify(this.snapshot.addSlots)
+			&& snapshot.doorsOpen === this.snapshot.doorsOpen
+			&& snapshot.hasAnimation === this.snapshot.hasAnimation
 		) return
 		this.snapshot = snapshot
 		for (const listener of this.listeners) listener()

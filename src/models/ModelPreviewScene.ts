@@ -22,7 +22,6 @@ import {
 	Vector3,
 } from 'three'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
-import { ViewHelper } from 'three/examples/jsm/helpers/ViewHelper.js'
 import {
 	ModelStretchAxis,
 	getMinimumStretchBoxLength,
@@ -40,8 +39,9 @@ import {
 } from '@/models/ModelPivotMetadata'
 import { ModelUvAttribute } from '@/models/ModelUvAttribute'
 import { ModelUvPreview } from '@/models/ModelUvPreview'
+import { ModelPreviewEvents } from '@/models/ModelPreviewEvents'
 import { meshRepository } from '@/parametric/three/MeshRepository'
-import { createSceneSetup, type SceneSetupResult } from '@/parametric/three/SceneSetup'
+import { createTechnicalSceneSetup, type SceneSetupResult } from '@/parametric/three/SceneSetup'
 import {
 	InteractionHit,
 	InteractionTarget,
@@ -55,9 +55,6 @@ import {
 	WidgetInteraction,
 } from '@/models/editor/interactions/InteractionEvent'
 import checkerTextureUrl from '../../assets/textures/checker.png?url'
-
-type WidgetInteractionListener = (interaction: WidgetInteraction) => void
-type PreviewSizeListener = (axis: ModelGeometryAxis, size: number) => void
 
 interface StretchGizmo {
 	control: TransformControls
@@ -103,8 +100,6 @@ export class ModelPreviewScene {
 	private readonly material: MeshStandardMaterial
 	private readonly checkerTexture: Texture
 	private readonly uvPreview: ModelUvPreview | null
-	private readonly viewHelper: ViewHelper
-	private readonly viewHelperRenderListener: AbortController
 	private readonly sourceBounds: Box3
 	private readonly sourceSize: Vector3
 	private readonly pivotMarker: Mesh
@@ -117,8 +112,7 @@ export class ModelPreviewScene {
 	private readonly uvAttribute: ModelUvAttribute | null
 	private readonly raycaster = new Raycaster()
 	private readonly stretchService = new ModelStretchService()
-	private readonly widgetInteractionListeners = new Set<WidgetInteractionListener>()
-	private readonly previewSizeListeners = new Set<PreviewSizeListener>()
+	private readonly events = new ModelPreviewEvents()
 	private stretchAxes: ModelStretchAxis[] = []
 	private texelSizeRatio = DEFAULT_MODEL_TEXEL_SIZE_RATIO
 	private stretchGizmos: StretchGizmo[] = []
@@ -179,22 +173,7 @@ export class ModelPreviewScene {
 		this.sourceUvs = uv ? Float32Array.from(uv.array) : null
 		this.uvAttribute = uv ? new ModelUvAttribute(uv) : null
 
-		this.setup = createSceneSetup(canvas)
-		this.viewHelper = new ViewHelper(this.setup.camera, canvas)
-		this.viewHelper.setLabels('X', 'Y', 'Z')
-		this.viewHelper.location.right = 12
-		this.viewHelper.location.bottom = 12
-		this.viewHelperRenderListener = this.setup.addRenderListener((deltaSeconds) => {
-			if (this.viewHelper.animating) this.viewHelper.update(deltaSeconds)
-			const autoClear = this.setup.renderer.autoClear
-			this.setup.renderer.autoClear = false
-			try {
-				this.viewHelper.render(this.setup.renderer)
-			} finally {
-				this.setup.renderer.autoClear = autoClear
-			}
-		})
-		canvas.addEventListener('pointerup', this.handleViewHelperClick)
+		this.setup = createTechnicalSceneSetup(canvas)
 		canvas.addEventListener('pointerleave', this.handlePointerLeave)
 		this.material = new MeshStandardMaterial({ color: 0xd7d9dd, metalness: 0.08, roughness: 0.7 })
 		this.checkerTexture = new TextureLoader().load(checkerTextureUrl)
@@ -237,29 +216,18 @@ export class ModelPreviewScene {
 		try {
 			this.resize()
 			this.fitCamera(modelId)
-			this.viewHelper.center.copy(this.setup.controls.target)
 		} catch (cause) {
 			this.dispose()
 			throw cause
 		}
 	}
 
-	public addWidgetInteractionListener(listener: WidgetInteractionListener): AbortController {
-		this.widgetInteractionListeners.add(listener)
-		const abortController = new AbortController()
-		abortController.signal.addEventListener('abort', () => {
-			this.widgetInteractionListeners.delete(listener)
-		}, { once: true })
-		return abortController
+	public addWidgetInteractionListener(listener: (interaction: WidgetInteraction) => void): AbortController {
+		return this.events.addWidgetInteractionListener(listener)
 	}
 
-	public addPreviewSizeListener(listener: PreviewSizeListener): AbortController {
-		this.previewSizeListeners.add(listener)
-		const abortController = new AbortController()
-		abortController.signal.addEventListener('abort', () => {
-			this.previewSizeListeners.delete(listener)
-		}, { once: true })
-		return abortController
+	public addPreviewSizeListener(listener: (axis: ModelGeometryAxis, size: number) => void): AbortController {
+		return this.events.addPreviewSizeListener(listener)
 	}
 
 	public hasUvs(): boolean {
@@ -485,12 +453,8 @@ export class ModelPreviewScene {
 	public dispose(): void {
 		this.clearEditingGizmos()
 		this.cameraUpdateSubscription.abort()
-		this.setup.renderer.domElement.removeEventListener('pointerup', this.handleViewHelperClick)
 		this.setup.renderer.domElement.removeEventListener('pointerleave', this.handlePointerLeave)
-		this.viewHelperRenderListener.abort()
-		this.viewHelper.dispose()
-		this.widgetInteractionListeners.clear()
-		this.previewSizeListeners.clear()
+		this.events.dispose()
 		this.setup.scene.remove(this.mesh, this.pivotMarker)
 		if (this.uvPreview) this.setup.scene.remove(this.uvPreview.group)
 		this.mesh.geometry.dispose()
@@ -503,12 +467,6 @@ export class ModelPreviewScene {
 		this.checkerTexture.dispose()
 		this.uvPreview?.dispose()
 		this.setup.dispose()
-	}
-
-	private readonly handleViewHelperClick = (event: PointerEvent): void => {
-		if (!this.viewHelper.handleClick(event)) return
-		event.preventDefault()
-		event.stopImmediatePropagation()
 	}
 
 	private readonly handlePointerLeave = (): void => {
@@ -733,7 +691,7 @@ export class ModelPreviewScene {
 			}
 			this.applyStretchPreview()
 			for (const [axis, size] of changedSizes) {
-				for (const listener of this.previewSizeListeners) listener(axis, size)
+				this.events.publishPreviewSize(axis, size)
 			}
 		})
 		control.addEventListener('dragging-changed', (event) => {
@@ -852,7 +810,7 @@ export class ModelPreviewScene {
 			0,
 			new Event('model-pivot-widget-commit')
 		)
-		for (const listener of this.widgetInteractionListeners) listener(interaction)
+		this.events.publishWidgetInteraction(interaction)
 	}
 
 	private publishStretchWidgetInteraction(
@@ -872,7 +830,7 @@ export class ModelPreviewScene {
 			0,
 			new Event(`model-stretch-axis-${type}`)
 		)
-		for (const listener of this.widgetInteractionListeners) listener(interaction)
+		this.events.publishWidgetInteraction(interaction)
 	}
 
 	private clampBoundary(

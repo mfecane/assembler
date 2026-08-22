@@ -17,6 +17,7 @@ import {
 import type { Vector3Snapshot } from '@/parametric/model/Vector3Value'
 import { getMathExpressionVisibleInputIndexes } from '@/parametric/model/MathExpression'
 import { useGraphSnapshot } from '@/parametric/hooks/useGraphSnapshot'
+import { RepeatZone } from '@/parametric/model/RepeatZone'
 
 export interface FieldBinding<T> {
 	value: T
@@ -39,6 +40,19 @@ export function useField<T>(nodeId: string, field: string, fallback: T): FieldBi
 
 export function useNumericField(nodeId: string, field: string, _label?: string): NumericFieldBinding {
 	return useField(nodeId, field, 0)
+}
+
+export function useConnectedInputPorts(nodeId: string): ReadonlySet<string> {
+	const { model } = useGraphSnapshot()
+	return new Set(model.getEdges().flatMap((edge) => (
+		edge.targetNodeId === nodeId && edge.targetPort ? [edge.targetPort] : []
+	)))
+}
+
+export function useRepeatZoneMembership(nodeId: string): boolean {
+	const { model } = useGraphSnapshot()
+	const node = model.getNode(nodeId)
+	return Boolean(node && RepeatZone.findOwner(node, model.getNodes()))
 }
 
 export function useVectorNumericFields(nodeId: string, field: string, label: string) {

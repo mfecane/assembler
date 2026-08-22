@@ -1,4 +1,4 @@
-import { Position, type NodeProps } from '@xyflow/react'
+import type { NodeProps } from '@xyflow/react'
 import {
 	Select,
 	SelectContent,
@@ -7,8 +7,9 @@ import {
 	SelectValue,
 } from '@/components/ui/select'
 import { GeometryNodeActions } from '@/parametric/components/GeometryNodeActions'
-import { NodeHeader } from '@/parametric/components/NodeHeader'
-import { TypedHandle } from '@/parametric/components/TypedHandle'
+import { NodePortGroup } from '@/parametric/components/NodePortGroup'
+import { NodePortRow } from '@/parametric/components/NodePortRow'
+import { NodeSurface } from '@/parametric/components/NodeSurface'
 import { Vec3Field } from '@/parametric/components/Vec3Field'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
 import { useField, useVectorNumericFields } from '@/parametric/hooks/useGraphNode'
@@ -26,19 +27,10 @@ export function PrimitiveNode({ id }: NodeProps<ParametricFlowNode>) {
 	const size = useVectorNumericFields(id, 'size', 'Size')
 
 	return (
-		<div
-			data-id={`primitive-node-${id}`}
-			className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
-		>
-			<TypedHandle
-				id="material"
-				type="target"
-				position={Position.Left}
-				valueType="materialInstance"
-				style={{ top: '65%' }}
-			/>
-			<NodeHeader nodeId={id} actions={<GeometryNodeActions nodeId={id} />} />
-			<div className="flex flex-col gap-2">
+		<NodeSurface nodeId={id} dataId={`primitive-node-${id}`} actions={<GeometryNodeActions nodeId={id} />}>
+			<NodePortRow nodeId={id} portId="material" valueType="materialInstance" direction="input" label="Material" />
+			<NodePortGroup nodeId={id} portId="geometry" valueType="geometry"
+				dataId={`primitive-fields-${id}`} className="flex flex-col gap-2">
 				<Select
 					value={primitive.value}
 					onValueChange={(next) => primitive.setValue(next as PrimitiveKind)}
@@ -55,8 +47,7 @@ export function PrimitiveNode({ id }: NodeProps<ParametricFlowNode>) {
 					</SelectContent>
 				</Select>
 				<Vec3Field label="Size" fields={size} />
-			</div>
-			<TypedHandle id="geometry" type="source" position={Position.Right} valueType="geometry" />
-		</div>
+			</NodePortGroup>
+		</NodeSurface>
 	)
 }

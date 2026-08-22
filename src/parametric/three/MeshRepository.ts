@@ -1,5 +1,5 @@
 import { BoxGeometry, BufferGeometry, ConeGeometry, CylinderGeometry, SphereGeometry, Vector3 } from 'three'
-import { type Client, LEGACY_ASSET_ALIASES } from '@/cosntants'
+import { type Client, LEGACY_ASSET_ALIASES } from '@/constants'
 import type { PrimitiveKind } from '@/parametric/model/GraphNode'
 import type { MeshBounds, MeshCatalog, MeshDescriptor } from '@/parametric/model/MeshCatalog'
 import { AssetRegistrar } from '@/parametric/three/AssetRegistrar'

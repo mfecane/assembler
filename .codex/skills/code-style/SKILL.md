@@ -116,3 +116,29 @@ class Foo implements Interface {
 # Naming
 
 - verbs for methods
+
+# Constants
+
+Constant containers use uppercase names, and values that are themselves semantic constants use uppercase keys:
+
+```ts
+export const NODE_EDITOR_CONSTANTS = {
+	NODE_CENTER_X: 96,
+	DRAG_PIXELS_PER_STEP: 10,
+} as const
+```
+
+When a constant contains structured application data, its inner keys describe the data shape and remain idiomatic camelCase:
+
+```ts
+export const LEGACY_ASSET_ALIASES = [
+	{
+		id: 'asset:backplate-corner',
+		label: 'Backplate Corner',
+		sourceId: MAXSHELF_ASSET_IDS.backpanel1000x300,
+	},
+] as const
+```
+
+The rule is: uppercase identifies constants; camelCase identifies fields, lookup names, and record properties inside constant data. The container being immutable does not automatically
+make every nested property a semantic constant.

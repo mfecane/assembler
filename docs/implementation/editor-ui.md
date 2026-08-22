@@ -11,18 +11,33 @@ open project.
 The Graph Editor retains the node canvas, evaluated 3D viewport, and runtime configuration panel.
 The Product Editor is a separate high-level workspace with its own 3D canvas and two separate docked
 panels. The left panel contains only customer-facing choices for the active product.
-Product options is the admin panel on the right: it selects or creates products, selects the persisted row or single layout
-and edits the customer panel heading and item counts. It only links to the referenced product type;
-a persisted selector explicitly assigns that definition, while a standalone dialog can select and
-edit any defined product type's name, bounds, and eligible products. Its slot selector follows the
-Product options selector flow: select a slot, then add, rename, or delete an unassigned definition
-from its actions menu. Dimension mappings are defined in the Graph Editor's root-graph
-layout-dimensions dialog. The Layout viewport uses the studio environment and
-a floor instead of the Graph Editor's grid and axis helper.
+Product options is the admin panel on the right: it selects or creates products, selects the generic
+row or single layout, and edits the customer panel heading. Layout definitions, item limits, and
+root-graph eligibility are runtime defaults rather than saved project data. Dimension mappings are defined in the Graph Editor's root-graph
+layout-dimensions dialog. Both 3D viewports use the shared blocky photo studio KTX2 environment;
+the Layout viewport also displays it as its background and uses a floor instead of the Graph
+Editor's grid and axis helper.
 The product configuration panel is on the left: it lists each occupied position, its customer-facing
 fields, and add/delete actions. The 3D viewport evaluates all active
 instances and projects its floating add button from the next slot's world position whenever the
 camera changes.
+
+The Product options panel opens a product-level configuration editor. Authors add ordinary controls
+by choosing an available product-item input first; the editor assigns the compatible control and
+then exposes its customer-facing label and relevant numeric settings. Bindings are displayed with
+their item position, graph name, and input label so repeated graph instances remain distinguishable.
+Visible up/down actions define customer-panel order.
+
+Sections is a smart repeatable control rather than a standalone field. Its composer requires one
+number input for the section count and one or more numeric or choice-array inputs from the same
+product item. The complete set of bindings is added atomically, so an incomplete Sections control
+never enters the saved configuration. Its per-section fields can then be labeled, ordered, and
+presented as number fields, sliders, or choices according to their input types. Choice fields
+validate the option currently being edited without rejecting the rest of a tolerantly loaded array.
+New Sections rows use zero-indexed choice option `0`; numeric fields use their configured minimum,
+or `0` when no minimum exists. The same defaults fill missing entries in uneven loaded arrays.
+Malformed arrays and unusable numeric bounds are normalized with contextual console warnings so
+add/edit actions remain available instead of throwing.
 
 ## Graph toolbar
 
@@ -33,8 +48,9 @@ camera changes.
   entire selection is recorded as one graph command, so one Undo restores the complete deletion.
 - Configuration-panel editing, node creation, and asset browsing are launched from the canvas
   toolbar. Node creation opens a searchable dialog from either the toolbar button or the Space
-  shortcut. Its filter receives focus immediately, matches names, descriptions, and categories,
-  and Enter adds the first visible result.
+  shortcut. Its filter receives focus immediately, matches names, descriptions, categories, and
+  node-definition aliases, and Enter adds the first visible result. The Expression node includes
+  `math` as a search alias.
 - When a root graph is open, the toolbar also provides a layout-dimensions editor. Each optional
   width, depth, and height mapping selects a public number input or an individual vector component;
   clearing every mapping removes the root’s layout metadata from the saved graph document.
@@ -131,7 +147,7 @@ inputs are also drag surfaces, while the inputs themselves remain interactive an
 
 Node-local numeric fields pair their typed input with a horizontal-drag control marked by the
 left/right chevrons icon. Drag distance advances a configurable rounded step and repeated values are
-ignored. Transform position and scale plus Array and Multi Array offsets use `0.01`; transform
+ignored. Transform position and scale plus Array offsets use `0.01`; transform
 rotation uses `1`, and integer count inputs retain step `1`.
 
 All numeric editing surfaces use the same `NumericInput`. It owns focused draft text, parsing,

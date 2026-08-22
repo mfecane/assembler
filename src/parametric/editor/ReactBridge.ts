@@ -24,6 +24,7 @@ export interface ReactBridgeSnapshot {
 	previewNodeId: string | null
 	transformNodeId: string | null
 	arrayDistanceNodeId: string | null
+	rotateAnimationHintNodeId: string | null
 	transformMode: TransformControlsMode
 	alignmentSettings: ViewportAlignmentRequest
 	selectedMeshInstanceId: string | null
@@ -41,6 +42,7 @@ const initialSnapshot: ReactBridgeSnapshot = {
 	previewNodeId: null,
 	transformNodeId: null,
 	arrayDistanceNodeId: null,
+	rotateAnimationHintNodeId: null,
 	transformMode: 'translate',
 	alignmentSettings: createDefaultViewportAlignmentRequest(),
 	selectedMeshInstanceId: null,

@@ -1,31 +1,41 @@
-import { Position, type NodeProps } from '@xyflow/react'
+import type { NodeProps } from '@xyflow/react'
 import { AxisLabel } from '@/parametric/components/AxisLabel'
-import { NodeHeader } from '@/parametric/components/NodeHeader'
-import { TypedHandle } from '@/parametric/components/TypedHandle'
+import { NodePortGroup } from '@/parametric/components/NodePortGroup'
+import { NodePortRow } from '@/parametric/components/NodePortRow'
+import { NodeSurface } from '@/parametric/components/NodeSurface'
+import { NumericInput } from '@/parametric/components/NumericInput'
 import type { ParametricFlowNode } from '@/parametric/hooks/useFlowGraph'
+import { useConnectedInputPorts, useVectorNumericFields } from '@/parametric/hooks/useGraphNode'
 
 const axes = ['x', 'y', 'z'] as const
 
 export function Vector3Node({ id }: NodeProps<ParametricFlowNode>) {
+	const value = useVectorNumericFields(id, 'value', 'Value')
+	const connectedInputs = useConnectedInputPorts(id)
+
 	return (
-		<div
-			data-id={`vector3-node-${id}`}
-			className="min-w-40 rounded-md border border-border bg-surface px-3 py-2 shadow-md"
-		>
-			<NodeHeader nodeId={id} />
-			<div data-id={`vector3-inputs-${id}`} className="flex flex-col gap-1.5 text-xs">
+		<NodeSurface nodeId={id} dataId={`vector3-node-${id}`}>
+			<NodePortGroup
+				nodeId={id}
+				portId="vector3"
+				valueType="vector3"
+				dataId={`vector3-inputs-${id}`}
+				className="flex flex-col gap-1.5"
+			>
 				{axes.map((axis) => (
-					<div
+					<NodePortRow
 						key={axis}
-						data-id={`vector3-input-${id}-${axis}`}
-						className="relative flex h-7 items-center rounded border border-border bg-input px-2"
+						nodeId={id}
+						portId={axis}
+						valueType="number"
+						direction="input"
+						label={<AxisLabel axis={axis} />}
 					>
-						<TypedHandle id={axis} type="target" position={Position.Left} valueType="number" />
-						<AxisLabel axis={axis} />
-					</div>
+						<NumericInput value={value[axis].value} onValueChange={value[axis].setValue}
+							disabled={connectedInputs.has(axis)} />
+					</NodePortRow>
 				))}
-			</div>
-			<TypedHandle id="vector3" type="source" position={Position.Right} valueType="vector3" />
-		</div>
+			</NodePortGroup>
+		</NodeSurface>
 	)
 }

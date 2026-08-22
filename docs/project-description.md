@@ -28,14 +28,13 @@ by the selection rectangle; nodes do not need to be fully enclosed.
 
 A graph consists of nodes and directed edges. Nodes contain editor positions and type-specific persistent data. Edges connect a named output port to a named input port.
 
-Ports have open string value types. The built-in registry uses `geometry`, `meshArray`, `number`,
-`numberArray`, `enum`, `materialInstance`, and `boolean`. A connection is valid only when its source and target
+Ports have open string value types. The built-in registry uses `geometry`, `number`, `primitiveArray`,
+`vector3`, `enum`, `materialInstance`, and `boolean`. A connection is valid only when its source and target
 value types are identical. Each input port accepts at most one incoming edge unless its node declares
 multi-connect behavior, while one output may feed multiple inputs.
 
 The built-in graph vocabulary includes nodes for placing a fixed mesh asset, selecting an asset from
-an enum value, creating primitive geometry, transforming geometry, repeating one geometry value,
-collecting ordered mesh bundles, repeating those bundles from matching count arrays, changing
+an enum value, creating primitive geometry, transforming geometry, repeating one geometry value, changing
 materials, grouping geometry branches, and selecting the final output. Number, selector, material,
 and sum nodes provide supporting configurable values.
 
@@ -53,8 +52,8 @@ The graph has one non-creatable, non-removable Output node. It resolves the comb
 
 ### Public graph input
 
-Every graph declares a public interface. Authors create its declarations by placing Number, Number
-Array, Choice, Material, Color, Boolean, or Geometry Input nodes and edit their labels, defaults, and Export state directly on those
+Every graph declares a public interface. Authors create its declarations by placing Number, Array,
+Choice, Material, Color, Boolean, or Geometry Input nodes and edit their labels, defaults, and Export state directly on those
 nodes. Material inputs and unconnected graph instances use the registered PBR material catalog. Each
 `rootGraphs` record owns
 the saved values supplied to its graph; graph instances receive connected parent values and
@@ -62,8 +61,8 @@ declaration defaults.
 
 The configuration panel is an independent presentation layer. Root controls bind only to public
 inputs of their owning root and never to inner nodes or child graph paths. Each root has an
-independent root-only editor that maps those inputs to compatible number field, slider, labeled
-number-array, select, material-select, and switch controls. When an author opens a subgraph, the
+independent root-only editor that maps those inputs to compatible number field, slider, select,
+material-select, and switch controls. When an author opens a subgraph, the
 3D view instead renders direct controls for all of that definition's non-geometry exported inputs;
 those controls edit the declaration defaults used by the preview.
 

@@ -20,9 +20,8 @@ export type Axis = 'x' | 'y' | 'z'
 export type OriginAxis = 'min' | 'middle' | 'max'
 export type GraphValueType =
 	| 'geometry'
-	| 'meshArray'
 	| 'number'
-	| 'numberArray'
+	| 'primitiveArray'
 	| 'vector3'
 	| 'enum'
 	| 'materialInstance'
@@ -146,10 +145,11 @@ export class InputGraphNode extends GraphNode {
 	public constructor(
 		id: string,
 		position: GraphPoint,
-		private readonly valueType: GraphInputValueType,
+		private valueType: GraphInputValueType,
 		private value: GraphInputValue | undefined,
 		private exported: boolean,
-		private enumId?: string
+		private enumId?: string,
+		private primitiveArrayElementType?: PrimitiveArrayElementType
 	) {
 		super(id, position)
 		this.setValue(value)
@@ -165,8 +165,8 @@ export class InputGraphNode extends GraphNode {
 			? value === undefined
 			: this.valueType === 'number'
 				? typeof value === 'number' && Number.isFinite(value)
-				: this.valueType === 'numberArray'
-					? Array.isArray(value) && value.every((item) => Number.isFinite(item) && item >= 0)
+				: this.valueType === 'primitiveArray'
+						? Array.isArray(value) && value.every(isPrimitiveArrayElement)
 					: this.valueType === 'vector3'
 						? Vector3Value.isSnapshot(value)
 					: this.valueType === 'enum'
@@ -192,6 +192,21 @@ export class InputGraphNode extends GraphNode {
 	public setExported(exported: boolean): void { this.exported = exported }
 	public getEnumId(): string | undefined { return this.enumId }
 	public setEnumId(enumId: string): void { this.enumId = enumId }
+	public getPrimitiveArrayElementType(): PrimitiveArrayElementType | undefined {
+		return this.primitiveArrayElementType
+	}
+	public setPrimitiveArrayElementType(elementType: PrimitiveArrayElementType): void {
+		if (this.valueType !== 'primitiveArray') {
+			throw new Error(`Input node "${this.id}" is not a primitive array.`)
+		}
+		this.primitiveArrayElementType = elementType
+	}
+}
+
+export type PrimitiveArrayElementType = 'number' | 'boolean' | 'enum'
+
+function isPrimitiveArrayElement(value: unknown): value is number | boolean {
+	return typeof value === 'number' && Number.isFinite(value) || typeof value === 'boolean'
 }
 
 export class InputReferenceGraphNode extends GraphNode {
@@ -216,9 +231,19 @@ export class InputReferenceGraphNode extends GraphNode {
 
 export class Vector3GraphNode extends GraphNode {
 	public readonly type = 'vector3'
+	private value: Vector3Value
 
-	public constructor(id: string, position: GraphPoint) {
+	public constructor(id: string, position: GraphPoint, value = new Vector3Value(0, 0, 0)) {
 		super(id, position)
+		this.value = value
+	}
+
+	public getValue(): Vector3Value {
+		return this.value
+	}
+
+	public setValue(value: Vector3Value): void {
+		this.value = value
 	}
 }
 
@@ -227,22 +252,6 @@ export class Vector3ComponentsGraphNode extends GraphNode {
 
 	public constructor(id: string, position: GraphPoint) {
 		super(id, position)
-	}
-}
-
-export class PinGraphNode extends GraphNode {
-	public readonly type = 'pin'
-
-	public constructor(
-		id: string,
-		position: GraphPoint,
-		private readonly valueType: GraphValueType
-	) {
-		super(id, position)
-	}
-
-	public getValueType(): GraphValueType {
-		return this.valueType
 	}
 }
 
@@ -619,6 +628,38 @@ export class ApplyMaterialGraphNode extends GraphNode {
 	}
 }
 
+export class RotateAnimationHintGraphNode extends GraphNode {
+	public readonly type = 'rotateAnimationHint'
+	private readonly angleField: NumberField
+	private readonly axisField: EnumField<Axis>
+	private axisPosition: TransformOrigin
+	private offset: Vector3Value
+
+	public constructor(
+		id: string,
+		position: GraphPoint,
+		angle: number,
+		axis: Axis,
+		axisPosition: TransformOrigin,
+		offset: Vector3Value
+	) {
+		super(id, position)
+		this.angleField = new NumberField(angle)
+		this.axisField = new EnumField(axis, ['x', 'y', 'z'])
+		this.axisPosition = { ...axisPosition }
+		this.offset = offset
+	}
+
+	public getAngle(): number { return this.angleField.get() }
+	public setAngle(value: number): void { this.angleField.set(value) }
+	public getAxis(): Axis { return this.axisField.get() }
+	public setAxis(value: Axis): void { this.axisField.set(value) }
+	public getAxisPosition(): TransformOrigin { return { ...this.axisPosition } }
+	public setAxisPosition(value: TransformOrigin): void { this.axisPosition = { ...value } }
+	public getOffset(): Vector3Value { return this.offset }
+	public setOffset(value: Vector3Value): void { this.offset = value }
+}
+
 export class ArrayGraphNode extends GraphNode {
 	public readonly type = 'array'
 	private readonly countXField: NumberField
@@ -673,36 +714,6 @@ export class ArrayGraphNode extends GraphNode {
 		else this.offsetZField.set(offset)
 	}
 
-}
-
-export class MeshArrayGraphNode extends GraphNode {
-	public readonly type = 'meshArray'
-
-	public constructor(id: string, position: GraphPoint) {
-		super(id, position)
-	}
-}
-
-export class MultiArrayGraphNode extends GraphNode {
-	public readonly type = 'multiArray'
-	private readonly axisField: EnumField<Axis>
-	private readonly offsetField: NumberField
-
-	public constructor(
-		id: string,
-		position: GraphPoint,
-		axis: Axis,
-		offset: number
-	) {
-		super(id, position)
-		this.axisField = new EnumField(axis, ['x', 'y', 'z'])
-		this.offsetField = new NumberField(offset)
-	}
-
-	public getAxis(): Axis { return this.axisField.get() }
-	public setAxis(axis: Axis): void { this.axisField.set(axis) }
-	public getOffset(): number { return this.offsetField.get() }
-	public setOffset(offset: number): void { this.offsetField.set(offset) }
 }
 
 export class OutputGraphNode extends GraphNode {
@@ -772,6 +783,85 @@ function copyGraphInputValue(value: GraphInputValue): GraphInputValue {
 export class GroupGraphNode extends GraphNode {
 	public readonly type = 'group'
 	public constructor(id: string, position: GraphPoint) { super(id, position) }
+}
+
+export class RepeatInputGraphNode extends GraphNode {
+	public readonly type = 'repeatInput'
+	private readonly instancesField: NumberField
+
+	public constructor(id: string, position: GraphPoint, instances: number) {
+		super(id, position)
+		this.instancesField = new NumberField(
+			instances,
+			(value) => Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0
+		)
+	}
+
+	public getInstances(): number { return this.instancesField.get() }
+	public setInstances(instances: number): void { this.instancesField.set(instances) }
+}
+
+export class RepeatOutputGraphNode extends GraphNode {
+	public readonly type = 'repeatOutput'
+
+	public constructor(
+		id: string,
+		position: GraphPoint,
+		private readonly repeatInputId: string
+	) {
+		super(id, position)
+	}
+
+	public getRepeatInputId(): string { return this.repeatInputId }
+}
+
+export class NumberAggregatorGraphNode extends GraphNode {
+	public readonly type = 'numberAggregator'
+	private readonly initialValueField: NumberField
+	private readonly addValueField: NumberField
+
+	public constructor(
+		id: string,
+		position: GraphPoint,
+		initialValue: number,
+		addValue: number
+	) {
+		super(id, position)
+		this.initialValueField = new NumberField(initialValue)
+		this.addValueField = new NumberField(addValue)
+	}
+
+	public getInitialValue(): number { return this.initialValueField.get() }
+	public setInitialValue(value: number): void { this.initialValueField.set(value) }
+	public getAddValue(): number { return this.addValueField.get() }
+	public setAddValue(value: number): void { this.addValueField.set(value) }
+}
+
+export class GetNthElementGraphNode extends GraphNode {
+	public readonly type = 'getNthElement'
+	private readonly indexField: NumberField
+	private readonly elementTypeField: EnumField<PrimitiveArrayElementType>
+
+	public constructor(
+		id: string,
+		position: GraphPoint,
+		index: number,
+		elementType: PrimitiveArrayElementType
+	) {
+		super(id, position)
+		this.indexField = new NumberField(
+			index,
+			(value) => Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0
+		)
+		this.elementTypeField = new EnumField(elementType, ['number', 'boolean', 'enum'])
+	}
+
+	public getIndex(): number { return this.indexField.get() }
+	public setIndex(index: number): void { this.indexField.set(index) }
+	public getElementType(): PrimitiveArrayElementType { return this.elementTypeField.get() }
+	public setElementType(elementType: PrimitiveArrayElementType): void {
+		this.elementTypeField.set(elementType)
+	}
 }
 
 export class SumGraphNode extends GraphNode {

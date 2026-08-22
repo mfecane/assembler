@@ -1,148 +1,89 @@
 {
-	"layout": {
-		"activeProductId": "product-row",
-		"layouts": [
-			{
-				"id": "layout-row", "label": "Product row", "configurationHeader": "Configure your shelf", "type": "row", "axis": "x",
-				"slotId": "product-slot", "slotsCount": { "min": 1, "max": 20 }
-			},
-			{
-				"id": "layout-single", "label": "Single product", "configurationHeader": "Configure your shelf", "type": "single",
-				"slotId": "product-slot", "slotsCount": { "min": 1, "max": 1 }
-			}
-		],
-		"products": [
-			{ "id": "product-row", "label": "Shelf row", "layoutId": "layout-row", "instances": [] },
-			{ "id": "product-single", "label": "Shelf", "layoutId": "layout-single", "instances": [] }
-		],
-		"slots": [
-			{
-				"id": "product-slot", "label": "Product type", "graphs": ["main", "graph-5", "graph-2"],
-				"instanceBounds": {
-					"width": { "min": 0.6, "max": 2 },
-					"depth": { "min": 0.6, "max": 2 },
-					"height": { "min": 0.6, "max": 2 }
-				}
-			}
-		]
-	},
-	"client": "maxshelf",
+  "layout": {
+    "activeProductId": "product-row",
+    "layouts": [
+      {
+        "id": "layout-row",
+        "label": "Product row",
+        "configurationHeader": "Configure your shelf",
+        "type": "row",
+        "axis": "x",
+        "slotId": "product-slot",
+        "slotsCount": {
+          "min": 1,
+          "max": 20
+        }
+      },
+      {
+        "id": "layout-single",
+        "label": "Single product",
+        "configurationHeader": "Configure your shelf",
+        "type": "single",
+        "slotId": "product-slot",
+        "slotsCount": {
+          "min": 1,
+          "max": 1
+        }
+      }
+    ],
+    "products": [
+      {
+        "id": "product-row",
+        "label": "Shelf row",
+		"animationLabel": "Open / close",
+        "layoutId": "layout-row",
+        "instances": []
+      },
+      {
+        "id": "product-single",
+        "label": "Shelf",
+		"animationLabel": "Open / close",
+        "layoutId": "layout-single",
+        "instances": []
+      }
+    ],
+    "slots": [
+      {
+        "id": "product-slot",
+        "label": "Product type",
+        "graphs": [
+          "main",
+          "graph-5",
+          "graph-2"
+        ],
+        "instanceBounds": {
+          "width": {
+            "min": 0.6,
+            "max": 2
+          },
+          "depth": {
+            "min": 0.6,
+            "max": 2
+          },
+          "height": {
+            "min": 0.6,
+            "max": 2
+          }
+        }
+      }
+    ]
+  },
+  "client": "maxshelf",
   "rootGraphs": [
     {
       "graphId": "main",
-      "inputValues": {
-        "graphInput-1": 3,
-        "graphInput-3": 4,
-        "graphInput-4": true,
-        "post-height-input": 0,
-        "finish-material-input": "wood",
-        "graphInput-2": [
-          3,
-          3
-        ],
-        "backplate-type-input": 0,
-        "wing-section-width-input": 0
-      },
-      "configurationPanel": {
-        "controls": [
-          {
-            "id": "number-1-control",
-            "max": 5,
-            "min": 1,
-            "step": 1,
-            "type": "slider",
-            "label": "Sections count left",
-            "inputId": "graphInput-1"
-          },
-          {
-            "id": "number-3-control",
-            "max": 5,
-            "min": 1,
-            "step": 1,
-            "type": "slider",
-            "label": "Sections count right",
-            "inputId": "graphInput-3"
-          },
-          {
-            "id": "shelf-counts-control",
-            "step": 1,
-            "type": "numberArray",
-            "label": "Shelves by size",
-            "total": 6,
-            "labels": [
-              "Big shelves",
-              "Small shelves"
-            ],
-            "inputId": "graphInput-2"
-          },
-          {
-            "id": "finish-material-control",
-            "type": "material",
-            "label": "Finish material",
-            "inputId": "finish-material-input"
-          },
-          {
-            "id": "post-height-control",
-            "type": "select",
-            "label": "Post height",
-            "inputId": "post-height-input"
-          },
-          {
-            "id": "backplate-type-control",
-            "type": "select",
-            "label": "Backplate type",
-            "inputId": "backplate-type-input"
-          },
-          {
-            "id": "boolean-1-control",
-            "type": "switch",
-            "label": "MIrror shelves",
-            "inputId": "graphInput-4"
-          },
-          {
-            "id": "wing-section-width-control",
-            "type": "select",
-            "label": "Wing section width",
-            "inputId": "wing-section-width-input"
-          }
-        ],
-        "templates": []
-      }
+      "inputValues": {},
+      "configurationPanel": { "controls": [], "templates": [] }
     },
     {
       "graphId": "graph-5",
-      "inputValues": {
-        "graphInput-1": 5,
-        "wing-section-width-input": 0
-      },
-      "configurationPanel": {
-        "controls": [
-          {
-            "id": "number-1-control",
-            "max": 5,
-            "min": 1,
-            "step": 1,
-            "type": "slider",
-            "label": "Number",
-            "inputId": "graphInput-1"
-          },
-          {
-            "id": "wing-section-width-control",
-            "type": "select",
-            "label": "Wing section width",
-            "inputId": "wing-section-width-input"
-          }
-        ],
-        "templates": []
-      }
+      "inputValues": {},
+      "configurationPanel": { "controls": [], "templates": [] }
     },
     {
       "graphId": "graph-2",
       "inputValues": {},
-      "configurationPanel": {
-        "controls": [],
-        "templates": []
-      }
+      "configurationPanel": { "controls": [], "templates": [] }
     }
   ],
   "enums": [
@@ -198,62 +139,7 @@
     {
       "id": "main",
       "label": "Cornered shelf assembly",
-      "inputs": [
-        {
-          "id": "graphInput-1",
-          "label": "Number",
-          "valueType": "number",
-          "defaultValue": 1
-        },
-        {
-          "id": "graphInput-2",
-          "label": "Shelf counts",
-          "valueType": "numberArray",
-          "defaultValue": [
-            3,
-            3
-          ]
-        },
-        {
-          "id": "graphInput-3",
-          "label": "Number",
-          "valueType": "number",
-          "defaultValue": 1
-        },
-        {
-          "id": "finish-material-input",
-          "label": "Finish material",
-          "valueType": "materialInstance",
-          "defaultValue": "wood"
-        },
-        {
-          "id": "post-height-input",
-          "label": "Post height",
-          "enumId": "post-height",
-          "valueType": "enum",
-          "defaultValue": 0
-        },
-        {
-          "id": "backplate-type-input",
-          "label": "Backplate type",
-          "enumId": "backplate-type",
-          "valueType": "enum",
-          "defaultValue": 0
-        },
-        {
-          "id": "graphInput-4",
-          "label": "Boolean",
-          "valueType": "boolean",
-          "defaultValue": false
-        },
-        {
-          "id": "wing-section-width-input",
-          "label": "Wing section width",
-          "enumId": "wing-section-width",
-          "valueType": "enum",
-          "defaultValue": 2
-        }
-      ],
+      "inputs": [],
       "output": {
         "id": "geometry",
         "label": "Configured shelving",
@@ -356,7 +242,7 @@
           "data": {
             "valueType": "number",
             "value": 1,
-            "exported": true
+            "exported": false
           }
         },
         {
@@ -373,7 +259,7 @@
               3,
               3
             ],
-            "exported": true
+            "exported": false
           }
         },
         {
@@ -387,7 +273,7 @@
           "data": {
             "valueType": "number",
             "value": 1,
-            "exported": true
+            "exported": false
           }
         },
         {
@@ -436,7 +322,7 @@
           "data": {
             "valueType": "materialInstance",
             "value": "wood",
-            "exported": true
+            "exported": false
           }
         },
         {
@@ -450,7 +336,7 @@
           "data": {
             "valueType": "enum",
             "value": 0,
-            "exported": true,
+            "exported": false,
             "enumId": "post-height"
           }
         },
@@ -465,7 +351,7 @@
           "data": {
             "valueType": "enum",
             "value": 0,
-            "exported": true,
+            "exported": false,
             "enumId": "backplate-type"
           }
         },
@@ -500,7 +386,7 @@
           "data": {
             "valueType": "boolean",
             "value": false,
-            "exported": true
+            "exported": false
           }
         },
         {
@@ -514,9 +400,179 @@
           "data": {
             "valueType": "enum",
             "value": 2,
-            "exported": true,
+            "exported": false,
             "enumId": "wing-section-width"
           }
+        },
+        {
+          "id": "ui-number-1-control",
+          "name": "Sections count left",
+          "position": {
+            "x": 703.2345125185475,
+            "y": -115.2757812339598
+          },
+          "type": "uiSliderWidget",
+          "data": {
+            "valueType": "number",
+            "value": 3,
+            "enabled": true,
+            "min": 1,
+            "max": 5,
+            "step": 1
+          }
+        },
+        {
+          "id": "ui-number-3-control",
+          "name": "Sections count right",
+          "position": {
+            "x": 712.4374063007103,
+            "y": 404.8135468394092
+          },
+          "type": "uiSliderWidget",
+          "data": {
+            "valueType": "number",
+            "value": 4,
+            "enabled": true,
+            "min": 1,
+            "max": 5,
+            "step": 1
+          }
+        },
+        {
+          "id": "ui-shelf-counts-control",
+          "name": "Shelves by size",
+          "position": {
+            "x": 703.4572110397678,
+            "y": 70.88999739034765
+          },
+          "type": "uiNumberArrayWidget",
+          "data": {
+            "valueType": "numberArray",
+            "value": [
+              3,
+              3
+            ],
+            "enabled": true,
+            "step": 1,
+            "labels": [
+              "Big shelves",
+              "Small shelves"
+            ],
+            "total": 6
+          }
+        },
+        {
+          "id": "ui-finish-material-control",
+          "name": "Finish material",
+          "position": {
+            "x": 676.3992480135404,
+            "y": 579.2511276760291
+          },
+          "type": "uiMaterialWidget",
+          "data": {
+            "valueType": "materialInstance",
+            "value": "wood",
+            "enabled": true
+          }
+        },
+        {
+          "id": "ui-post-height-control",
+          "name": "Post height",
+          "position": {
+            "x": 660.9139832761568,
+            "y": 815.8650870722796
+          },
+          "type": "uiChoiceWidget",
+          "data": {
+            "valueType": "enum",
+            "value": 0,
+            "enabled": true,
+            "labels": [
+              "1200 mm",
+              "1400 mm",
+              "1600 mm",
+              "2100 mm",
+              "2400 mm",
+              "2600 mm",
+              "2800 mm"
+            ],
+            "enumId": "post-height"
+          }
+        },
+        {
+          "id": "ui-backplate-type-control",
+          "name": "Backplate type",
+          "position": {
+            "x": 666.1799177430025,
+            "y": 1125.9552963979859
+          },
+          "type": "uiChoiceWidget",
+          "data": {
+            "valueType": "enum",
+            "value": 0,
+            "enabled": true,
+            "labels": [
+              "Plain",
+              "Perforated"
+            ],
+            "enumId": "backplate-type"
+          }
+        },
+        {
+          "id": "ui-boolean-1-control",
+          "name": "MIrror shelves",
+          "position": {
+            "x": 709.4810234518305,
+            "y": 371.4985911649825
+          },
+          "type": "uiSwitchWidget",
+          "data": {
+            "valueType": "boolean",
+            "value": true,
+            "enabled": true
+          }
+        },
+        {
+          "id": "ui-wing-section-width-control",
+          "name": "Wing section width",
+          "position": {
+            "x": 645.5503861512185,
+            "y": -235.9033076435835
+          },
+          "type": "uiChoiceWidget",
+          "data": {
+            "valueType": "enum",
+            "value": 0,
+            "enabled": true,
+            "labels": [
+              "660 mm",
+              "1000 mm",
+              "1250 mm"
+            ],
+            "enumId": "wing-section-width"
+          }
+        },
+        {
+          "id": "ui-main-root",
+          "name": "Configuration",
+          "position": {
+            "x": 2393.7447023400327,
+            "y": 708.9924709943106
+          },
+          "type": "uiGroup",
+          "data": {
+            "enabled": true
+          }
+        },
+        {
+          "id": "main-ui-output",
+          "name": "UI Output",
+          "position": {
+            "x": 2633.7447023400327,
+            "y": 708.9924709943106
+          },
+          "type": "uiOutput",
+          "data": {}
         }
       ],
       "edges": [
@@ -666,6 +722,125 @@
           "targetNodeId": "graphInstance-1",
           "sourcePort": "value",
           "targetPort": "graphInput-1"
+        },
+        {
+          "id": "ui-number-1-control-value",
+          "sourceNodeId": "ui-number-1-control",
+          "targetNodeId": "graphInput-1",
+          "sourcePort": "value",
+          "targetPort": "value"
+        },
+        {
+          "id": "ui-number-3-control-value",
+          "sourceNodeId": "ui-number-3-control",
+          "targetNodeId": "graphInput-3",
+          "sourcePort": "value",
+          "targetPort": "value"
+        },
+        {
+          "id": "ui-shelf-counts-control-value",
+          "sourceNodeId": "ui-shelf-counts-control",
+          "targetNodeId": "graphInput-2",
+          "sourcePort": "value",
+          "targetPort": "value"
+        },
+        {
+          "id": "ui-finish-material-control-value",
+          "sourceNodeId": "ui-finish-material-control",
+          "targetNodeId": "finish-material-input",
+          "sourcePort": "value",
+          "targetPort": "value"
+        },
+        {
+          "id": "ui-post-height-control-value",
+          "sourceNodeId": "ui-post-height-control",
+          "targetNodeId": "post-height-input",
+          "sourcePort": "value",
+          "targetPort": "value"
+        },
+        {
+          "id": "ui-backplate-type-control-value",
+          "sourceNodeId": "ui-backplate-type-control",
+          "targetNodeId": "backplate-type-input",
+          "sourcePort": "value",
+          "targetPort": "value"
+        },
+        {
+          "id": "ui-boolean-1-control-value",
+          "sourceNodeId": "ui-boolean-1-control",
+          "targetNodeId": "graphInput-4",
+          "sourcePort": "value",
+          "targetPort": "value"
+        },
+        {
+          "id": "ui-wing-section-width-control-value",
+          "sourceNodeId": "ui-wing-section-width-control",
+          "targetNodeId": "wing-section-width-input",
+          "sourcePort": "value",
+          "targetPort": "value"
+        },
+        {
+          "id": "ui-number-1-control-group",
+          "sourceNodeId": "ui-number-1-control",
+          "targetNodeId": "ui-main-root",
+          "sourcePort": "ui",
+          "targetPort": "children"
+        },
+        {
+          "id": "ui-number-3-control-group",
+          "sourceNodeId": "ui-number-3-control",
+          "targetNodeId": "ui-main-root",
+          "sourcePort": "ui",
+          "targetPort": "children"
+        },
+        {
+          "id": "ui-shelf-counts-control-group",
+          "sourceNodeId": "ui-shelf-counts-control",
+          "targetNodeId": "ui-main-root",
+          "sourcePort": "ui",
+          "targetPort": "children"
+        },
+        {
+          "id": "ui-finish-material-control-group",
+          "sourceNodeId": "ui-finish-material-control",
+          "targetNodeId": "ui-main-root",
+          "sourcePort": "ui",
+          "targetPort": "children"
+        },
+        {
+          "id": "ui-post-height-control-group",
+          "sourceNodeId": "ui-post-height-control",
+          "targetNodeId": "ui-main-root",
+          "sourcePort": "ui",
+          "targetPort": "children"
+        },
+        {
+          "id": "ui-backplate-type-control-group",
+          "sourceNodeId": "ui-backplate-type-control",
+          "targetNodeId": "ui-main-root",
+          "sourcePort": "ui",
+          "targetPort": "children"
+        },
+        {
+          "id": "ui-boolean-1-control-group",
+          "sourceNodeId": "ui-boolean-1-control",
+          "targetNodeId": "ui-main-root",
+          "sourcePort": "ui",
+          "targetPort": "children"
+        },
+        {
+          "id": "ui-wing-section-width-control-group",
+          "sourceNodeId": "ui-wing-section-width-control",
+          "targetNodeId": "ui-main-root",
+          "sourcePort": "ui",
+          "targetPort": "children"
+        },
+        {
+          "id": "ui-main-root-output",
+          "sourceNodeId": "ui-main-root",
+          "targetNodeId": "main-ui-output",
+          "sourcePort": "ui",
+          "targetPort": "ui"
         }
       ]
     },
@@ -4087,21 +4262,7 @@
     {
       "id": "graph-5",
       "label": "Line shelf assembly",
-      "inputs": [
-        {
-          "id": "graphInput-1",
-          "label": "Number",
-          "valueType": "number",
-          "defaultValue": 3
-        },
-        {
-          "id": "wing-section-width-input",
-          "label": "Wing section width",
-          "enumId": "wing-section-width",
-          "valueType": "enum",
-          "defaultValue": 0
-        }
-      ],
+      "inputs": [],
       "output": {
         "id": "geometry",
         "label": "Geometry",
@@ -4188,7 +4349,7 @@
           "data": {
             "valueType": "number",
             "value": 3,
-            "exported": true
+            "exported": false
           }
         },
         {
@@ -4202,7 +4363,7 @@
           "data": {
             "valueType": "enum",
             "value": 0,
-            "exported": true,
+            "exported": false,
             "enumId": "wing-section-width"
           }
         },
@@ -4226,6 +4387,65 @@
               }
             ]
           }
+        },
+        {
+          "id": "ui-number-1-control",
+          "name": "Number",
+          "position": {
+            "x": -599.849709589147,
+            "y": -16.76232881277215
+          },
+          "type": "uiSliderWidget",
+          "data": {
+            "valueType": "number",
+            "value": 5,
+            "enabled": true,
+            "min": 1,
+            "max": 5,
+            "step": 1
+          }
+        },
+        {
+          "id": "ui-wing-section-width-control",
+          "name": "Wing section width",
+          "position": {
+            "x": -2110,
+            "y": -1480
+          },
+          "type": "uiChoiceWidget",
+          "data": {
+            "valueType": "enum",
+            "value": 0,
+            "enabled": true,
+            "labels": [
+              "660 mm",
+              "1000 mm",
+              "1250 mm"
+            ],
+            "enumId": "wing-section-width"
+          }
+        },
+        {
+          "id": "ui-graph-5-root",
+          "name": "Configuration",
+          "position": {
+            "x": -59.45000167986461,
+            "y": 313.2316568743139
+          },
+          "type": "uiGroup",
+          "data": {
+            "enabled": true
+          }
+        },
+        {
+          "id": "graph-5-ui-output",
+          "name": "UI Output",
+          "position": {
+            "x": 180.5499983201354,
+            "y": 313.2316568743139
+          },
+          "type": "uiOutput",
+          "data": {}
         }
       ],
       "edges": [
@@ -4270,6 +4490,41 @@
           "targetNodeId": "array-1",
           "sourcePort": "number",
           "targetPort": "offsetX"
+        },
+        {
+          "id": "ui-number-1-control-value",
+          "sourceNodeId": "ui-number-1-control",
+          "targetNodeId": "graphInput-1",
+          "sourcePort": "value",
+          "targetPort": "value"
+        },
+        {
+          "id": "ui-wing-section-width-control-value",
+          "sourceNodeId": "ui-wing-section-width-control",
+          "targetNodeId": "wing-section-width-input",
+          "sourcePort": "value",
+          "targetPort": "value"
+        },
+        {
+          "id": "ui-number-1-control-group",
+          "sourceNodeId": "ui-number-1-control",
+          "targetNodeId": "ui-graph-5-root",
+          "sourcePort": "ui",
+          "targetPort": "children"
+        },
+        {
+          "id": "ui-wing-section-width-control-group",
+          "sourceNodeId": "ui-wing-section-width-control",
+          "targetNodeId": "ui-graph-5-root",
+          "sourcePort": "ui",
+          "targetPort": "children"
+        },
+        {
+          "id": "ui-graph-5-root-output",
+          "sourceNodeId": "ui-graph-5-root",
+          "targetNodeId": "graph-5-ui-output",
+          "sourcePort": "ui",
+          "targetPort": "ui"
         }
       ]
     },
@@ -4974,20 +5229,7 @@
     {
       "id": "graph-2",
       "label": "Test",
-      "inputs": [
-        {
-          "id": "graphInput-1",
-          "label": "Number",
-          "valueType": "number",
-          "defaultValue": 1
-        },
-        {
-          "id": "graphInput-2",
-          "label": "Number",
-          "valueType": "number",
-          "defaultValue": 1
-        }
-      ],
+      "inputs": [],
       "output": {
         "id": "geometry",
         "label": "Geometry",
@@ -5078,6 +5320,28 @@
             "value": 1,
             "exported": true
           }
+        },
+        {
+          "id": "ui-graph-2-root",
+          "name": "Configuration",
+          "position": {
+            "x": 260,
+            "y": 300
+          },
+          "type": "uiGroup",
+          "data": {
+            "enabled": true
+          }
+        },
+        {
+          "id": "graph-2-ui-output",
+          "name": "UI Output",
+          "position": {
+            "x": 500,
+            "y": 300
+          },
+          "type": "uiOutput",
+          "data": {}
         }
       ],
       "edges": [
@@ -5101,6 +5365,13 @@
           "targetNodeId": "sum-1",
           "sourcePort": "value",
           "targetPort": "number"
+        },
+        {
+          "id": "ui-graph-2-root-output",
+          "sourceNodeId": "ui-graph-2-root",
+          "targetNodeId": "graph-2-ui-output",
+          "sourcePort": "ui",
+          "targetPort": "ui"
         }
       ]
     }

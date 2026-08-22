@@ -21,7 +21,29 @@ and the [Node graph model review](../reviews/node-graph-model-review.md).
   was removed.
 - Transform opts into the generic enabled field and registry-level input/output bypass behavior.
   Its Boolean input can override the persisted fallback without adding node-specific evaluation logic.
+- Node views share compact surface, port-row, and capability-disclosure components. A Vector3 node
+  persists local X/Y/Z values while allowing each component to be overridden by its own number input.
 - The retained default graph and seed now use the implemented persisted node and port shapes.
+
+## Node view conventions
+
+- Every row-level input or output uses `NodePortRow`. The typed handle is a child of the row it belongs
+  to, the row owns its horizontal alignment, and its negative surface margin places the handle on the
+  physical node edge. Node templates do not position handles independently or with percentage offsets.
+- When several rows jointly produce one output, `NodePortGroup` owns that output handle at the
+  vertical center of the group. The group does not add a synthetic output label. Vector3 uses this
+  pattern for its three component rows, and choice-map nodes use it for their option blocks.
+- Input rows present the handle, label, and optional control as one horizontal unit. Output rows use
+  the same structure with the handle on the right edge. A pass-through or editable value with the
+  same input and output uses one bidirectional row, with both handles attached to that row instead of
+  repeating its label. Plain port labels have no decorative field border or background.
+- When an input port is connected, its local fallback control is disabled. Connection state replaces
+  explanatory status text; the port and disabled control already communicate the relationship.
+- Optional capabilities use `NodeCapability`. An inactive capability is a label with a circle-plus
+  action. Activating it reveals an expanded collapsible section with a chevron and a circle-minus
+  action; collapsing retains the capability, while the minus action deactivates it.
+- Structural borders remain limited to the node surface, meaningful warnings and regions, form
+  controls, and color swatches. Node fields are grouped with spacing instead of extra separators.
 
 ## Goal
 

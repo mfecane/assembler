@@ -1,8 +1,4 @@
-import {
-	ASSET_METADATA_FORMAT,
-	ASSET_METADATA_FORMAT_VERSION,
-	type Client,
-} from '@/cosntants'
+import { ASSET_CONSTANTS, type Client } from '@/constants'
 import type { ModelCatalogItem, ModelMetadataRecord } from '@/models/ModelCatalogItem'
 
 export function createModelMetadataDocument(
@@ -20,8 +16,8 @@ export function createModelMetadataDocument(
 	}
 
 	return {
-		format: ASSET_METADATA_FORMAT,
-		version: ASSET_METADATA_FORMAT_VERSION,
+		format: ASSET_CONSTANTS.METADATA_FORMAT,
+		version: ASSET_CONSTANTS.METADATA_FORMAT_VERSION,
 		units: 'scene-units',
 		assetCount: models.length,
 		assets: models.map((model) => ({

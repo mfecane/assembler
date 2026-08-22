@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react'
+import { NodeCapability } from '@/parametric/components/NodeCapability'
 import { TransformOriginField } from '@/parametric/components/TransformOriginField'
 import { Vec3Field } from '@/parametric/components/Vec3Field'
 import { useEditorController } from '@/parametric/editor/react/EditorContext'
@@ -10,7 +10,15 @@ interface EmbeddedTransformSectionProps {
 	nodeId: string
 }
 
-export function EmbeddedTransformSection({ nodeId }: EmbeddedTransformSectionProps) {
+export interface EmbeddedTransformFields {
+	translation: Record<'x' | 'y' | 'z', FieldBinding<number>>
+	rotation: Record<'x' | 'y' | 'z', FieldBinding<number>>
+	scale: Record<'x' | 'y' | 'z', FieldBinding<number>>
+	origin: TransformOrigin
+	setOrigin: (value: TransformOrigin) => void
+}
+
+export function useEmbeddedTransformFields(nodeId: string): EmbeddedTransformFields {
 	const controller = useEditorController()
 	const { model } = useGraphSnapshot()
 	const field = <T,>(fieldId: string, fallback: T): FieldBinding<T> => {
@@ -38,18 +46,26 @@ export function EmbeddedTransformSection({ nodeId }: EmbeddedTransformSectionPro
 		else if (value.z !== origin.z) originZ.setValue(value.z)
 	}
 
+	return {
+		translation,
+		rotation,
+		scale,
+		origin,
+		setOrigin,
+	}
+}
+
+export function EmbeddedTransformSection({ nodeId }: EmbeddedTransformSectionProps) {
+	const transform = useEmbeddedTransformFields(nodeId)
+
 	return (
-		<details data-id={`embedded-transform-${nodeId}`} className="group nodrag border-t border-border pt-1">
-			<summary className="flex cursor-pointer list-none items-center gap-1 py-1 text-xs text-muted-foreground">
-				<ChevronRight className="size-3 transition-transform group-open:rotate-90" />
-				Transform
-			</summary>
-			<div className="flex flex-col gap-2 pb-1 pt-1">
-				<Vec3Field label="Position" fields={translation} />
-				<Vec3Field label="Rotation" fields={rotation} step={1} />
-				<Vec3Field label="Scale" fields={scale} />
-				<TransformOriginField value={origin} onChange={setOrigin} />
+		<NodeCapability nodeId={nodeId} label="Transform">
+			<div className="flex flex-col gap-2">
+				<Vec3Field label="Position" fields={transform.translation} />
+				<Vec3Field label="Rotation" fields={transform.rotation} step={1} />
+				<Vec3Field label="Scale" fields={transform.scale} />
+				<TransformOriginField value={transform.origin} onChange={transform.setOrigin} />
 			</div>
-		</details>
+		</NodeCapability>
 	)
 }

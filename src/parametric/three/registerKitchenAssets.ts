@@ -18,7 +18,7 @@ import tabletop1Url from '../../../assets/kitchen/tabletop_1.glb?url'
 import tabletop2Url from '../../../assets/kitchen/tabletop_2.glb?url'
 import tabletop3Url from '../../../assets/kitchen/tabletop_3.glb?url'
 import topPanelSmallUrl from '../../../assets/kitchen/top-panel-smol.glb?url'
-import { Client, KITCHEN_ASSET_IDS } from '@/cosntants'
+import { CLIENT, KITCHEN_ASSET_IDS } from '@/constants'
 import type { AssetRegistrar, AssetRegistration } from '@/parametric/three/AssetRegistrar'
 
 const kitchenAssets: Omit<AssetRegistration, 'client'>[] = [
@@ -46,6 +46,6 @@ const kitchenAssets: Omit<AssetRegistration, 'client'>[] = [
 
 export function registerKitchenAssets(registrar: AssetRegistrar): void {
 	for (const asset of kitchenAssets) {
-		registrar.register({ ...asset, client: Client.KITCHEN })
+		registrar.register({ ...asset, client: CLIENT.KITCHEN })
 	}
 }

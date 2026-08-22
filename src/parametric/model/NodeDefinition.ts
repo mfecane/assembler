@@ -53,6 +53,7 @@ export interface FieldDefinition<TNode extends GraphNode> {
 export interface NodeDefinition<TNode extends GraphNode = GraphNode> {
 	type: string
 	label: string
+	aliases?: readonly string[]
 	creatable: boolean
 	create?: (id: string, position: GraphPoint, context: NodeCreationContext) => TNode
 	ports: NodePortDefinition<TNode>
@@ -68,6 +69,7 @@ export interface NodeDefinition<TNode extends GraphNode = GraphNode> {
 export interface CreatableNodeDefinition {
 	type: string
 	label: string
+	aliases?: readonly string[]
 }
 
 export class NodeRegistry {
@@ -92,7 +94,7 @@ export class NodeRegistry {
 	public getCreatableDefinitions(): CreatableNodeDefinition[] {
 		return [...this.definitions.values()]
 			.filter((definition) => definition.creatable && definition.create)
-			.map(({ type, label }) => ({ type, label }))
+			.map(({ type, label, aliases }) => ({ type, label, aliases }))
 	}
 
 	public create(type: string, id: string, position: GraphPoint, context: NodeCreationContext): GraphNode | undefined {
@@ -180,19 +182,7 @@ export class NodeRegistry {
 			const enabled = inputValue?.valueType === 'boolean'
 				? inputValue.value
 				: storedEnabled
-			if (node.type === 'transform') {
-				const reference = context.getNodeInstanceReference(node.id)
-				console.log(
-					`[node-chain-debug] stage=transform-enabled graph="${reference.graphId}" `
-					+ `node="${node.id}" instance="${reference.nodeInstanceId}" `
-					+ `stored=${String(storedEnabled)} resolvedType=${inputValue?.valueType ?? 'missing'} `
-					+ `resolved=${String(inputValue?.value)} effective=${String(enabled)}`
-				)
-			}
 			if (enabled === false) {
-				if (node.type === 'transform') {
-					console.log(`[node-chain-debug] stage=transform node="${node.id}" action=bypass`)
-				}
 				const input = context.resolveInput(node, definition.bypass.input)
 				return input ? new Map([[definition.bypass.output, input]]) : new Map()
 			}

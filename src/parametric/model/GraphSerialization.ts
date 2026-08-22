@@ -3,11 +3,11 @@ import type { VectorComponent } from '@/parametric/model/GraphEdge'
 import {
 	GraphDocumentModel,
 	isInputValueCompatible,
-	type ConfigurationPanelControl,
-	type ConfigurationTemplate,
 	type GraphDefinition,
 	type GraphInputDefinition,
 	type GraphInputValue,
+	type ConfigurationPanelControl,
+	type ConfigurationTemplate,
 	type GraphInterface,
 	type GraphOutputDefinition,
 } from '@/parametric/model/GraphDocumentModel'
@@ -22,26 +22,20 @@ import type { NodeRegistry } from '@/parametric/model/NodeDefinition'
 import type { EnumDefinitionSnapshot } from '@/parametric/model/EnumDefinition'
 import { RootGraph } from '@/parametric/model/RootGraph'
 import { Vector3Value } from '@/parametric/model/Vector3Value'
-import { Client } from '@/cosntants'
-import type { LayoutDataDocument } from '@/layout/LayoutDocument'
-import type {
-	LayoutInstanceMetadata,
-	RootGraphAxisBinding,
-	RootGraphLayoutMetadata,
-} from '@/layout/GraphLayoutMetadata'
+import { CLIENT, type Client } from '@/constants'
+import type { ProductDataDocument } from '@/layout/LayoutDocument'
 
 export interface GraphDocument {
 	client: Client
 	rootGraphs: RootGraphDocument[]
 	enums: EnumDefinitionSnapshot[]
 	graphs: GraphDefinitionDocument[]
-	layout: LayoutDataDocument
+	products: ProductDataDocument
 }
 
 export interface RootGraphDocument {
 	graphId: string
 	inputValues: Record<string, GraphInputValue>
-	layoutMetadata?: RootGraphLayoutMetadata
 	configurationPanel: {
 		controls: ConfigurationPanelControl[]
 		templates: ConfigurationTemplate[]
@@ -81,11 +75,9 @@ export function serializeGraph(
 	return {
 		client: document.getClient(),
 		rootGraphs: document.getRootGraphs().map((root) => {
-			const layoutMetadata = root.getLayoutMetadata()
 			return {
 				graphId: root.getGraphId(),
 				inputValues: root.getInputValues(),
-				...(layoutMetadata ? { layoutMetadata } : {}),
 				configurationPanel: {
 					controls: root.getConfigurationControls(),
 					templates: root.getConfigurationTemplates(),
@@ -118,7 +110,7 @@ export function serializeGraph(
 					: []
 			),
 		})),
-		layout: document.getLayout(),
+		products: document.getProductData(),
 	}
 }
 
@@ -208,15 +200,14 @@ export function deserializeGraph(value: unknown, registry: NodeRegistry): GraphD
 		root.graphId,
 		root.inputValues,
 		root.configurationPanel.controls,
-		root.configurationPanel.templates,
-		root.layoutMetadata
+		root.configurationPanel.templates
 	))
 	const document = new GraphDocumentModel(
 		value.client,
 		rootGraphs,
 		value.enums,
 		definitions,
-		value.layout
+		value.products
 	)
 	for (const graph of document.getGraphs()) {
 		graph.model.setPortContext({
@@ -234,7 +225,7 @@ function describeDocumentShapeProblems(value: unknown): string[] {
 	}
 	const document = value as Record<string, unknown>
 	const problems: string[] = []
-	if (!Object.values(Client).includes(document.client as Client)) {
+	if (!Object.values(CLIENT).includes(document.client as Client)) {
 		problems.push('$.client: expected "maxshelf" or "kitchen"')
 	}
 	if (!Array.isArray(document.rootGraphs) || document.rootGraphs.length === 0) {
@@ -253,9 +244,6 @@ function describeDocumentShapeProblems(value: unknown): string[] {
 			}
 			if (!candidate.inputValues || typeof candidate.inputValues !== 'object') {
 				problems.push(`$.rootGraphs[${index}].inputValues: expected an object`)
-			}
-			if (!isRootGraphLayoutMetadata(candidate.layoutMetadata)) {
-				problems.push(`$.rootGraphs[${index}].layoutMetadata: expected optional axis bindings`)
 			}
 			if (!panel || typeof panel !== 'object' || Array.isArray(panel)) {
 				problems.push(`$.rootGraphs[${index}].configurationPanel: expected an object`)
@@ -283,65 +271,35 @@ function describeDocumentShapeProblems(value: unknown): string[] {
 			}
 		})
 	}
-	if (!isLayoutDataDocument(document.layout)) {
-		const layout = document.layout
-		if (!layout || typeof layout !== 'object' || Array.isArray(layout)) {
-			problems.push('$.layout: expected an object')
+	if (!isProductDataDocument(document.products)) {
+		const productData = document.products
+		if (!productData || typeof productData !== 'object' || Array.isArray(productData)) {
+			problems.push('$.products: expected an object')
 		} else {
-			const candidate = layout as Record<string, unknown>
-			if ('activeLayoutId' in candidate) {
-				problems.push('$.layout.activeLayoutId: obsolete; expected activeProductId')
-			}
+			const candidate = productData as Record<string, unknown>
 			if (typeof candidate.activeProductId !== 'string') {
-				problems.push('$.layout.activeProductId: expected a string')
-			}
-			if (!Array.isArray(candidate.layouts) || candidate.layouts.length === 0) {
-				problems.push('$.layout.layouts: expected a non-empty array')
-			} else {
-				candidate.layouts.forEach((item, index) => {
-					if (item && typeof item === 'object' && 'slotIds' in item) {
-						problems.push(`$.layout.layouts[${index}].slotIds: obsolete; expected slotId and slotsCount`)
-					} else if (item && typeof item === 'object' && 'instances' in item) {
-						problems.push(`$.layout.layouts[${index}].instances: obsolete; move items to $.layout.products[*].instances`)
-					} else if (
-						item
-						&& typeof item === 'object'
-						&& typeof (item as Record<string, unknown>).configurationHeader !== 'string'
-					) {
-						problems.push(`$.layout.layouts[${index}].configurationHeader: expected a string`)
-					} else if (!item || typeof item !== 'object') {
-						problems.push(`$.layout.layouts[${index}]: expected a layout definition object`)
-					}
-				})
+				problems.push('$.products.activeProductId: expected a string')
 			}
 			if (!Array.isArray(candidate.products) || candidate.products.length === 0) {
-				problems.push('$.layout.products: expected a non-empty product array')
+				problems.push('$.products.products: expected a non-empty product array')
 			} else {
 				candidate.products.forEach((item, index) => {
 					if (!item || typeof item !== 'object' || Array.isArray(item)) {
-						problems.push(`$.layout.products[${index}]: expected a product object`)
+						problems.push(`$.products.products[${index}]: expected a product object`)
 						return
 					}
 					const product = item as Record<string, unknown>
 					if (typeof product.layoutId !== 'string') {
-						problems.push(`$.layout.products[${index}].layoutId: expected a string`)
+						problems.push(`$.products.products[${index}].layoutId: expected a string`)
 					}
 					if (!Array.isArray(product.instances)) {
-						problems.push(`$.layout.products[${index}].instances: expected an array`)
-					}
-				})
-			}
-			if (!Array.isArray(candidate.slots) || candidate.slots.length === 0) {
-				problems.push('$.layout.slots: expected a non-empty slot-definition array')
-			} else {
-				candidate.slots.forEach((item, index) => {
-					if (item && typeof item === 'object' && ('graphId' in item || 'inputValues' in item)) {
-						problems.push(`$.layout.slots[${index}]: obsolete graph instance; expected graphs and instanceBounds`)
+						problems.push(`$.products.products[${index}].instances: expected an array`)
 					}
 				})
 			}
 		}
 	}
+	if ('layout' in document) problems.push('$.layout: layout definitions are runtime defaults and cannot be persisted')
 	return problems.length > 0 ? problems : ['$: one or more nested values have invalid types']
 }
 
@@ -364,7 +322,7 @@ function assertInputDefinition(
 	graphId: string,
 	enumDefinitions: ReadonlyMap<string, EnumDefinitionSnapshot>
 ): void {
-	if (!['number', 'numberArray', 'vector3', 'enum', 'materialInstance', 'color', 'boolean', 'geometry'].includes(input.valueType)) {
+	if (!['number', 'primitiveArray', 'vector3', 'enum', 'materialInstance', 'color', 'boolean', 'geometry'].includes(input.valueType)) {
 		throw new Error(`Input "${input.id}" in graph "${graphId}" has an unknown value type`)
 	}
 	if (input.valueType === 'geometry') {
@@ -381,13 +339,15 @@ function assertInputDefinition(
 	)) {
 		throw new Error(`Input "${input.id}" in graph "${graphId}" has an invalid number default`)
 	}
-	if (input.valueType === 'numberArray' && (
+	if (input.valueType === 'primitiveArray' && (
 		!Array.isArray(input.defaultValue)
-		|| input.defaultValue.some((item) => !Number.isFinite(item) || item < 0)
+		|| input.defaultValue.some((item) => typeof item !== 'boolean' && (
+			typeof item !== 'number' || !Number.isFinite(item)
+		))
 	)) {
 		throw new Error(
-			`Input "${input.id}" in graph "${graphId}" requires an array of non-negative finite `
-			+ `numbers as its default. Received ${JSON.stringify(input.defaultValue)}.`
+			`Input "${input.id}" in graph "${graphId}" requires finite number, boolean, or choice-index values. `
+			+ `Received ${JSON.stringify(input.defaultValue)}.`
 		)
 	}
 	if (input.valueType === 'vector3' && !Vector3Value.isSnapshot(input.defaultValue)) {
@@ -581,38 +541,24 @@ function copyInput(input: GraphInputDefinition): GraphInputDefinition {
 function isGraphDocument(value: unknown): value is GraphDocument {
 	if (!value || typeof value !== 'object') return false
 	const document = value as Partial<GraphDocument>
-	return Object.values(Client).includes(document.client as Client)
+	return Object.values(CLIENT).includes(document.client as Client)
 		&& Array.isArray(document.rootGraphs)
 		&& document.rootGraphs.length > 0
 		&& document.rootGraphs.every(isRootGraphDocument)
 		&& Array.isArray(document.enums)
 		&& Array.isArray(document.graphs)
 		&& document.graphs.every(isGraphDefinitionDocument)
-		&& isLayoutDataDocument(document.layout)
+		&& isProductDataDocument(document.products)
 }
 
-function isLayoutDataDocument(value: unknown): value is LayoutDataDocument {
+function isProductDataDocument(value: unknown): value is ProductDataDocument {
 	if (!value || typeof value !== 'object') return false
-	const layout = value as Partial<LayoutDataDocument>
-	return typeof layout.activeProductId === 'string'
-		&& layout.activeProductId.length > 0
-		&& Array.isArray(layout.layouts)
-		&& layout.layouts.length > 0
-		&& layout.layouts.every((item) => {
-			if (!item || typeof item !== 'object') return false
-			return typeof item.id === 'string'
-				&& typeof item.label === 'string'
-				&& typeof item.configurationHeader === 'string'
-				&& item.configurationHeader.length > 0
-				&& (item.type === 'row' || item.type === 'single')
-				&& (item.type !== 'row' || item.axis === 'x')
-				&& (item.type !== 'single' || !('axis' in item))
-				&& typeof item.slotId === 'string'
-				&& isLayoutRange(item.slotsCount)
-		})
-		&& Array.isArray(layout.products)
-		&& layout.products.length > 0
-		&& layout.products.every((product) => (
+	const productData = value as Partial<ProductDataDocument>
+	return typeof productData.activeProductId === 'string'
+		&& productData.activeProductId.length > 0
+		&& Array.isArray(productData.products)
+		&& productData.products.length > 0
+		&& productData.products.every((product) => (
 			Boolean(product)
 			&& typeof product === 'object'
 			&& typeof product.id === 'string'
@@ -628,60 +574,23 @@ function isLayoutDataDocument(value: unknown): value is LayoutDataDocument {
 					&& typeof instance.inputValues === 'object'
 					&& !Array.isArray(instance.inputValues)
 					&& Object.values(instance.inputValues).every(isGraphInputValue)
-					&& isLayoutInstanceMetadata(instance.layoutMetadata)
 				))
 		))
-		&& Array.isArray(layout.slots)
-		&& layout.slots.length > 0
-		&& layout.slots.every((slot) => (
-			Boolean(slot)
-			&& typeof slot === 'object'
-			&& typeof slot.id === 'string'
-			&& typeof slot.label === 'string'
-			&& Array.isArray(slot.graphs)
-			&& slot.graphs.every((graphId) => typeof graphId === 'string')
-			&& Boolean(slot.instanceBounds)
-			&& isLayoutRange(slot.instanceBounds.width)
-			&& isLayoutRange(slot.instanceBounds.depth)
-			&& isLayoutRange(slot.instanceBounds.height)
-		))
-}
-
-function isLayoutRange(value: unknown): value is { min: number; max: number } {
-	if (!value || typeof value !== 'object') return false
-	const range = value as { min?: unknown; max?: unknown }
-	return typeof range.min === 'number' && typeof range.max === 'number'
 }
 
 function isRootGraphDocument(value: unknown): value is RootGraphDocument {
 	if (!value || typeof value !== 'object') return false
 	const root = value as Partial<RootGraphDocument>
+	const configurationPanel = root.configurationPanel
 	return typeof root.graphId === 'string'
 		&& root.graphId.length > 0
 		&& Boolean(root.inputValues)
 		&& typeof root.inputValues === 'object'
 		&& !Array.isArray(root.inputValues)
 		&& Object.values(root.inputValues).every(isGraphInputValue)
-		&& isRootGraphLayoutMetadata(root.layoutMetadata)
-		&& Boolean(root.configurationPanel)
-		&& !('constraints' in (root.configurationPanel as object))
-		&& Array.isArray(root.configurationPanel?.controls)
-		&& root.configurationPanel.controls.every(isConfigurationPanelControl)
-		&& Array.isArray(root.configurationPanel.templates)
-		&& root.configurationPanel.templates.every(isConfigurationTemplate)
-}
-
-function isConfigurationTemplate(value: unknown): value is ConfigurationTemplate {
-	if (!value || typeof value !== 'object') return false
-	const template = value as Partial<ConfigurationTemplate>
-	return typeof template.id === 'string'
-		&& template.id.trim().length > 0
-		&& typeof template.label === 'string'
-		&& template.label.trim().length > 0
-		&& Boolean(template.values)
-		&& typeof template.values === 'object'
-		&& !Array.isArray(template.values)
-		&& Object.values(template.values).every(isGraphInputValue)
+		&& configurationPanel !== undefined
+		&& Array.isArray(configurationPanel.controls)
+		&& Array.isArray(configurationPanel.templates)
 }
 
 function isGraphInputValue(value: unknown): value is GraphInputValue {
@@ -690,40 +599,6 @@ function isGraphInputValue(value: unknown): value is GraphInputValue {
 		|| typeof value === 'boolean'
 		|| (Array.isArray(value) && value.every((item) => typeof item === 'number'))
 		|| Vector3Value.isSnapshot(value)
-}
-
-function isConfigurationPanelControl(value: unknown): value is ConfigurationPanelControl {
-	if (!value || typeof value !== 'object') return false
-	const control = value as Record<string, unknown>
-	if (
-		typeof control.id !== 'string'
-		|| !control.id
-		|| typeof control.inputId !== 'string'
-		|| !control.inputId
-		|| typeof control.label !== 'string'
-	) {
-		return false
-	}
-	if (control.type === 'number') {
-		return typeof control.step === 'number' && Number.isFinite(control.step)
-	}
-	if (control.type === 'slider') {
-		return typeof control.min === 'number'
-			&& Number.isFinite(control.min)
-			&& typeof control.max === 'number'
-			&& Number.isFinite(control.max)
-			&& typeof control.step === 'number'
-			&& Number.isFinite(control.step)
-	}
-	if (control.type === 'numberArray') {
-		return Array.isArray(control.labels)
-			&& control.labels.every((label) => typeof label === 'string')
-			&& typeof control.total === 'number'
-			&& Number.isFinite(control.total)
-			&& typeof control.step === 'number'
-			&& Number.isFinite(control.step)
-	}
-	return control.type === 'select' || control.type === 'material' || control.type === 'switch'
 }
 
 function assertEnumDefinitions(definitions: EnumDefinitionSnapshot[]): void {
@@ -764,42 +639,4 @@ function isGraphDefinitionDocument(value: unknown): value is GraphDefinitionDocu
 		&& Array.isArray(graph.nodes)
 		&& graph.nodes.every(isGraphDocumentNode)
 		&& Array.isArray(graph.edges)
-}
-
-function isLayoutInstanceMetadata(value: unknown): value is LayoutInstanceMetadata | undefined {
-	if (value === undefined) return true
-	if (!value || typeof value !== 'object' || Array.isArray(value)) return false
-	const metadata = value as Partial<LayoutInstanceMetadata>
-	if (!metadata.axisBinding || typeof metadata.axisBinding !== 'object' || Array.isArray(metadata.axisBinding)) {
-		return false
-	}
-	const bindings = metadata.axisBinding as Record<string, unknown>
-	return Object.keys(bindings).every((role) => (
-		['primary', 'secondary', 'tertiary'].includes(role)
-		&& typeof bindings[role] === 'string'
-		&& (bindings[role] as string).length > 0
-	))
-}
-
-function isRootGraphLayoutMetadata(value: unknown): value is RootGraphLayoutMetadata | undefined {
-	if (value === undefined) return true
-	if (!value || typeof value !== 'object' || Array.isArray(value)) return false
-	const metadata = value as Partial<RootGraphLayoutMetadata>
-	if (!metadata.axisBinding || typeof metadata.axisBinding !== 'object' || Array.isArray(metadata.axisBinding)) {
-		return false
-	}
-	const bindings = metadata.axisBinding as Record<string, unknown>
-	return Object.keys(bindings).every((role) => {
-		const binding = bindings[role]
-		return ['primary', 'secondary', 'tertiary'].includes(role)
-			&& Boolean(binding)
-			&& typeof binding === 'object'
-			&& !Array.isArray(binding)
-			&& typeof (binding as RootGraphAxisBinding).inputId === 'string'
-			&& (binding as RootGraphAxisBinding).inputId.length > 0
-			&& (
-				(binding as RootGraphAxisBinding).component === undefined
-				|| ['x', 'y', 'z'].includes((binding as RootGraphAxisBinding).component as string)
-			)
-	})
 }

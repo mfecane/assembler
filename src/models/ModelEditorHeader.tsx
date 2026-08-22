@@ -3,7 +3,7 @@ import { ArrowLeft, Box } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { UserMenu } from '@/auth/UserMenu'
 import { Button } from '@/components/ui/button'
-import { Client } from '@/cosntants'
+import { CLIENT, type Client } from '@/constants'
 import type { ModelCatalogItem } from '@/models/ModelCatalogItem'
 import { ModelSelector } from '@/models/ModelSelector'
 
@@ -70,5 +70,5 @@ export function ModelEditorHeader({
 }
 
 function clientLabel(client: Client): string {
-	return client === Client.MAXSHELF ? 'MaxShelf' : 'Kitchen'
+	return client === CLIENT.MAXSHELF ? 'MaxShelf' : 'Kitchen'
 }

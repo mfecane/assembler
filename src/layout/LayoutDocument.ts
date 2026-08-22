@@ -1,8 +1,7 @@
 import type { GraphInputValue } from '@/parametric/model/GraphDocumentModel'
-import { copyLayoutInstanceMetadata, type LayoutInstanceMetadata } from '@/layout/GraphLayoutMetadata'
+import { productLayoutRegistry } from '@/layout/ProductLayoutRegistry'
 
-export type LayoutAxis = 'x'
-export type LayoutType = 'row' | 'single'
+export const DEFAULT_PRODUCT_ANIMATION_LABEL = 'Animate'
 
 export interface LayoutRangeDocument {
 	min: number
@@ -26,24 +25,56 @@ export interface LayoutGraphInstanceDocument {
 	id: string
 	graphId: string
 	inputValues: Record<string, GraphInputValue>
-	layoutMetadata?: LayoutInstanceMetadata
 }
 
-interface LayoutDocumentBase {
+export interface ProductConfigurationTarget {
+	instanceId: string
+	inputId: string
+}
+
+export type ProductConfigurationControl =
+	| {
+		id: string
+		type: 'number' | 'slider' | 'select' | 'material' | 'switch' | 'color' | 'vector3'
+		label: string
+		target: ProductConfigurationTarget
+		min?: number
+		max?: number
+		step?: number
+	}
+	| {
+		id: string
+		type: 'sectionList'
+		label: string
+		countTarget: ProductConfigurationTarget
+		fields: Array<{
+			id: string
+			label: string
+			target: ProductConfigurationTarget
+			widget: 'number' | 'slider' | 'select'
+			min?: number
+			max?: number
+			step?: number
+		}>
+	}
+
+export interface ProductConfigurationDocument {
+	header: string
+	controls: ProductConfigurationControl[]
+}
+
+export interface LayoutDocument {
 	id: string
 	label: string
-	configurationHeader: string
 	slotId: string
 	slotsCount: LayoutRangeDocument
 }
 
-export type LayoutDocument =
-	| (LayoutDocumentBase & { type: 'row'; axis: LayoutAxis })
-	| (LayoutDocumentBase & { type: 'single' })
-
 export interface ProductDocument {
 	id: string
 	label: string
+	animationLabel?: string
+	configuration?: ProductConfigurationDocument
 	layoutId: string
 	instances: LayoutGraphInstanceDocument[]
 }
@@ -53,6 +84,39 @@ export interface LayoutDataDocument {
 	layouts: LayoutDocument[]
 	products: ProductDocument[]
 	slots: LayoutSlotDocument[]
+}
+
+export interface ProductDataDocument {
+	activeProductId: string
+	products: ProductDocument[]
+}
+
+const DEFAULT_SLOT_ID = 'root-graphs'
+
+export function createDefaultLayoutData(
+	productData: ProductDataDocument,
+	rootGraphIds: readonly string[]
+): LayoutDataDocument {
+	return {
+		activeProductId: productData.activeProductId,
+		layouts: productLayoutRegistry.getAll().map((layout) => ({
+			id: layout.id,
+			label: layout.label,
+			slotId: DEFAULT_SLOT_ID,
+			slotsCount: { min: 1, max: layout.maximumInstances },
+		})),
+		products: productData.products.map(copyProduct),
+		slots: [{
+			id: DEFAULT_SLOT_ID,
+			label: 'Root graph',
+			graphs: [...rootGraphIds],
+			instanceBounds: {
+				width: { min: 0.001, max: 100 },
+				depth: { min: 0.001, max: 100 },
+				height: { min: 0.001, max: 100 },
+			},
+		}],
+	}
 }
 
 export class LayoutModel {
@@ -70,8 +134,8 @@ export class LayoutModel {
 			assertInstanceBounds(slot.id, slot.instanceBounds)
 			if (!slot.label.trim() || new Set(slot.graphs).size !== slot.graphs.length) {
 				throw new Error(
-					`Layout slot definition "${slot.id}" requires a non-empty label and unique graph IDs. `
-					+ `Received ${JSON.stringify(slot)}.`
+					`Layout slot definition "${slot.id}" requires a non-empty label and unique graph IDs. ` +
+						`Received ${JSON.stringify(slot)}.`
 				)
 			}
 			this.slots.set(slot.id, copySlot(slot))
@@ -80,19 +144,19 @@ export class LayoutModel {
 			if (!layout.id.trim() || this.layouts.has(layout.id)) {
 				throw new Error(`Layout data has a duplicate or empty layout ID "${layout.id}".`)
 			}
-			if (!layout.label.trim() || !layout.configurationHeader.trim() || !this.slots.has(layout.slotId)) {
+			if (!layout.label.trim() || !this.slots.has(layout.slotId)) {
 				throw new Error(
-					`Layout "${layout.id}" requires non-empty label and configurationHeader values, `
-					+ 'plus an existing slot definition. '
-					+ `Received slot definition ID "${layout.slotId}".`
+				`Layout "${layout.id}" requires a non-empty label and an existing slot definition. ` +
+						`Received slot definition ID "${layout.slotId}".`
 				)
 			}
 			assertRange(layout.slotsCount, `slot count for layout "${layout.id}"`, true)
-			if (layout.type === 'row' && layout.axis !== 'x') {
-				throw new Error(`Row layout "${layout.id}" supports only the x axis. Received "${layout.axis}".`)
-			}
-			if (layout.type === 'single' && layout.slotsCount.max !== 1) {
-				throw new Error(`Single layout "${layout.id}" must have a maximum slot count of 1.`)
+			const implementation = productLayoutRegistry.require(layout.id)
+			if (layout.slotsCount.max !== implementation.maximumInstances) {
+				throw new Error(
+					`Layout "${layout.id}" instance limit must come from its code implementation. `
+					+ `Expected ${implementation.maximumInstances}, received ${layout.slotsCount.max}.`
+				)
 			}
 			this.layouts.set(layout.id, copyLayout(layout))
 		}
@@ -107,11 +171,12 @@ export class LayoutModel {
 					`Product "${product.id}" requires a non-empty label and existing layout "${product.layoutId}".`
 				)
 			}
+			assertProductConfiguration(product.id, product.configuration)
 			const layout = this.requireLayout(product.layoutId)
 			if (product.instances.length > layout.slotsCount.max) {
 				throw new Error(
-					`Product "${product.id}" contains ${product.instances.length} items, exceeding layout `
-					+ `"${layout.id}" maximum of ${layout.slotsCount.max}.`
+					`Product "${product.id}" contains ${product.instances.length} items, exceeding layout ` +
+						`"${layout.id}" maximum of ${layout.slotsCount.max}.`
 				)
 			}
 			for (const instance of product.instances) {
@@ -124,8 +189,8 @@ export class LayoutModel {
 		}
 		if (!this.products.has(this.activeProductId)) {
 			throw new Error(
-				`Active product "${this.activeProductId}" does not exist. Available products: `
-				+ `${JSON.stringify([...this.products.keys()])}.`
+				`Active product "${this.activeProductId}" does not exist. Available products: ` +
+					`${JSON.stringify([...this.products.keys()])}.`
 			)
 		}
 	}
@@ -184,6 +249,14 @@ export class LayoutModel {
 		this.getMutableProduct(productId).label = normalized
 	}
 
+	public setProductAnimationLabel(productId: string, label: string): void {
+		const normalized = label.trim()
+		if (!normalized) {
+			throw new Error(`Cannot set an empty animation label on product "${productId}".`)
+		}
+		this.getMutableProduct(productId).animationLabel = normalized
+	}
+
 	public removeProduct(productId: string): void {
 		if (this.products.size <= 1) {
 			throw new Error(`Cannot delete product "${productId}": a project requires at least one product.`)
@@ -199,25 +272,30 @@ export class LayoutModel {
 	public setProductLayout(productId: string, layoutId: string): void {
 		const product = this.getMutableProduct(productId)
 		const layout = this.requireLayout(layoutId)
-		this.requireSlot(layout.slotId)
+		const slot = this.requireSlot(layout.slotId)
 		if (product.instances.length > layout.slotsCount.max) {
 			throw new Error(
-				`Cannot assign layout "${layoutId}" to product "${productId}": it contains `
-				+ `${product.instances.length} items, exceeding the layout maximum of ${layout.slotsCount.max}.`
+				`Cannot assign layout "${layoutId}" to product "${productId}": it contains ` +
+					`${product.instances.length} items, exceeding the layout maximum of ${layout.slotsCount.max}.`
 			)
 		}
+		this.assertSlotSupportsInstances(slot, product.instances, `product "${productId}"`)
 		product.layoutId = layoutId
 	}
 
-	public setConfigurationHeader(layoutId: string, header: string): void {
-		const normalized = header.trim()
-		if (!normalized) throw new Error(`Cannot set an empty configuration header on layout "${layoutId}".`)
-		this.getMutableLayout(layoutId).configurationHeader = normalized
+
+	public setProductConfiguration(productId: string, configuration: ProductConfigurationDocument): void {
+		assertProductConfiguration(productId, configuration)
+		this.getMutableProduct(productId).configuration = copyProductConfiguration(configuration)
 	}
 
 	public setLayoutSlot(layoutId: string, slotId: string): void {
 		const layout = this.getMutableLayout(layoutId)
-		this.requireSlot(slotId)
+		const slot = this.requireSlot(slotId)
+		for (const product of this.products.values()) {
+			if (product.layoutId !== layoutId) continue
+			this.assertSlotSupportsInstances(slot, product.instances, `product "${product.id}"`)
+		}
 		layout.slotId = slotId
 	}
 
@@ -227,7 +305,9 @@ export class LayoutModel {
 		if (product.instances.length >= layout.slotsCount.max) {
 			throw new Error(`Product "${productId}" has reached its maximum of ${layout.slotsCount.max} items.`)
 		}
-		if ([...this.products.values()].some((item) => item.instances.some((candidate) => candidate.id === instance.id))) {
+		if (
+			[...this.products.values()].some((item) => item.instances.some((candidate) => candidate.id === instance.id))
+		) {
 			throw new Error(`Cannot add duplicate product item ID "${instance.id}".`)
 		}
 		product.instances.push(copyInstance(instance))
@@ -240,32 +320,8 @@ export class LayoutModel {
 		product.instances.splice(index, 1)
 	}
 
-	public setInstanceGraph(
-		productId: string,
-		instanceId: string,
-		graphId: string,
-		inputValues: Record<string, GraphInputValue>
-	): void {
-		const item = this.getMutableInstance(productId, instanceId)
-		item.graphId = graphId
-		item.inputValues = copyInputValues(inputValues)
-	}
-
-	public setInstanceInputValue(
-		productId: string,
-		instanceId: string,
-		inputId: string,
-		value: GraphInputValue
-	): void {
+	public setInstanceInputValue(productId: string, instanceId: string, inputId: string, value: GraphInputValue): void {
 		this.getMutableInstance(productId, instanceId).inputValues[inputId] = copyInputValue(value)
-	}
-
-	public setInstanceLayoutMetadata(
-		productId: string,
-		instanceId: string,
-		metadata: LayoutInstanceMetadata | undefined
-	): void {
-		this.getMutableInstance(productId, instanceId).layoutMetadata = copyLayoutInstanceMetadata(metadata)
 	}
 
 	public addSlot(slot: LayoutSlotDocument): void {
@@ -281,6 +337,17 @@ export class LayoutModel {
 
 	public setSlotGraphs(slotId: string, graphIds: string[]): void {
 		const slot = this.getMutableSlot(slotId)
+		for (const layout of this.layouts.values()) {
+			if (layout.slotId !== slotId) continue
+			for (const product of this.products.values()) {
+				if (product.layoutId !== layout.id) continue
+				this.assertSlotSupportsInstances(
+					{ ...slot, graphs: graphIds },
+					product.instances,
+					`product "${product.id}" using layout "${layout.id}"`
+				)
+			}
+		}
 		slot.graphs = [...graphIds]
 	}
 
@@ -297,14 +364,18 @@ export class LayoutModel {
 	public setLayoutSlotsCount(layoutId: string, slotsCount: LayoutRangeDocument): void {
 		const layout = this.getMutableLayout(layoutId)
 		assertRange(slotsCount, `slot count for layout "${layoutId}"`, true)
-		if (layout.type === 'single' && slotsCount.max !== 1) {
-			throw new Error(`Single layout "${layoutId}" must have a maximum slot count of 1.`)
+		const implementation = productLayoutRegistry.require(layoutId)
+		if (slotsCount.max !== implementation.maximumInstances) {
+			throw new Error(
+				`Cannot override the code-defined maximum of ${implementation.maximumInstances} `
+				+ `instances for layout "${layoutId}".`
+			)
 		}
 		for (const product of this.products.values()) {
 			if (product.layoutId === layoutId && product.instances.length > slotsCount.max) {
 				throw new Error(
-					`Cannot reduce layout "${layoutId}" to ${slotsCount.max} items while product `
-					+ `"${product.id}" contains ${product.instances.length}.`
+					`Cannot reduce layout "${layoutId}" to ${slotsCount.max} items while product ` +
+						`"${product.id}" contains ${product.instances.length}.`
 				)
 			}
 		}
@@ -333,6 +404,20 @@ export class LayoutModel {
 		return layout
 	}
 
+	private assertSlotSupportsInstances(
+		slot: LayoutSlotDocument,
+		instances: readonly LayoutGraphInstanceDocument[],
+		context: string
+	): void {
+		const invalid = instances.filter((instance) => !slot.graphs.includes(instance.graphId))
+		if (invalid.length === 0) return
+		throw new Error(
+			`Cannot use slot "${slot.id}" for ${context}: it does not allow existing graph instances `
+			+ `${JSON.stringify(invalid.map((instance) => ({ id: instance.id, graphId: instance.graphId })))}. `
+			+ `Allowed graph IDs: ${JSON.stringify(slot.graphs)}.`
+		)
+	}
+
 	private getMutableProduct(productId: string): ProductDocument {
 		const product = this.products.get(productId)
 		if (!product) throw new Error(`Cannot mutate unknown product "${productId}".`)
@@ -353,11 +438,54 @@ export class LayoutModel {
 }
 
 function assertRange(range: LayoutRangeDocument, context: string, integer = false): void {
-	if (!Number.isFinite(range.min) || !Number.isFinite(range.max) || range.min < 0 || range.max < range.min || (
-		integer && (!Number.isInteger(range.min) || !Number.isInteger(range.max))
-	)) {
+	if (
+		!Number.isFinite(range.min) ||
+		!Number.isFinite(range.max) ||
+		range.min < 0 ||
+		range.max < range.min ||
+		(integer && (!Number.isInteger(range.min) || !Number.isInteger(range.max)))
+	) {
 		throw new Error(`Invalid ${context}: expected ${integer ? 'integer ' : ''}0 <= min <= max.`)
 	}
+}
+
+function assertProductConfiguration(
+	productId: string,
+	configuration: ProductConfigurationDocument | undefined
+): void {
+	if (configuration === undefined) return
+	if (!configuration.header.trim() || new Set(configuration.controls.map((control) => control.id)).size !== configuration.controls.length) {
+		throw new Error(`Product "${productId}" has an invalid configuration header or duplicate control IDs.`)
+	}
+	for (const control of configuration.controls) {
+		if (!control.id.trim() || !control.label.trim()) {
+			throw new Error(`Product "${productId}" has a configuration control with an empty ID or label.`)
+		}
+		if (control.type === 'sectionList') {
+			if (!isTarget(control.countTarget)) {
+				throw new Error(`Section-list control "${control.id}" on product "${productId}" is incomplete.`)
+			}
+			if (new Set(control.fields.map((field) => field.id)).size !== control.fields.length) {
+				throw new Error(`Section-list control "${control.id}" on product "${productId}" has duplicate field IDs.`)
+			}
+			for (const field of control.fields) {
+				if (
+					!field.id.trim()
+					|| !field.label.trim()
+					|| !isTarget(field.target)
+					|| (field.widget !== undefined && !['number', 'slider', 'select'].includes(field.widget))
+				) {
+					throw new Error(`Section-list control "${control.id}" on product "${productId}" has an invalid field.`)
+				}
+			}
+		} else if (control.target !== undefined && !isTarget(control.target)) {
+			throw new Error(`Configuration control "${control.id}" on product "${productId}" has an invalid target.`)
+		}
+	}
+}
+
+function isTarget(target: ProductConfigurationTarget): boolean {
+	return target.instanceId.trim().length > 0 && target.inputId.trim().length > 0
 }
 
 function assertInstanceBounds(slotId: string, bounds: LayoutInstanceBoundsDocument): void {
@@ -370,19 +498,42 @@ function assertInstanceBounds(slotId: string, bounds: LayoutInstanceBoundsDocume
 }
 
 function copyLayout(layout: LayoutDocument): LayoutDocument {
-	const base = {
+	return {
 		id: layout.id,
 		label: layout.label,
-		configurationHeader: layout.configurationHeader,
-		type: layout.type,
 		slotId: layout.slotId,
 		slotsCount: { ...layout.slotsCount },
 	}
-	return layout.type === 'row' ? { ...base, type: 'row', axis: layout.axis } : { ...base, type: 'single' }
 }
 
 function copyProduct(product: ProductDocument): ProductDocument {
-	return { ...product, instances: product.instances.map(copyInstance) }
+	return {
+		...product,
+		animationLabel: normalizeProductAnimationLabel(product.animationLabel),
+		configuration: product.configuration && copyProductConfiguration(product.configuration),
+		instances: product.instances.map(copyInstance),
+	}
+}
+
+function copyProductConfiguration(configuration: ProductConfigurationDocument): ProductConfigurationDocument {
+	return {
+		header: configuration.header,
+		controls: configuration.controls.map((control) => control.type === 'sectionList'
+			? {
+				...control,
+				...(control.countTarget ? { countTarget: { ...control.countTarget } } : {}),
+				fields: control.fields.map((field) => ({
+					...field,
+					...(field.target ? { target: { ...field.target } } : {}),
+				})),
+			}
+			: { ...control, ...(control.target ? { target: { ...control.target } } : {}) }
+		),
+	}
+}
+
+function normalizeProductAnimationLabel(value: unknown): string {
+	return typeof value === 'string' && value.trim() ? value.trim() : DEFAULT_PRODUCT_ANIMATION_LABEL
 }
 
 function copySlot(slot: LayoutSlotDocument): LayoutSlotDocument {
@@ -401,7 +552,6 @@ function copyInstance(instance: LayoutGraphInstanceDocument): LayoutGraphInstanc
 	return {
 		...instance,
 		inputValues: copyInputValues(instance.inputValues),
-		...(instance.layoutMetadata ? { layoutMetadata: copyLayoutInstanceMetadata(instance.layoutMetadata) } : {}),
 	}
 }
 
